@@ -897,13 +897,10 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  };
  const entries=[
  {key:'overview',label:'Главная',route:'overview'},
- {key:'cash',label:'ДДС',route:'cash'},
- {key:'expenses',label:'Расходы',children:[['expenses:project','По проектам'],['expenses:general','Общие']]},
- {key:'realizations',label:'Реализации',route:'realizations'},
- {key:'deals',label:'Сделки',route:'deals'},
- {key:'work',label:'Производство',route:'work'},
- {key:'materials',label:'Склад и материалы',children:[['materials:receipt','Поступление товаров от поставщиков'],['materials:movement','Движение товаров по проектам'],['materials:catalog','Номенклатура']]},
- {key:'labor',label:'Сотрудники',route:'labor'},
+ {key:'finance',label:'Финансы',children:[['cash','Движение денежных средств'],['calendar','Платёжный календарь'],['expenses:project','Расходы проектов'],['expenses:general','Общие расходы'],['realizations','Реализации']]},
+ {key:'deals',label:'Сделки и проекты',route:'deals'},
+ {key:'production',label:'Производство',children:[['work','Выполненные работы и бригады'],['labor','Начисления сотрудникам']]},
+ {key:'materials',label:'Склад',children:[['materials:receipt','Поступление товаров'],['materials:movement','Комплектация и движение'],['materials:catalog','Остатки и номенклатура']]},
  {key:'reports',label:'Отчёты',children:[['reports:cash','ДДС'],['reports:pnl','ОПиУ'],['reports:stock','Склад']]},
  {key:'settings',label:'Настройки',route:'settings'}
  ];
@@ -917,7 +914,7 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  }
  nav.replaceChildren();nav.classList.add('arbat-menu-v2');
  for(let entry of entries){
-  const categories={cash:'ФИНАНСЫ',deals:'СДЕЛКИ И ПРОЕКТЫ',work:'ПРОИЗВОДСТВО',materials:'СКЛАД',labor:'ПЕРСОНАЛ',reports:'АНАЛИТИКА',settings:'СИСТЕМА'};
+  const categories={finance:'ФИНАНСЫ',deals:'ПРОЕКТЫ',production:'ИСПОЛНЕНИЕ',materials:'СКЛАД',reports:'АНАЛИТИКА',settings:'СИСТЕМА'};
   if(categories[entry.key]){const caption=document.createElement('div');caption.className='arbat-menu-caption';caption.textContent=categories[entry.key];nav.append(caption)}
   let group=document.createElement('div');group.className='arbat-nav-group';group.dataset.group=entry.key;
   const parent=mainButton(entry);group.append(parent);buttons.set(parent.dataset.route,parent);groups.set(entry.key,group);
@@ -927,6 +924,24 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
    children.onclick=e=>{let b=e.target.closest('[data-route]');if(b)navigate(b.dataset.route)}
   }else parent.onclick=()=>navigate(entry.route);
   nav.append(group)
+ }
+ // Workflow-level creation entry points; existing form handlers are retained.
+ const actionDefinitions={
+ cash:[['Новая операция','cashForm'],['Импорт выписки','bankImportFile']],
+ deals:[['Новая сделка','dealForm']],
+ realizations:[['Новая реализация','realizationForm']],
+ 'expenses:project':[['Новый расход проекта','expenseForm']],
+ 'expenses:general':[['Новый общий расход','costForm']],
+ labor:[['Новое начисление','laborForm']]
+ };
+ const actionBars=new Map();
+ for(const [route,actions] of Object.entries(actionDefinitions)){
+   const sectionId=({ 'expenses:project':'expenses','expenses:general':'costs'})[route]||route;
+   const section=document.getElementById(sectionId);if(!section)continue;
+   let bar=document.createElement('div');bar.className='hv-actionbar';bar.dataset.actionbar=route;
+   let note=document.createElement('span');note.textContent='Документы и операции';note.className='hv-action-label';bar.append(note);
+   for(const [label,id] of actions){const target=document.getElementById(id);if(!target)continue;const b=document.createElement('button');b.type='button';b.textContent=label;b.className='hv-action';b.onclick=()=>{const card=target.closest('.card');if(card){card.scrollIntoView({behavior:'smooth',block:'start'});card.classList.add('hv-focus');setTimeout(()=>card.classList.remove('hv-focus'),1500)}else target.click();};bar.append(b)}
+   section.prepend(bar);actionBars.set(route,bar);
  }
  const sectionMap={'overview':'overview','cash':'cash','calendar':'calendar','deals':'deals','realizations':'realizations','expenses:project':'expenses','expenses:general':'costs','materials:receipt':'materials','materials:movement':'materials','materials:catalog':'materials','work':'work','labor':'labor','reports:cash':'reports','reports:pnl':'reports','reports:stock':'reports','settings':'settings'};
  const labelMap={overview:'Главная',cash:'ДДС',calendar:'Платёжный календарь',deals:'Сделки',realizations:'Реализации', 'expenses:project':'Расходы · По проектам','expenses:general':'Расходы · Общие','materials:receipt':'Склад · Поступление товаров от поставщиков','materials:movement':'Склад · Движение товаров по проектам','materials:catalog':'Склад · Номенклатура',work:'Производство',labor:'Сотрудники','reports:cash':'Отчёты · ДДС','reports:pnl':'Отчёты · ОПиУ','reports:stock':'Отчёты · Склад',settings:'Настройки'};
@@ -1004,12 +1019,13 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
   if(!sectionMap[route])return;
   current=route;try{sessionStorage.setItem('arbat-last-route',route)}catch(e){}let section=sectionMap[route];document.querySelectorAll('main.wrap > section').forEach(el=>el.classList.toggle('active',el.id===section));
   title.textContent=labelMap[route]||'Главная';
-  for(let [name,g] of groups){let active=name===section||name===route.split(':')[0]||(name==='cash'&&route==='calendar')||(name==='deals'&&route==='realizations');
+  for(let [name,g] of groups){let active=name===section||name===route.split(':')[0]||(name==='finance'&&['cash','calendar','realizations','expenses:project','expenses:general'].includes(route))||(name==='production'&&['work','labor'].includes(route));
    g.querySelector('.arbat-nav-main').classList.toggle('active-parent',active);g.querySelector('.arbat-nav-main').classList.toggle('active',active);
    if(g.querySelector('.arbat-nav-children')){g.classList.toggle('open',active);g.querySelector('.arbat-nav-main').setAttribute('aria-expanded',String(active))}
   }
   for(let [name,b] of buttons)b.classList.toggle('active',name===route);
   for(let b of document.querySelectorAll('[data-quick-route]'))b.classList.toggle('active',b.dataset.quickRoute===route);
+  for(const [r,bar] of actionBars)bar.style.display=r===route?'flex':'none';
   if(section==='materials')updateWarehouse(route);
   if(section==='reports')updateReports(route);
   if(layout.classList.contains('mobile-open')&&window.innerWidth<701)layout.classList.remove('mobile-open');
