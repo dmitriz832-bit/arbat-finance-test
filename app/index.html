@@ -1023,4 +1023,4 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const mo=new MutationObserver(()=>{if(current==='reports:stock'){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display==='none')audit.style.display=''}else if(current.startsWith('reports:')){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display!=='none')audit.style.display='none'}});
  if(firstReport)mo.observe(firstReport,{childList:true,subtree:true});
 })();
-</script><script src="./sync.js"></script><script src="./profile.js"></script><script src="./auth.js"></script></body></html><script async data-explicit-opt-in="true" data-deployment-id="dpl_85b9xdNhg2RGy4YoE95b853C5bCq" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
+</script><script src="./sync.js"></script><script src="./profile.js"></script><script src="./auth.js"></script></body></html>
