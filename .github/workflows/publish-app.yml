@@ -1,0 +1,35 @@
+name: Publish ARBAT FINANCE test build
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/publish-app.yml'
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download current tested app from Vercel
+        run: |
+          mkdir -p app
+          curl -fsSL --retry 3 'https://arbat-finance-demo-802a6i4jd-617247.vercel.app/' -o app/index.html
+          for file in auth.css auth.js sync.js; do
+            curl -fsSL --retry 3 "https://arbat-finance-demo-802a6i4jd-617247.vercel.app/$file" -o "app/$file"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/index.html')
+          s=p.read_text()
+          for name in ('auth.css','auth.js','sync.js'):
+              s=s.replace('="/'+name+'"', '="./'+name+'"')
+          if '="./auth.js"' not in s or '="./sync.js"' not in s: raise Exception('App assets missing')
+          p.write_text(s)
+          PY
+      - name: Commit static app files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/index.html app/auth.css app/auth.js app/sync.js
+          git diff --cached --quiet || (git commit -m "Publish static ARBAT FINANCE test app" && git push)
