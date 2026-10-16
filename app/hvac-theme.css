@@ -147,3 +147,16 @@ body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card{margin:0;
 body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card:first-child{grid-column:1/-1}
 @media(max-width:970px){body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid{grid-template-columns:minmax(0,1fr)}body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card:first-child{grid-column:auto}}
 @media(max-width:700px){body.ab-ready:not(.ab-profile-only) #overview .hv-hero{min-height:140px}body.ab-ready:not(.ab-profile-only) #overview .hv-hero-copy{padding:18px 16px}body.ab-ready:not(.ab-profile-only) #overview .hv-hero-visual{width:15%;min-width:55px;opacity:.35}body.ab-ready:not(.ab-profile-only) #overview .hv-jumps button{flex:1 1 42%;text-align:left}}
+
+/* Progressive disclosure for create/edit document workflows */
+body.ab-ready:not(.ab-profile-only) .hv-create-card{order:5;margin-top:12px;border-color:#244159!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card:not(.hv-expanded) .hv-create-body{display:none!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card>h2{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:0;border-bottom:0!important;padding:0!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card.hv-expanded>h2{border-bottom:1px solid #2c465b!important;padding-bottom:12px!important;margin-bottom:14px}
+body.ab-ready:not(.ab-profile-only) .hv-form-toggle{flex:none;font-size:12px;background:#173247!important;color:#95d6ff!important;border:1px solid #2d6084!important;border-radius:7px;padding:7px 12px}
+body.ab-ready:not(.ab-profile-only) .hv-create-body{min-width:0}
+body.ab-ready:not(.ab-profile-only) #cash,body.ab-ready:not(.ab-profile-only) #deals,body.ab-ready:not(.ab-profile-only) #realizations,body.ab-ready:not(.ab-profile-only) #expenses,body.ab-ready:not(.ab-profile-only) #costs,body.ab-ready:not(.ab-profile-only) #labor{display:none;flex-direction:column}
+body.ab-ready:not(.ab-profile-only) #cash.active,body.ab-ready:not(.ab-profile-only) #deals.active,body.ab-ready:not(.ab-profile-only) #realizations.active,body.ab-ready:not(.ab-profile-only) #expenses.active,body.ab-ready:not(.ab-profile-only) #costs.active,body.ab-ready:not(.ab-profile-only) #labor.active{display:flex}
+body.ab-ready:not(.ab-profile-only) .hv-actionbar{order:-10}
+body.ab-ready:not(.ab-profile-only) #cash>.card:not(.hv-create-card),body.ab-ready:not(.ab-profile-only) #deals>.card:not(.hv-create-card){order:0}
+@media(max-width:700px){body.ab-ready:not(.ab-profile-only) .hv-create-card>h2{flex-wrap:wrap}body.ab-ready:not(.ab-profile-only) .hv-form-toggle{width:auto}}
