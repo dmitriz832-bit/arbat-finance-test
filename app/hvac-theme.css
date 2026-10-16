@@ -1,0 +1,46 @@
+/* ARBAT FINANCE / HVAC industrial design system v1 */
+:root{color-scheme:dark;--hv-bg:#080f18;--hv-panel:#111d2a;--hv-panel2:#152536;--hv-stroke:#25394c;--hv-blue:#2799f3;--hv-text:#ecf4fb;--hv-muted:#91a9be;--hv-good:#37cf9f;--hv-danger:#fb7777}
+body.ab-ready:not(.ab-profile-only){background:var(--hv-bg)!important;color:var(--hv-text)!important}
+body.ab-ready:not(.ab-profile-only) header{background:linear-gradient(100deg,#0a1522,#0d2338 63%,#09121c)!important;border-bottom:1px solid var(--hv-stroke);color:var(--hv-text)}
+body.ab-ready:not(.ab-profile-only) header b{letter-spacing:.035em}
+body.ab-ready:not(.ab-profile-only) .layout{background:var(--hv-bg)}
+body.ab-ready:not(.ab-profile-only) .sidebar{background:linear-gradient(180deg,#0c1d30,#0a1523 62%,#0a111d)!important;border-right:1px solid #213b50}
+body.ab-ready:not(.ab-profile-only) .content{background:radial-gradient(ellipse at 75% -16%,#143852 0,transparent 45%),#080f18}
+body.ab-ready:not(.ab-profile-only) .content .wrap{padding:23px clamp(12px,2vw,32px)}
+body.ab-ready:not(.ab-profile-only) h1,body.ab-ready:not(.ab-profile-only) h2,body.ab-ready:not(.ab-profile-only) h3{color:#f1f7ff;letter-spacing:-.012em}
+body.ab-ready:not(.ab-profile-only) .card,body.ab-ready:not(.ab-profile-only) .metric,body.ab-ready:not(.ab-profile-only) .stat-card{background:linear-gradient(160deg,#142536,#101b29 65%,#0e1926)!important;border:1px solid var(--hv-stroke)!important;color:var(--hv-text)!important;border-radius:12px!important;box-shadow:0 8px 22px #00000024}
+body.ab-ready:not(.ab-profile-only) .card p,body.ab-ready:not(.ab-profile-only) .muted,body.ab-ready:not(.ab-profile-only) .small{color:var(--hv-muted)}
+body.ab-ready:not(.ab-profile-only) button,body.ab-ready:not(.ab-profile-only) input,body.ab-ready:not(.ab-profile-only) select,body.ab-ready:not(.ab-profile-only) textarea{transition:border-color .15s,background-color .15s,box-shadow .15s;color:var(--hv-text);border-color:#30465b;background:#152638}
+body.ab-ready:not(.ab-profile-only) input::placeholder,body.ab-ready:not(.ab-profile-only) textarea::placeholder{color:#7c97af}
+body.ab-ready:not(.ab-profile-only) button:hover{border-color:var(--hv-blue);background:#1e3550}
+body.ab-ready:not(.ab-profile-only) button:focus-visible,body.ab-ready:not(.ab-profile-only) input:focus-visible,body.ab-ready:not(.ab-profile-only) select:focus-visible,body.ab-ready:not(.ab-profile-only) textarea:focus-visible{outline:2px solid var(--hv-blue);outline-offset:2px}
+body.ab-ready:not(.ab-profile-only) button.primary,body.ab-ready:not(.ab-profile-only) .primary{background:linear-gradient(125deg,#168ce5,#006cb9)!important;border-color:#319beb!important;color:white!important;font-weight:650}
+body.ab-ready:not(.ab-profile-only) .side-nav button{background:transparent;border-color:transparent;color:#c1d3e4}
+body.ab-ready:not(.ab-profile-only) .side-nav button.active,body.ab-ready:not(.ab-profile-only) .side-nav button.active-parent{background:linear-gradient(90deg,#1165a9a8,#137ac635)!important;color:#fff!important;box-shadow:inset 3px 0 #2aabff}
+body.ab-ready:not(.ab-profile-only) .side-nav button:hover{background:#193a54!important;color:#fff}
+body.ab-ready:not(.ab-profile-only) .fields label{color:#c5d5e4}
+body.ab-ready:not(.ab-profile-only) table{background:transparent;color:#dce9f4}
+body.ab-ready:not(.ab-profile-only) th{color:#a4c0d5;background:#152839;border-bottom-color:#34516a}
+body.ab-ready:not(.ab-profile-only) td{border-bottom-color:#263b4d}
+body.ab-ready:not(.ab-profile-only) tbody tr:hover{background:#1a3348}
+body.ab-ready:not(.ab-profile-only) .banner{display:none!important}
+body.ab-ready:not(.ab-profile-only) .modal{background:#132334!important;color:#eaf4fd!important;border:1px solid #345169}
+body.ab-ready:not(.ab-profile-only) .modal-backdrop{background:#020914cf!important;z-index:12000}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window{background:#122333!important;color:#eaf4fd!important;border:1px solid #345169;box-shadow:0 26px 90px #0009}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window .ab-note{color:#a2b9cd!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window td,body.ab-ready:not(.ab-profile-only) #ab-profile-window th{border-bottom-color:#2e475c}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-profile-logout-area{border-top-color:#33485b!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-logout{background:#311b25!important;color:#ffb7b7!important;border-color:#633742!important}
+body.ab-ready:not(.ab-profile-only) .ok{color:#55dfaf!important}
+body.ab-ready:not(.ab-profile-only) .danger{color:#ff9494!important}
+body.ab-ready:not(.ab-profile-only) section{display:none}
+body.ab-ready:not(.ab-profile-only) main.wrap>section.active{display:block}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window{display:block!important}
+@media(max-width:700px){
+ body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 9px}
+ body.ab-ready:not(.ab-profile-only) .card{padding:12px!important}
+ body.ab-ready:not(.ab-profile-only) .modal,body.ab-ready:not(.ab-profile-only) #ab-profile-window{max-height:calc(100dvh - 30px);padding:14px}
+ body.ab-ready:not(.ab-profile-only) .fields{grid-template-columns:minmax(0,1fr)}
+ body.ab-ready:not(.ab-profile-only) .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media(prefers-reduced-motion:reduce){body.ab-ready *{transition:none!important;animation:none!important}}
