@@ -59,3 +59,8 @@ body.ab-profile-only #ab-profile-window #ab-logout{position:static!important;bac
 body.ab-ready #ab-profile-window .ab-stat>div{background:#172b3b;border-color:#304c63;border-radius:10px}
 body.ab-ready #ab-profile-window select{background:#172d41;color:#f2f8fd;border-color:#35556c}
 body.ab-ready #ab-profile-window button:focus-visible{outline:2px solid #329ffe;outline-offset:2px}
+
+#tabs .arbat-menu-caption{padding:15px 12px 6px;font-size:10px;font-weight:750;letter-spacing:.125em;color:#6e9bb9;white-space:nowrap;overflow:hidden}
+#layout.collapsed #tabs .arbat-menu-caption{font-size:0;padding:9px 8px 5px;text-align:center}
+#layout.collapsed #tabs .arbat-menu-caption::after{content:'';display:block;width:20px;height:1px;background:#345575;margin:auto}
+@media(max-width:700px){#layout:not(.mobile-open) #tabs .arbat-menu-caption{font-size:0;padding:7px 0 3px}#layout:not(.mobile-open) #tabs .arbat-menu-caption::after{content:'';display:block;height:1px;width:24px;background:#345575;margin:auto}}
