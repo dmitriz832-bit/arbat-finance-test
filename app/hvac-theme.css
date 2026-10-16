@@ -160,3 +160,12 @@ body.ab-ready:not(.ab-profile-only) #cash.active,body.ab-ready:not(.ab-profile-o
 body.ab-ready:not(.ab-profile-only) .hv-actionbar{order:-10}
 body.ab-ready:not(.ab-profile-only) #cash>.card:not(.hv-create-card),body.ab-ready:not(.ab-profile-only) #deals>.card:not(.hv-create-card){order:0}
 @media(max-width:700px){body.ab-ready:not(.ab-profile-only) .hv-create-card>h2{flex-wrap:wrap}body.ab-ready:not(.ab-profile-only) .hv-form-toggle{width:auto}}
+
+/* Single authoritative mobile drawer behavior */
+@media(max-width:700px){
+body.ab-ready:not(.ab-profile-only) #layout.mobile-open #tabs .arbat-nav-children{display:none!important}
+body.ab-ready:not(.ab-profile-only) #layout.mobile-open #tabs .arbat-nav-group.open>.arbat-nav-children{display:flex!important;flex-direction:column!important}
+body.ab-ready:not(.ab-profile-only) #layout.mobile-open .sidebar .slabel{display:inline!important}
+body.ab-ready:not(.ab-profile-only) #layout.mobile-open .sidebar .arbat-menu-caption{display:block!important}
+body.ab-ready:not(.ab-profile-only) #layout.mobile-open .side-nav button{justify-content:flex-start}
+}
