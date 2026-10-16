@@ -957,6 +957,34 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
    const sections=[...overview.children].filter(el=>el.classList.contains('card'));
    if(sections.length>1){const grid=document.createElement('div');grid.className='hv-dashboard-grid';sections[0].before(grid);for(const card of sections)grid.append(card)}
  }
+ // Prioritize journals over entry forms; open creation on demand.
+ const createForms=[
+   ['cash','cashForm'],['deals','dealForm'],['realizations','realizationForm'],
+   ['expenses','expenseForm'],['costs','costForm'],['labor','laborForm']
+ ];
+ const createPanels=new Map();
+ for(const [sectionId,formId] of createForms){
+   const form=document.getElementById(formId),card=form?.closest('.card'),section=document.getElementById(sectionId);
+   if(!form||!card||!section)continue;
+   card.classList.add('hv-create-card');card.dataset.formCard=formId;
+   const toggle=document.createElement('button');toggle.type='button';toggle.className='hv-form-toggle';toggle.setAttribute('aria-expanded','false');toggle.textContent='Открыть форму';
+   card.querySelector('h2')?.append(toggle);
+   const controls=[...card.children].filter(el=>el!==card.querySelector('h2'));const body=document.createElement('div');body.className='hv-create-body';
+   for(const el of controls)body.append(el);
+   card.append(body);
+   const open=(visible)=>{card.classList.toggle('hv-expanded',visible);toggle.setAttribute('aria-expanded',String(visible));toggle.textContent=visible?'Свернуть форму':'Открыть форму';};
+   toggle.onclick=()=>open(!card.classList.contains('hv-expanded'));
+   createPanels.set(formId,{card,open});
+ }
+ // Top action buttons reveal the existing form rather than navigate to hidden content.
+ for(const bar of actionBars.values()){
+   for(const btn of bar.querySelectorAll('.hv-action')){
+     const form=Object.entries(actionDefinitions).flatMap(([,list])=>list).find(([label])=>label===btn.textContent);
+     if(!form)continue;
+     const panel=createPanels.get(form[1]);
+     if(panel)btn.onclick=()=>{panel.open(true);panel.card.scrollIntoView({behavior:'smooth',block:'start'});panel.card.classList.add('hv-focus');setTimeout(()=>panel.card.classList.remove('hv-focus'),1500)};
+   }
+ }
  const sectionMap={'overview':'overview','cash':'cash','calendar':'calendar','deals':'deals','realizations':'realizations','expenses:project':'expenses','expenses:general':'costs','materials:receipt':'materials','materials:movement':'materials','materials:catalog':'materials','work':'work','labor':'labor','reports:cash':'reports','reports:pnl':'reports','reports:stock':'reports','settings':'settings'};
  const labelMap={overview:'Главная',cash:'ДДС',calendar:'Платёжный календарь',deals:'Сделки',realizations:'Реализации', 'expenses:project':'Расходы · По проектам','expenses:general':'Расходы · Общие','materials:receipt':'Склад · Поступление товаров от поставщиков','materials:movement':'Склад · Движение товаров по проектам','materials:catalog':'Склад · Номенклатура',work:'Производство',labor:'Сотрудники','reports:cash':'Отчёты · ДДС','reports:pnl':'Отчёты · ОПиУ','reports:stock':'Отчёты · Склад',settings:'Настройки'};
  let current='overview';
