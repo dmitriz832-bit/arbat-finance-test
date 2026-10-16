@@ -943,6 +943,20 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
    for(const [label,id] of actions){const target=document.getElementById(id);if(!target)continue;const b=document.createElement('button');b.type='button';b.textContent=label;b.className='hv-action';b.onclick=()=>{const card=target.closest('.card');if(card){card.scrollIntoView({behavior:'smooth',block:'start'});card.classList.add('hv-focus');setTimeout(()=>card.classList.remove('hv-focus'),1500)}else target.click();};bar.append(b)}
    section.prepend(bar);actionBars.set(route,bar);
  }
+ // Recompose the management dashboard without replacing its live data widgets.
+ const overview=document.getElementById('overview');
+ if(overview&&!overview.querySelector('.hv-hero')){
+   const hero=document.createElement('div');hero.className='hv-hero';
+   hero.innerHTML='<div class="hv-hero-copy"><span class="hv-eyebrow">ARBAT FINANCE · HVAC OPERATIONS</span><h2>Центр управления бизнесом</h2><p>Финансы, климатические проекты, монтажные бригады и склад — в одной системе.</p></div><div class="hv-hero-visual"><div class="hv-coil"><span></span><span></span><span></span></div><div class="hv-hero-label">AIR · VENT · CLIMATE</div></div>';
+   overview.prepend(hero);
+   const jumps=document.createElement('div');jumps.className='hv-jumps';
+   for(const [name,route] of [['Движение денег','cash'],['Открыть сделки','deals'],['Производство','work'],['Остатки склада','materials:catalog'],['Платёжный календарь','calendar']]){
+     const button=document.createElement('button');button.type='button';button.className='hv-jump';button.textContent=name+'  ↗';button.onclick=()=>navigate(route);jumps.append(button);
+   }
+   hero.after(jumps);
+   const sections=[...overview.children].filter(el=>el.classList.contains('card'));
+   if(sections.length>1){const grid=document.createElement('div');grid.className='hv-dashboard-grid';sections[0].before(grid);for(const card of sections)grid.append(card)}
+ }
  const sectionMap={'overview':'overview','cash':'cash','calendar':'calendar','deals':'deals','realizations':'realizations','expenses:project':'expenses','expenses:general':'costs','materials:receipt':'materials','materials:movement':'materials','materials:catalog':'materials','work':'work','labor':'labor','reports:cash':'reports','reports:pnl':'reports','reports:stock':'reports','settings':'settings'};
  const labelMap={overview:'Главная',cash:'ДДС',calendar:'Платёжный календарь',deals:'Сделки',realizations:'Реализации', 'expenses:project':'Расходы · По проектам','expenses:general':'Расходы · Общие','materials:receipt':'Склад · Поступление товаров от поставщиков','materials:movement':'Склад · Движение товаров по проектам','materials:catalog':'Склад · Номенклатура',work:'Производство',labor:'Сотрудники','reports:cash':'Отчёты · ДДС','reports:pnl':'Отчёты · ОПиУ','reports:stock':'Отчёты · Склад',settings:'Настройки'};
  let current='overview';
