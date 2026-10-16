@@ -1023,4 +1023,4 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const mo=new MutationObserver(()=>{if(current==='reports:stock'){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display==='none')audit.style.display=''}else if(current.startsWith('reports:')){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display!=='none')audit.style.display='none'}});
  if(firstReport)mo.observe(firstReport,{childList:true,subtree:true});
 })();
-</script><script src="./sync.js"></script><script src="./profile.js"></script><script src="./auth.js"></script></body></html>
+</script><link rel="stylesheet" href="./hvac-theme.css?v=1"><script src="./sync.js"></script><script src="./profile.js"></script><script src="./auth.js"></script></body></html>
