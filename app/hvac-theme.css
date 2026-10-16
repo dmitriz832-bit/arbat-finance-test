@@ -129,3 +129,21 @@ body.ab-ready:not(.ab-profile-only) .hv-action-label{width:100%}
 body.ab-ready:not(.ab-profile-only) .hv-actionbar .hv-action{flex:1}
 body.ab-ready:not(.ab-profile-only) .content section .card h2{font-size:15px}
 }
+
+/* HVAC operational dashboard */
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero{display:flex;align-items:stretch;justify-content:space-between;min-height:180px;position:relative;overflow:hidden;border:1px solid #244763;border-radius:15px;background:linear-gradient(104deg,#102a43 0%,#09263e 58%,#102f46 100%);margin-bottom:13px}
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero-copy{position:relative;z-index:2;padding:25px 30px;max-width:710px}
+body.ab-ready:not(.ab-profile-only) #overview .hv-eyebrow{font-size:10px;letter-spacing:.22em;color:#69c2ff;font-weight:750}
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero h2{font-size:clamp(21px,2.3vw,34px);line-height:1.12;margin:14px 0 10px;border:0;padding:0;color:#f2f9ff}
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero p{font-size:13px;color:#b6d0e1;line-height:1.65;max-width:560px;margin:0}
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero-visual{position:relative;width:33%;min-width:190px;overflow:hidden;opacity:.86;background:repeating-linear-gradient(135deg,transparent 0 24px,#2778a80b 25px 26px),radial-gradient(ellipse at 80% 40%,#0870b44d,transparent 67%)}
+body.ab-ready:not(.ab-profile-only) #overview .hv-coil{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;gap:9px;transform:perspective(400px) rotateY(-18deg)}
+body.ab-ready:not(.ab-profile-only) #overview .hv-coil span{display:block;width:15%;height:76%;border:2px solid #397ea4;border-radius:7px;background:repeating-linear-gradient(0deg,#15364b 0px,#15364b 2px,#0b2233 3px,#0b2233 7px);box-shadow:0 0 24px #0aa9ff19}
+body.ab-ready:not(.ab-profile-only) #overview .hv-hero-label{position:absolute;bottom:12px;right:18px;color:#80bfe2;font-size:10px;letter-spacing:.16em}
+body.ab-ready:not(.ab-profile-only) #overview .hv-jumps{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0 18px}
+body.ab-ready:not(.ab-profile-only) #overview button.hv-jump{padding:10px 13px;border:1px solid #244764;background:#102a3c;font-size:12px;border-radius:7px;color:#cbe9ff}
+body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,1fr);gap:13px;align-items:start}
+body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card{margin:0;min-width:0}
+body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card:first-child{grid-column:1/-1}
+@media(max-width:970px){body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid{grid-template-columns:minmax(0,1fr)}body.ab-ready:not(.ab-profile-only) #overview .hv-dashboard-grid>.card:first-child{grid-column:auto}}
+@media(max-width:700px){body.ab-ready:not(.ab-profile-only) #overview .hv-hero{min-height:140px}body.ab-ready:not(.ab-profile-only) #overview .hv-hero-copy{padding:18px 16px}body.ab-ready:not(.ab-profile-only) #overview .hv-hero-visual{width:15%;min-width:55px;opacity:.35}body.ab-ready:not(.ab-profile-only) #overview .hv-jumps button{flex:1 1 42%;text-align:left}}
