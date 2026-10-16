@@ -33,8 +33,6 @@ body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-profile-logout-area{b
 body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-logout{background:#311b25!important;color:#ffb7b7!important;border-color:#633742!important}
 body.ab-ready:not(.ab-profile-only) .ok{color:#55dfaf!important}
 body.ab-ready:not(.ab-profile-only) .danger{color:#ff9494!important}
-body.ab-ready:not(.ab-profile-only) section{display:none}
-body.ab-ready:not(.ab-profile-only) main.wrap>section.active{display:block}
 body.ab-ready:not(.ab-profile-only) #ab-profile-window{display:block!important}
 @media(max-width:700px){
  body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 9px}
