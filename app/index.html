@@ -898,11 +898,11 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const entries=[
  {key:'overview',label:'Главная',route:'overview'},
  {key:'cash',label:'ДДС',route:'cash'},
- {key:'deals',label:'Сделки',route:'deals'},
  {key:'expenses',label:'Расходы',children:[['expenses:project','По проектам'],['expenses:general','Общие']]},
- {key:'materials',label:'Склад и материалы',children:[['materials:receipt','Поступление товаров от поставщиков'],['materials:movement','Движение товаров по проектам'],['materials:catalog','Номенклатура']]},
- {key:'work',label:'Производство',route:'work'},
  {key:'realizations',label:'Реализации',route:'realizations'},
+ {key:'deals',label:'Сделки',route:'deals'},
+ {key:'work',label:'Производство',route:'work'},
+ {key:'materials',label:'Склад и материалы',children:[['materials:receipt','Поступление товаров от поставщиков'],['materials:movement','Движение товаров по проектам'],['materials:catalog','Номенклатура']]},
  {key:'labor',label:'Сотрудники',route:'labor'},
  {key:'reports',label:'Отчёты',children:[['reports:cash','ДДС'],['reports:pnl','ОПиУ'],['reports:stock','Склад']]},
  {key:'settings',label:'Настройки',route:'settings'}
@@ -917,6 +917,8 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  }
  nav.replaceChildren();nav.classList.add('arbat-menu-v2');
  for(let entry of entries){
+  const categories={cash:'ФИНАНСЫ',deals:'СДЕЛКИ И ПРОЕКТЫ',work:'ПРОИЗВОДСТВО',materials:'СКЛАД',labor:'ПЕРСОНАЛ',reports:'АНАЛИТИКА',settings:'СИСТЕМА'};
+  if(categories[entry.key]){const caption=document.createElement('div');caption.className='arbat-menu-caption';caption.textContent=categories[entry.key];nav.append(caption)}
   let group=document.createElement('div');group.className='arbat-nav-group';group.dataset.group=entry.key;
   const parent=mainButton(entry);group.append(parent);buttons.set(parent.dataset.route,parent);groups.set(entry.key,group);
   if(entry.children){
