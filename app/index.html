@@ -907,7 +907,7 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const groups=new Map(),buttons=new Map();
  function mainButton(entry){
   let b=document.createElement('button');b.type='button';b.className='arbat-nav-main';b.dataset.route=entry.route||entry.children[0][0];b.dataset.parent=entry.key;b.title=entry.label;b.setAttribute('aria-label',entry.label);
-  b.innerHTML='<span class="sicon"><svg viewBox="0 0 24 24" aria-hidden="true">'+icons[entry.key]+'</svg></span><span class="slabel"></span>';
+  b.innerHTML='<span class="sicon"><svg viewBox="0 0 24 24" aria-hidden="true">'+(icons[entry.key]||icons.cash||'')+'</svg></span><span class="slabel"></span>';
   b.querySelector('.slabel').textContent=entry.label;
   if(entry.children){let c=document.createElement('span');c.className='arbat-chevron';c.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';b.append(c);b.setAttribute('aria-expanded','false')}
   return b
