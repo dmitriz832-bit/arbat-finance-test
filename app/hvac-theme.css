@@ -64,3 +64,25 @@ body.ab-ready #ab-profile-window button:focus-visible{outline:2px solid #329ffe;
 #layout.collapsed #tabs .arbat-menu-caption{font-size:0;padding:9px 8px 5px;text-align:center}
 #layout.collapsed #tabs .arbat-menu-caption::after{content:'';display:block;width:20px;height:1px;background:#345575;margin:auto}
 @media(max-width:700px){#layout:not(.mobile-open) #tabs .arbat-menu-caption{font-size:0;padding:7px 0 3px}#layout:not(.mobile-open) #tabs .arbat-menu-caption::after{content:'';display:block;height:1px;width:24px;background:#345575;margin:auto}}
+
+/* Shared microcomponents: forms, data density, scrolling and feedback */
+body.ab-ready:not(.ab-profile-only) h1#title{font-size:clamp(22px,2.2vw,30px);font-weight:750;margin-bottom:18px;padding:11px 0 13px;border-bottom:1px solid #284458}
+body.ab-ready:not(.ab-profile-only) .fields{gap:14px;align-items:end}
+body.ab-ready:not(.ab-profile-only) .fields label{font-size:13px;font-weight:560;line-height:1.5}
+body.ab-ready:not(.ab-profile-only) .fields label input,body.ab-ready:not(.ab-profile-only) .fields label select,body.ab-ready:not(.ab-profile-only) .fields label textarea{font-size:14px;min-height:42px;border-radius:8px}
+body.ab-ready:not(.ab-profile-only) input[readonly],body.ab-ready:not(.ab-profile-only) input:disabled,body.ab-ready:not(.ab-profile-only) select:disabled{background:#172332!important;color:#7f94a8!important;opacity:.75;cursor:not-allowed}
+body.ab-ready:not(.ab-profile-only) .scroll{border-radius:9px;scrollbar-color:#43617b #132231;scrollbar-width:thin}
+body.ab-ready:not(.ab-profile-only) table{border-collapse:separate;border-spacing:0;font-size:13px}
+body.ab-ready:not(.ab-profile-only) td,body.ab-ready:not(.ab-profile-only) th{padding:11px 12px;line-height:1.45;vertical-align:middle}
+body.ab-ready:not(.ab-profile-only) td{overflow-wrap:anywhere}
+body.ab-ready:not(.ab-profile-only) .card>h2{font-size:17px;font-weight:700;padding-bottom:9px;border-bottom:1px solid #2b4356}
+body.ab-ready:not(.ab-profile-only) .modal-head{position:sticky;top:-24px;z-index:2;background:#132334;padding:6px 0 12px;margin-bottom:10px;border-bottom:1px solid #33516b}
+body.ab-ready:not(.ab-profile-only) .modal button:disabled,body.ab-ready:not(.ab-profile-only) button:disabled{opacity:.52;cursor:not-allowed}
+body.ab-ready:not(.ab-profile-only) .scroll table tr:last-child td{border-bottom:0}
+body.ab-ready:not(.ab-profile-only) .sidebar .side-bottom{border-top:1px solid #294259;padding-top:12px}
+body.ab-ready:not(.ab-profile-only) #orgFilter{min-height:40px;background:#12273b;border:1px solid #3c5a73;color:#edf7ff}
+body.ab-ready:not(.ab-profile-only) .stat{color:#f1f8ff}
+body.ab-ready:not(.ab-profile-only) .card strong{color:#edf6ff}
+body.ab-ready:not(.ab-profile-only) .card a{color:#53baff}
+body.ab-ready:not(.ab-profile-only) input[type=checkbox],body.ab-ready:not(.ab-profile-only) input[type=radio]{accent-color:#2699ec}
+@media(max-width:700px){body.ab-ready:not(.ab-profile-only) td,body.ab-ready:not(.ab-profile-only) th{padding:9px 10px}body.ab-ready:not(.ab-profile-only) h1#title{font-size:21px}body.ab-ready:not(.ab-profile-only) .modal-head{top:-14px}}
