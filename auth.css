@@ -1,0 +1,1 @@
+#ab-auth{position:fixed;inset:0;z-index:2147483647;background:#102339;display:grid;place-items:center;color:#172337;padding:20px}#ab-auth .card{background:white;border-radius:16px;padding:28px;max-width:440px;width:100%}#ab-auth form{display:grid;gap:10px}#ab-auth input,#ab-auth button{width:100%}#ab-auth[hidden]{display:none!important}
