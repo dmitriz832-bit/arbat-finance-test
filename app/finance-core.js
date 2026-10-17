@@ -424,5 +424,40 @@
     const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
     return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  function paymentExceptionRegister({cash=[],labor=[],deals=[],people=[],articles=[],expenses=[]}={}){
+    const issues=[],add=(code,source,detail='')=>issues.push({code,source,detail});
+    const keySet=new Set(deals.map(dealKey));
+    const personSet=new Set(people.map(x=>String(x.id)));
+    const articleSet=new Set(articles.map(x=>String(x.id)));
+    const seen=new Map();
+    const payrollState=payrollReconciliation({accruals:labor,payments:cash});
+    for(const issue of payrollState.issues){
+      if(['payroll-unallocated-payment','payroll-overallocated-payment','payroll-invalid-allocation'].includes(issue.code))add(issue.code,issue.source,issue.amount==null?'':rubles(issue.amount));
+    }
+    for(const item of cash){
+      const id=String(item._id||item.id||''),amount=cents(item.amount||0);
+      if(item.type==='in'&&!item.projectKey&&!(item.customerId||item.personId))add('incoming-without-project-or-counterparty',item,rubles(amount));
+      else if(item.type==='in'&&!item.projectKey)add('incoming-without-project',item,rubles(amount));
+      if(item.type==='out'&&!item.personId&&item.type!=='transfer'&&(!item.projectKey||!item.articleId))add('supplier-payment-missing-project-or-article',item,rubles(amount));
+      if(item.projectKey&&!keySet.has(String(item.projectKey)))add('invalid-project-reference',item,String(item.projectKey));
+      if(item.personId&&people.length&&!personSet.has(String(item.personId)))add('invalid-person-reference',item,String(item.personId));
+      if(item.articleId&&articles.length&&item.articleId!=='internal-transfer'&&!articleSet.has(String(item.articleId)))add('invalid-article-reference',item,String(item.articleId));
+      if(item.type==='out'&&Array.isArray(item.payrollAllocations)){
+        const allocationTotal=item.payrollAllocations.reduce((total,p)=>total+cents(p.amount||0),0n);
+        if(allocationTotal!==amount)add('payment-allocation-difference',item,rubles(amount-allocationTotal));
+      }
+      // Treat matches as candidates only: never mutate or delete historical movements.
+      if(item.type==='in'||item.type==='out'){
+        const fingerprint=[item.date,item.type,item.walletId,rubles(amount),item.customerId||item.personId||item.counterparty||''].join('|');
+        if(seen.has(fingerprint))add('possible-duplicate-payment',item,'Похожая операция: '+seen.get(fingerprint));
+        else seen.set(fingerprint,id||'(без идентификатора)');
+      }
+    }
+    for(const item of expenses){
+      if(item.projectRequired&&!item.projectKey)add('required-expense-project-missing',item,rubles(cents(item.amount||0)));
+      if(item.projectKey&&!keySet.has(String(item.projectKey)))add('invalid-expense-project-reference',item,String(item.projectKey));
+    }
+    return {issues,count:issues.length,unallocatedPayroll:payrollState.unallocatedTotal};
+  }
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
