@@ -235,7 +235,7 @@
     const consumed=warehouseMoves.filter(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId);
     if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');
     if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch');
-    if(expenses.some(e=>e.warehouseMoveId&&!warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');
+    if(data.warehouse&&expenses.some(e=>e.warehouseMoveId&&!warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');
     if(expenses.some(e=>e.warehouseMoveId&&warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');
     if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');
     const labor=projectPayroll(data.labor||[],projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey));
