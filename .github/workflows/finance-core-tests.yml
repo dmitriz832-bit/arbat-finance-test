@@ -1,0 +1,19 @@
+name: Finance core validation
+on:
+  push:
+    branches: [audit/finance-core-20261017]
+  pull_request:
+    paths:
+      - 'app/finance-core.js'
+      - 'tests/finance-core.test.cjs'
+      - '.github/workflows/finance-core-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check app/finance-core.js
+      - run: node --test tests/finance-core.test.cjs
