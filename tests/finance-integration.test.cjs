@@ -19,7 +19,7 @@ test('deal margin and dashboard use the exact same project snapshot',()=>{
 });
 test('monthly P&L and dashboard derive from the same period engine',()=>{
  assert.match(html,/const monthlyFinancials=monthNumbers\(m=>window\.ArbatFinanceCore\.preliminaryPeriod\(/);
- assert.match(dashboard,/core\.preliminaryPeriod\(/);
+ assert.match(dashboard,/core\.ownerPeriodSnapshot\(/);
 });
 test('wallet balances use core and preserve internal transfers',()=>{
  assert.match(dashboard,/core\.walletBalance\(/);
@@ -31,7 +31,7 @@ test('project warehouse valuation must distinguish unresolved FIFO',()=>{
  assert.match(core,/warehouse-duplicate-global-expense/);
 });
 
-test('direction financial rollups delegate to shared expense ledger',()=>{assert.match(dashboard,/core\.directionSnapshot\(/);assert.match(core,/function expenseLedger\(/)});
+test('direction financial rollups delegate to shared expense ledger',()=>{assert.match(dashboard,/selected\.rows\.filter\(/);assert.match(core,/function expenseLedger\(/)});
 
 test('P&L adapter never mutates source payroll to add contributions',()=>{const business=fs.readFileSync(path.join(root,'app/business-system.js'),'utf8');assert.ok(!business.includes('item.amount=Number(item.amount'));assert.match(core,/cents\(item.employerContributions/)});
 
