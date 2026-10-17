@@ -251,6 +251,30 @@
   }
   function projectResult(revenue,costs){return cents(revenue)-sum(costs)}
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
+  function wipPeriodBridge(data,period,org=''){
+    const projects=[],issues=[];
+    let deferredChange=0n,recognizedCost=0n,accruedCost=0n;
+    if(!period)return {projects,issues:[{code:'wip-period-required'}],deferredChange,recognizedCost,accruedCost};
+    for(const deal of data.deals||[]){
+      if(org&&deal.org!==org)continue;
+      const projectKey=dealKey(deal);
+      const wip=projectWipSnapshot(data,deal,projectKey,period);
+      if(wip.status!=='calculated'){
+        issues.push({code:'wip-unverified-project',projectKey,details:wip.issues});
+        continue;
+      }
+      const dateRelevant=(data.realizations||[]).some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period)
+        ||expenseLedger(data).rows.some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period);
+      if(!dateRelevant)continue;
+      const currentAccrued=wip.accruedCost-(projectWipSnapshot(data,deal,projectKey,
+        String(Number(period.slice(0,4))-(period.endsWith('-01')?1:0))+'-'+(period.endsWith('-01')?'12':String(Number(period.slice(5))-1).padStart(2,'0'))
+      ).accruedCost||0n);
+      const adjustment=currentAccrued-wip.currentCost;
+      projects.push({projectKey,dir:deal.dir||'',org:deal.org||'',recognizedCost:wip.currentCost,accruedCost:currentAccrued,deferredChange:adjustment,wip:wip.wip});
+      deferredChange+=adjustment;recognizedCost+=wip.currentCost;accruedCost+=currentAccrued;
+    }
+    return {projects,issues,deferredChange,recognizedCost,accruedCost};
+  }
   function preliminaryPeriod(data,period,org=''){
     const ok=x=>(!org||x.org===org)&&(!period||String(x.date||x.dt||'').slice(0,7)===period);
     const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
@@ -299,5 +323,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
