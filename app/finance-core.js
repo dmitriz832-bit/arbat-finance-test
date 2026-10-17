@@ -46,12 +46,12 @@
     const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles(cents(x.rate||0)*BigInt(Number(x.qty||0))));
     const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
     const common=(data.costs||[]).filter(x=>ok(x)&&!x.dir).map(x=>x.amount||0);
-    const labor=(data.labor||[]).filter(ok);
+    const labor=(data.labor||[]).filter(ok),commercial=[];
     for(const item of labor){
       const type=item.expenseType||'production',amount=item.amount??item.salary??0;
-      (type==='administrative'?common:type==='commercial'?assigned:production).push(amount);
+      (type==='administrative'?common:type==='commercial'?commercial:production).push(amount);
     }
-    return pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common});
+    return pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});
   }
   function walletBalance(opening,entries,walletId){
     let balance=cents(opening||0);
