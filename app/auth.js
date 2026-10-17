@@ -142,7 +142,7 @@
     if(Number(localStorage.getItem(RECOVERY_COOLDOWN)||0)>Date.now()){window.abMessage('Отправка писем временно ограничена. Обратитесь к администратору или попробуйте позже.');return}
     const email=emailField.value.trim().toLowerCase();if(!email){window.abMessage('Сначала укажите электронную почту');emailField.focus();return}
     passwordLink.disabled=true;
-    try{await call('/auth/v1/recover',{email,redirect_to:'https://dmitriz832-bit.github.io/arbat-finance-test/app/'},false);passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
+    try{await call('/auth/v1/recover?redirect_to='+encodeURIComponent('https://dmitriz832-bit.github.io/arbat-finance-test/app/'),{email},false);passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
     catch(error){if(/rate limit|429/i.test(error.message)){localStorage.setItem(RECOVERY_COOLDOWN,String(Date.now()+30*60*1000));window.abMessage('Supabase ограничил отправку писем. Повторите попытку позднее или обратитесь к администратору.')}else window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
   };
 
