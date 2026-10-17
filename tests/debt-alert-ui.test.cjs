@@ -1,0 +1,2 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');const html=fs.readFileSync(path.join(__dirname,'../app/index.html'),'utf8');
+test('owner dashboard makes unsettled payment allocations visible to finance users',()=>{assert.match(html,/debt\.issues\.length\?'<div style=/);assert.match(html,/Дебиторская задолженность и авансы могут быть предварительными/);assert.match(html,/role=\\"alert\\"/);});
