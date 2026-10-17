@@ -4,7 +4,7 @@
  if(!core?.documentVat)return;
  const rates=[0,5,7,10,20,22];
  const fmt=c=>core.rubles(c).replace('.',',');
- for(const id of ['dealForm','realizationForm','expenseForm']){
+ for(const id of ['dealForm','realizationForm','expenseForm','costForm']){
   const form=document.getElementById(id);if(!form)continue;
   const amountName=id==='dealForm'?'contractTotal':'amount';
   const anchor=form.elements.namedItem(amountName)?.closest('label');if(!anchor)continue;
@@ -14,7 +14,7 @@
   for(const rate of rates){const option=document.createElement('option');option.value=String(rate);option.textContent=rate+'%';select.append(option)}
   label.append(select);anchor.after(label);
   let deductible=null;
-  if(id==='expenseForm'){
+  if(id==='expenseForm'||id==='costForm'){
    const wrapper=document.createElement('label');wrapper.textContent='Входной НДС принимается к вычету';
    deductible=document.createElement('select');deductible.name='vatDeductible';deductible.required=true;
    for(const [value,title] of [['','Выберите'],['true','Да'],['false','Нет']]){const option=document.createElement('option');option.value=value;option.textContent=title;deductible.append(option)}
