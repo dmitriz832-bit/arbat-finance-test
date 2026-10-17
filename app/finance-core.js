@@ -333,7 +333,7 @@
     // The dashboard must recognize the same period WIP bridge as the P&L.
     // Sum monthly adjustments for custom ranges; never treat an all-time selection
     // as a single accounting month.
-    const periodKeys=new Set([...rows.map(x=>String(x.date||'').slice(0,7)),...(data.realizations||[]).filter(ok).map(x=>String(x.date||'').slice(0,7))].filter(x=>/^\\d{4}-\\d{2}$/.test(x)));
+    const periodKeys=new Set([...rows.map(x=>String(x.date||'').slice(0,7)),...(data.realizations||[]).filter(ok).map(x=>String(x.date||'').slice(0,7))].filter(x=>/^[0-9]{4}-[0-9]{2}$/.test(x)));
     let deferredChange=0n;const wipIssues=[],wipBridges=[];
     if(data.wipAccounting){
       for(const period of [...periodKeys].sort()){
