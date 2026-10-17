@@ -15,3 +15,5 @@ test('wallet: incoming, outgoing and internal transfer',()=>{const movements=[{t
 test('wallet: fractional money stays exact',()=>{const entries=[{type:'in',walletId:'x',amount:'0.10'},{type:'in',walletId:'x',amount:'0.20'}];assert.equal(f.rubles(f.walletBalance('0',entries,'x')),'0.30')});
 
 test('monthly report total retains exact cents',()=>{const row=f.reportRow(['0.10','0.20','0.03']);assert.equal(f.rubles(row.total),'0.33')});
+
+test('shared project profit reconciles to the kopeck',()=>{assert.equal(f.rubles(f.projectResult('60000',['20000','5000','8000','10000','3000'])),'14000.00')});
