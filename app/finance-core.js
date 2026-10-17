@@ -43,7 +43,7 @@
       return rubles((gross*100n+divisor/2n)/divisor);
     });
     const direct=(data.expenses||[]).filter(ok).map(x=>x.amount||0);
-    const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles(cents(x.rate||0)*BigInt(Number(x.qty||0))));
+    const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles((cents(x.rate||0)*cents(x.qty||0)+50n)/100n));
     const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
     const common=(data.costs||[]).filter(x=>ok(x)&&!x.dir).map(x=>x.amount||0);
     const labor=(data.labor||[]).filter(ok),commercial=[];
