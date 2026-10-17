@@ -341,5 +341,35 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  function payrollReconciliation({accruals=[],payments=[]}={}){
+    const totals=new Map(),issues=[],unallocatedPayments=[];
+    const get=id=>{if(!totals.has(id))totals.set(id,{personId:id,gross:0n,ndfl:0n,other:0n,contributions:0n,paid:0n,expense:0n,payable:0n});return totals.get(id)};
+    for(const entry of accruals){
+      if(!entry.personId){issues.push({code:'payroll-missing-person',source:entry});continue}
+      try{
+        const p=payroll({gross:entry.gross??entry.amount??0,ndfl:entry.ndfl??0,other:entry.otherDeductions??entry.other??0,contributions:entry.employerContributions??entry.contributions??0});
+        const t=get(String(entry.personId));t.gross+=p.gross;t.ndfl+=p.tax;t.contributions+=p.contributions;t.expense+=p.expense;t.other+=p.deductions;t.payable+=p.payable;
+      }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
+    }
+    for(const payment of payments.filter(x=>x.type==='out'&&x.personId)){
+      const amount=cents(payment.amount||0);
+      if(amount<0n){issues.push({code:'payroll-invalid-payment',source:payment});continue}
+      const allocations=Array.isArray(payment.allocations)?payment.allocations:null;
+      let allocated=0n;
+      if(allocations){for(const part of allocations){
+        const value=cents(part.amount||0);
+        if(value<0n){issues.push({code:'payroll-invalid-allocation',source:payment});continue}
+        allocated+=value;
+        if(part.personId)get(String(part.personId)).paid+=value;
+        else issues.push({code:'payroll-allocation-missing-person',source:payment});
+      }}
+      else {allocated=amount;get(String(payment.personId)).paid+=amount}
+      const remainder=amount-allocated;
+      if(remainder!==0n){unallocatedPayments.push({source:payment,amount:remainder});issues.push({code:remainder>0n?'payroll-unallocated-payment':'payroll-overallocated-payment',source:payment,amount:remainder})}
+    }
+    const people=[...totals.values()].map(x=>({...x,payable:x.payable-x.paid}));
+    for(const p of people)if(p.payable<0n)issues.push({code:'payroll-overpayment',personId:p.personId,amount:-p.payable});
+    return {people,issues,unallocatedPayments,expense:people.reduce((a,x)=>a+x.expense,0n)};
+  }
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
