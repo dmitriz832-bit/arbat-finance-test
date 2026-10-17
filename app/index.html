@@ -108,10 +108,10 @@ header b{font-size:16px}header small{font-size:11px}
 #dealModal input,#dealModal select,#dealModal textarea{box-sizing:border-box;min-width:0;max-width:100%;width:100%}
 #dealModal #editDealForm .form-actions{grid-column:1/-1}
 #dealModal .deal-plan,#dealModal .deal-history{min-width:0;max-width:100%;overflow:visible}
-#dealModal .scroll{max-width:100%;overflow-x:auto;overflow-y:visible}
-#dealModal .scroll table{min-width:760px}
-#dealModal #dealMaterialsList{max-width:100%;overflow-x:auto}
-#dealModal #dealMaterialsList table{min-width:950px}
+#dealModal .scroll{max-width:100%;overflow-x:hidden;overflow-y:visible}
+#dealModal .scroll table{min-width:0;width:100%;table-layout:fixed}
+#dealModal #dealMaterialsList{max-width:100%;overflow-x:hidden}
+#dealModal #dealMaterialsList table{min-width:0;width:100%;table-layout:fixed}
 #dealModal .arbat-material-totals{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
 #dealModal .arbat-material-totals>span{border:1px solid #dce4ef;border-radius:9px;padding:9px 12px;background:#f8fafc;font-size:13px}
 #dealModal .arbat-materials-section{border-top:1px solid #dde3ea;margin-top:18px;padding-top:14px}
@@ -128,7 +128,7 @@ header b{font-size:16px}header small{font-size:11px}
 #whLinkOverlay .whmodal{width:min(620px,100%)!important}
 .modal-backdrop .modal *, .whdialog .whmodal *, .cw-overlay .cw-dialog *,#whLinkOverlay .whmodal *{box-sizing:border-box;min-width:0}
 .modal-backdrop .modal input,.modal-backdrop .modal select,.modal-backdrop .modal textarea,.whdialog .whmodal input,.whdialog .whmodal select,.cw-dialog input,.cw-dialog select,#whLinkOverlay input,#whLinkOverlay select{max-width:100%;min-width:0}
-.modal-backdrop .modal .scroll,.modal-backdrop .modal .whtable,.whdialog .whtable,.cw-dialog .whtable,#whLinkOverlay .whtable{width:100%;max-width:100%;min-width:0;overflow-x:auto!important;overflow-y:visible!important;scrollbar-gutter:stable}
+.modal-backdrop .modal .scroll,.modal-backdrop .modal .whtable,.whdialog .whtable,.cw-dialog .whtable,#whLinkOverlay .whtable{width:100%;max-width:100%;min-width:0;overflow-x:hidden!important;overflow-y:visible!important;scrollbar-gutter:auto}
 .modal-backdrop .modal table,.whdialog .whmodal table,.cw-dialog table{width:100%;border-collapse:collapse}
 .cw-dialog .whtable table{min-width:600px}
 .cw-dialog .whtable th,.cw-dialog .whtable td,.whmodal .whtable th,.whmodal .whtable td{padding:10px 12px;vertical-align:middle;white-space:normal}
