@@ -5,7 +5,7 @@ test('VAT fields are present on contract and realization forms and prevent impli
  assert.match(form,/\['dealForm','realizationForm','expenseForm'\]/);
  assert.match(form,/select\.required=true/);
  assert.match(form,/placeholder\.value=''/);
- assert.match(form,/core\.documentVat\(amount,rate\)/);
+ assert.ok(form.includes("core.documentVat(amount,rate,deductible?.value==='true')"));
  for(const field of ['amountGross','vatAmount','amountNet','vatRateSource'])assert.ok(form.includes(field));
  assert.ok(html.includes('vat-forms.js'));
  assert.ok(html.indexOf('vat-forms.js')<html.indexOf('sync.js?v=2'));
