@@ -459,5 +459,60 @@
     }
     return {issues,count:issues.length,unallocatedPayroll:payrollState.unallocatedTotal};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+
+  // Vacation ledger amounts are hundredths of a day. Calendar dates are UTC-only.
+  function leaveSnapshot(person,history=[],asOf=''){
+    const issues=[],events=[],today=asOf||new Date().toISOString().slice(0,10);
+    const day=raw=>{
+      const str=String(raw||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(str))throw new RangeError('Invalid leave date');
+      const ms=Date.parse(str+'T00:00:00Z');
+      if(!Number.isFinite(ms)||new Date(ms).toISOString().slice(0,10)!==str)throw new RangeError('Invalid leave date');
+      return Math.floor(ms/86400000);
+    };
+    const fmt=d=>new Date(d*86400000).toISOString().slice(0,10);
+    const hire=person.hireDate||person.employmentStartDate;
+    if(!hire)return {status:'requires-review',issues:['missing-hire-date'],earned:0n,used:0n,adjustments:0n,balance:0n,events:[]};
+    let first,through;
+    try{
+      first=day(hire);through=day(today);
+      if(person.terminationDate){const last=day(person.terminationDate);if(last<first)issues.push('termination-before-hire');through=Math.min(through,last)}
+    }catch(_){return {status:'requires-review',issues:['invalid-employment-date'],earned:0n,used:0n,adjustments:0n,balance:0n,events:[]}}
+    const annual=Number(person.annualLeaveDays??28);
+    if(!Number.isInteger(annual)||annual<0||annual>366)issues.push('invalid-annual-leave-norm');
+    let earned=0n,used=0n,adjustments=0n;
+    if(!issues.length&&through>=first){
+      const start=new Date(first*86400000),month=start.getUTCMonth(),date=start.getUTCDate();
+      const anniversary=year=>Math.floor(Date.UTC(year,month,Math.min(date,new Date(Date.UTC(year,month+1,0)).getUTCDate()))/86400000);
+      for(let year=start.getUTCFullYear();year<=new Date(through*86400000).getUTCFullYear()+1;year++){
+        let a=anniversary(year),b=anniversary(year+1);
+        if(year===start.getUTCFullYear()&&a!==first)a=first;
+        const covered=Math.max(0,Math.min(through,b-1)-Math.max(first,a)+1);
+        if(covered)earned+=(BigInt(annual)*100n*BigInt(covered)+BigInt(b-a)/2n)/BigInt(b-a);
+      }
+    }
+    const intervals=[];
+    for(const event of history.filter(e=>String(e.personId)===String(person.id)&&e.status!=='cancelled')){
+      try{
+        if(event.type==='adjustment'){
+          const delta=cents(event.days||0);
+          if(day(event.date)>day(today))continue;
+          adjustments+=delta;events.push({type:'adjustment',days:delta,date:event.date});continue;
+        }
+        if(event.type!=='leave')continue;
+        const a=day(event.startDate),b=day(event.endDate);
+        if(b<a){issues.push('invalid-leave-range');continue}
+        if(a<first){issues.push('leave-before-hire');continue}
+        if(person.terminationDate&&a>day(person.terminationDate)){issues.push('leave-after-termination');continue}
+        const overlap=intervals.some(x=>a<=x.end&&b>=x.start);
+        if(overlap&&!event.overlapConfirmed){issues.push('overlapping-leave');continue}
+        intervals.push({start:a,end:b});
+        const activeEnd=Math.min(b,day(today));
+        const amount=BigInt(Math.max(0,activeEnd-a+1))*100n;
+        used+=amount;events.push({type:'leave',days:amount,startDate:fmt(a),endDate:fmt(b)});
+      }catch(_){issues.push('invalid-leave-event')}
+    }
+    return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
+  }
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
