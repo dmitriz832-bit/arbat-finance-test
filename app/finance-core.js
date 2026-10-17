@@ -201,6 +201,7 @@
     return expense&&item.vatDeductible!==true&&item.vatDeductible!=='true'?tax.amountGross:tax.amountNet;
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
+  function wipCheckPending(data,deal,key){return (data.expenses||[]).some(x=>x.projectKey===key&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId&&!data.fifo);}
   function projectWipSnapshot(data,deal,projectKey,period=''){
     const contractGross=deal.contractTotal??deal.revenue;
     const issues=[];
@@ -223,6 +224,7 @@
     const revenue=earned(period,false),priorRevenue=period?earned(period,true):0n;
     const accruedCost=accrued(period,false),priorCost=period?accrued(period,true):0n;
     if(revenue>contractNet)issues.push('realization-exceeds-contract');
+    if(revenue>=contractNet&&wipCheckPending(data,deal,projectKey))issues.push('project-closeout-unverified');
     if(revenue<0n)issues.push('negative-cumulative-realization');
     const recognizedCost=recognized(revenue,accruedCost);
     const previouslyRecognizedCost=period?recognized(priorRevenue,priorCost):0n;
@@ -241,7 +243,7 @@
     const labor=projectPayroll(data.labor||[],projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey));
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
-    return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,operatingProfit:revenue-recognizedCost};
+    return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,fullyRealized:revenue===contractNet,closedCostReconciled:revenue===contractNet&&wip===0n&&recognizedCost===accruedCost,operatingProfit:revenue-recognizedCost};
   }
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
