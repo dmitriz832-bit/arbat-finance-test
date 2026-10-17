@@ -35,6 +35,24 @@
   }
   function projectResult(revenue,costs){return cents(revenue)-sum(costs)}
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
+  function preliminaryPeriod(data,period,org=''){
+    const ok=x=>(!org||x.org===org)&&String(x.date||x.dt||'').slice(0,7)===period;
+    const amounts=(data.realizations||[]).filter(ok).map(x=>{
+      const gross=cents(x.amount||0);
+      const divisor=x.vatRate==null?(x.org==='АРБАТ.ГК'?122n:100n):(100n+BigInt(Number(x.vatRate)));
+      return rubles((gross*100n+divisor/2n)/divisor);
+    });
+    const direct=(data.expenses||[]).filter(ok).map(x=>x.amount||0);
+    const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles(cents(x.rate||0)*BigInt(Number(x.qty||0))));
+    const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
+    const common=(data.costs||[]).filter(x=>ok(x)&&!x.dir).map(x=>x.amount||0);
+    const labor=(data.labor||[]).filter(ok);
+    for(const item of labor){
+      const type=item.expenseType||'production',amount=item.amount??item.salary??0;
+      (type==='administrative'?common:type==='commercial'?assigned:production).push(amount);
+    }
+    return pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common});
+  }
   function walletBalance(opening,entries,walletId){
     let balance=cents(opening||0);
     for(const item of entries||[]){
@@ -53,5 +71,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod});
 });
