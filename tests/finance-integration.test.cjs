@@ -30,3 +30,5 @@ test('project warehouse valuation must distinguish unresolved FIFO',()=>{
  assert.match(core,/warehouse-cross-project-reference/);
  assert.match(core,/warehouse-duplicate-global-expense/);
 });
+
+test('direction financial rollups use shared net VAT and project arithmetic',()=>{assert.match(dashboard,/core\.netAmount\(item\.amount,item\.org,item\.vatRate\)/);assert.match(dashboard,/core\.projectResult\(revenue,\[direct\]\)/)});
