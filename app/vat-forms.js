@@ -41,7 +41,7 @@
   form.addEventListener('submit',event=>{if(!refresh()){event.preventDefault();event.stopImmediatePropagation();select.reportValidity()}},true);
 
  }
-} // Generic record editor clones the fields; re-evaluate VAT from edited values,
+ // Generic record editor clones the fields; re-evaluate VAT from edited values,
  // rather than reusing stale hidden totals from the original form.
  const editor=document.getElementById('genericEditForm');
  if(editor){
