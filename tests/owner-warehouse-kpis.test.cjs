@@ -15,3 +15,13 @@ test('unpriced FIFO lots suppress false precision of total warehouse valuation',
  const x=core.ownerWarehouseSnapshot({items:[],places:[],projectIssues:[]},{warnings:[],bins:new Map([['p::a',[{qty:3,cost:0}]]])});
  assert.equal(x.totalValue,null);assert.equal(x.rows[0].value,null);assert.equal(x.issues.length,1);
 });
+
+test('an open crew reservation without any FIFO lots is reported as shortage',()=>{
+ const warehouse={items:[{id:'i',name:'Крепёж'}],places:[{id:'crew',name:'Бригада',org:'АИР-КЛИМАТ'}],projectIssues:[{closed:false,crewId:'crew',lines:[{itemId:'i',fromCrew:4}]}]};
+ const result=core.ownerWarehouseSnapshot(warehouse,{bins:new Map(),warnings:[]},'АИР-КЛИМАТ');
+ assert.equal(result.rows.length,1);
+ assert.equal(result.rows[0].qty,0);
+ assert.equal(result.rows[0].reserved,4);
+ assert.equal(result.rows[0].deficit,4);
+ assert.equal(result.deficitQty,4);
+});
