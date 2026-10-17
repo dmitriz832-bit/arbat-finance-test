@@ -33,6 +33,20 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
+  function projectPayroll(labor,projectKey){
+    let total=0n,unresolved=[];
+    for(const item of labor||[]){
+      const amount=cents(item.amount??item.salary??0)+cents(item.employerContributions||0);
+      if(item.projectKey===projectKey){total+=amount;continue}
+      if(Array.isArray(item.shares)&&item.shares.length){
+        const matched=item.shares.filter(share=>share.projectKey===projectKey);
+        if(matched.length)total+=sum(matched.map(share=>share.amount||0));
+        continue;
+      }
+      if(item.deal&&!item.projectKey)unresolved.push(item);
+    }
+    return {total,unresolved};
+  }
   function projectExpenseTotal(expenses,acts){
     const external=sum((expenses||[]).map(x=>x.amount||0));
     const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+(cents(x.rate||0)*cents(x.qty||0)+50n)/100n,0n);
