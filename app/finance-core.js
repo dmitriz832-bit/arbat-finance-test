@@ -86,7 +86,7 @@
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
-    if(data.warehouse){const consumed=(data.warehouse.moves||[]).filter(m=>m.dealId===deal._id&&m.kind==='consume'&&m.projectIssueId);if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
+    if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&m.projectIssueId);const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
     return {revenue,cost,result:revenue-cost,issues,payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
