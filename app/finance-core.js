@@ -145,7 +145,7 @@
     const tax=documentVat(gross,item.vatRate,item.vatDeductible);
     if(item.vatAmount!=null&&cents(item.vatAmount)!==tax.vatAmount)throw new RangeError('Document VAT amount mismatch');
     if(item.amountNet!=null&&cents(item.amountNet)!==tax.amountNet)throw new RangeError('Document net amount mismatch');
-    return expense&&item.vatDeductible!==true?tax.amountGross:tax.amountNet;
+    return expense&&item.vatDeductible!==true&&item.vatDeductible!=='true'?tax.amountGross:tax.amountNet;
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function projectSnapshot(data,deal,projectKey){
