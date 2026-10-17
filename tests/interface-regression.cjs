@@ -60,3 +60,16 @@ test('first login requires an invite or recovery session before password update'
   assert.match(auth,/if\(!session&&authMode!=='setup'\)\{showLogin\(\)/);
   assert.doesNotMatch(auth,/service_role|sb_secret_/);
 });
+
+
+test('salary form has one authoritative field for each payroll value',()=>{
+  const form=html.match(/<form[^>]+id="laborForm"[\s\S]*?<\/form>/)?.[0]||'';
+  assert.ok(form,'Missing salary accrual form');
+  for(const name of ['ndfl','otherDeductions','employerContributions','pnlArticleId']){
+    const count=[...form.matchAll(new RegExp(`\\bname="${name}"`,'g'))].length;
+    assert.equal(count,1,`${name} must occur exactly once in the salary form`);
+  }
+  assert.doesNotMatch(form,/\bname="article"/,'Legacy free-text P&L article must not coexist with pnlArticleId');
+  assert.doesNotMatch(business,/createContextualFragment\([^\n]+name="(?:ndfl|employerContributions|article)"/);
+  assert.equal([...business.matchAll(/name="accrualType"/g)].length,1,'Accrual type enhancement must be injected once');
+});
