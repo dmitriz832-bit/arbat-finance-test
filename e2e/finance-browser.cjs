@@ -27,6 +27,13 @@ test('offline full application reconciles report, dashboard and project at deskt
    await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],folders:[],places:[],moves:[],plans:[],projectIssues:[],imports:[]}))},fixture());
    const page=await context.newPage();page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(origin+'/app/',{waitUntil:'load'});
    await page.waitForFunction(()=>typeof window.arbatDashboardSnapshot==='function');
+   const vatForm=await page.evaluate(()=>{
+    const form=document.getElementById('dealForm'),amount=form.elements.contractTotal,rate=form.elements.vatRate;
+    amount.value='122000';rate.value='22';rate.dispatchEvent(new Event('change',{bubbles:true}));
+    return {ratePresent:!!rate,net:form.elements.amountNet.value,tax:form.elements.vatAmount.value,source:form.elements.vatRateSource.value,salesRatePresent:!!document.getElementById('realizationForm').elements.vatRate};
+   });
+   assert.deepEqual(vatForm,{ratePresent:true,net:'100000.00',tax:'22000.00',source:'document-explicit',salesRatePresent:true});
+
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
     const month=new Date().getMonth()+1,before=JSON.stringify(db.labor),report=reportData(),dash=window.arbatDashboardSnapshot(),deal=dealMargin(db.deals[0]);
