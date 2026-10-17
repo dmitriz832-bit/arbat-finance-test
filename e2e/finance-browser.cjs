@@ -185,3 +185,34 @@ test('employee profile is isolated from finance database in mocked authenticated
   await context.close();
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
 });
+
+
+test('offline browser backup includes both stores and passes independent checksum and restore verification',async()=>{
+ const {verifyBackup}=require('../scripts/verify-backup.cjs');
+ const warehouse={items:[{id:'i1',name:'Монтажный крепёж'}],places:[{id:'p1',name:'Основной склад'}],moves:[{id:'m1',kind:'receipt',itemId:'i1',to:'p1',qty:5,price:20,date:'2026-10-18'}],projectIssues:[]};
+ const finance=fixture(),before=JSON.stringify({finance,warehouse});
+ const server=http.createServer(async(req,res)=>{
+  try{const rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname),file=path.resolve(root,'.'+(rel.endsWith('/')?rel+'index.html':rel));if(!file.startsWith(root+path.sep))throw Error('Invalid path');const body=await fs.readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(body)}catch{res.writeHead(404);res.end()}
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
+ try{
+  browser=await chromium.launch({headless:true});
+  const origin='http://127.0.0.1:'+server.address().port,context=await browser.newContext({acceptDownloads:true});
+  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(['/app/auth.js','/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* isolated offline test */'});return route.continue()});
+  await context.addInitScript(({finance,warehouse})=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(finance));localStorage.setItem('arbat-warehouse-v1',JSON.stringify(warehouse))},{finance,warehouse});
+  const page=await context.newPage();await page.goto(origin+'/app/',{waitUntil:'load'});
+  const event=page.waitForEvent('download');
+  await page.locator('#exportVerifiedBackup').click();
+  const download=await event;
+  assert.match(download.suggestedFilename(),/^arbat-finance-complete-/);
+  const backup=JSON.parse(await fs.readFile(await download.path(),'utf8'));
+  const restored=verifyBackup(backup);
+  assert.deepEqual(restored.finance,finance);
+  assert.deepEqual(restored.warehouse,warehouse);
+  assert.equal(restored.findings.ok,true);
+  backup.stores.warehouse.items[0].name='CHANGED';
+  assert.throws(()=>verifyBackup(backup),/checksum mismatch/);
+  assert.equal(JSON.stringify({finance,warehouse}),before);
+  await context.close();
+ }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
+});
