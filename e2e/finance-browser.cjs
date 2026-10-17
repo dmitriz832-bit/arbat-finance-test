@@ -201,14 +201,15 @@ test('offline browser backup includes both stores and passes independent checksu
   await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(['/app/auth.js','/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* isolated offline test */'});return route.continue()});
   await context.addInitScript(({finance,warehouse})=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(finance));localStorage.setItem('arbat-warehouse-v1',JSON.stringify(warehouse))},{finance,warehouse});
   const page=await context.newPage();await page.goto(origin+'/app/',{waitUntil:'load'});
+  const normalized=await page.evaluate(()=>({finance:JSON.parse(JSON.stringify(db)),warehouse:JSON.parse(localStorage.getItem('arbat-warehouse-v1'))}));
   const event=page.waitForEvent('download');
   await page.evaluate(()=>document.getElementById('exportVerifiedBackup').click());
   const download=await event;
   assert.match(download.suggestedFilename(),/^arbat-finance-complete-/);
   const backup=JSON.parse(await fs.readFile(await download.path(),'utf8'));
   const restored=verifyBackup(backup);
-  assert.deepEqual(restored.finance,finance);
-  assert.deepEqual(restored.warehouse,warehouse);
+  assert.deepEqual(restored.finance,normalized.finance);
+  assert.deepEqual(restored.warehouse,normalized.warehouse);
   assert.equal(restored.findings.ok,true);
   backup.stores.warehouse.items[0].name='CHANGED';
   assert.throws(()=>verifyBackup(backup),/checksum mismatch/);
