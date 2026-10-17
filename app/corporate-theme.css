@@ -84,9 +84,9 @@ body.ab-ready:not(.ab-profile-only) .modal button{white-space:normal}
 }
 
 /* Document-first workspace: real layout, not color-only */
-body.ab-ready:not(.ab-profile-only) .hv-workspace-header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;border:1px solid #254661;border-radius:15px;background:linear-gradient(110deg,#12283b,#0b1725);padding:22px 26px;margin:0 0 18px}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;border:1px solid #dce6ee;border-radius:15px;background:linear-gradient(110deg,#ffffff,#eef5fb);padding:22px 26px;margin:0 0 18px}
 body.ab-ready:not(.ab-profile-only) .hv-workspace-header h2{font-size:24px;margin:5px 0 8px}
-body.ab-ready:not(.ab-profile-only) .hv-workspace-header p{margin:0;color:#8fa9c0}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header p{margin:0;color:#60798f}
 body.ab-ready:not(.ab-profile-only) .hv-eyebrow{color:#3ba5f5;letter-spacing:.13em;font-size:11px;font-weight:800}
 body.ab-ready:not(.ab-profile-only) .hv-workspace-actions{display:flex;gap:10px;flex-wrap:wrap}
 body.ab-ready:not(.ab-profile-only) .hv-workspace-actions button{min-height:42px;padding:9px 18px;border-radius:9px;font-weight:650}
