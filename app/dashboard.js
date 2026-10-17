@@ -20,12 +20,8 @@
   function walletRows(org){
     const core=window.ArbatFinanceCore;
     if(!core)throw new Error('Финансовый расчетный модуль не загружен');
-    const wallets=(db.wallets||[]).filter(wallet=>wallet.verified&&(!org||wallet.org===org||wallet.org==='Общий'));
-    return wallets.map(wallet=>{
-      const rows=(db.cash||[]).filter(item=>item.walletId===wallet.id||(item.type==='transfer'&&item.toWalletId===wallet.id));
-      const received=rows.filter(item=>(item.type==='in'&&item.walletId===wallet.id)||(item.type==='transfer'&&item.toWalletId===wallet.id));
-      const spent=rows.filter(item=>(item.type==='out'&&item.walletId===wallet.id)||(item.type==='transfer'&&item.walletId===wallet.id));
-      const balance=core.cents(wallet.openingBalance||0)+core.sum(received.map(item=>item.amount||0))-core.sum(spent.map(item=>item.amount||0));
+    return (db.wallets||[]).filter(wallet=>wallet.verified&&(!org||wallet.org===org||wallet.org==='Общий')).map(wallet=>{
+      const balance=core.walletBalance(wallet.openingBalance||0,db.cash||[],wallet.id);
       return {...wallet,balance:Number(core.rubles(balance))};
     });
   }
