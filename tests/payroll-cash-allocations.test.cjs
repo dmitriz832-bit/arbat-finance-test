@@ -17,6 +17,30 @@ test('single cash payout for two installers retains unmatched 240 rubles',()=>{
  assert.equal(core.rubles(result.expense),'19260.00');
 });
 
+test('production crew settlements reconcile legacy cash and retain unmatched 240 rubles',()=>{
+ const payment={_id:'cash-1',type:'out',personId:'a',amount:'19500'};
+ const settlements=[{cashId:'cash-1',personId:'a',amount:'9630'},{cashId:'cash-1',personId:'b',amount:'9630'}];
+ const workActs=[{id:'act-1',status:'approved',qty:9,rate:2140,memberIds:['b','a']}];
+ const result=core.payrollReconciliation({payments:[payment],settlements,workActs});
+ assert.equal(core.rubles(result.unallocatedTotal),'240.00');
+ assert.equal(core.rubles(result.paidTotal),'19260.00');
+ assert.equal(core.rubles(result.grossTotal),'19260.00');
+ assert.deepEqual(result.people.map(x=>core.rubles(x.payable)),['0.00','0.00']);
+});
+
+test('production payroll chain counts work-act earnings once and keeps P&L expense unchanged',()=>{
+ const workActs=[{id:'act-1',status:'approved',qty:9,rate:2140,memberIds:['b','a'],projectKey:'p'}];
+ const labor=[{personId:'admin',amount:57471,ndfl:7471,employerContributions:14717,expenseType:'administrative'}];
+ const cash=[{_id:'salary',type:'out',personId:'admin',amount:50000},{_id:'crew',type:'out',personId:'a',amount:19500}];
+ const settlements=[{cashId:'crew',personId:'a',amount:9630},{cashId:'crew',personId:'b',amount:9630}];
+ const payroll=core.payrollReconciliation({accruals:labor,payments:cash,settlements,workActs});
+ const ledger=core.expenseLedger({labor,workActs});
+ assert.equal(core.rubles(payroll.expense),'91448.00');
+ assert.equal(core.rubles(ledger.rows.reduce((sum,row)=>sum+row.amount,0n)),'91448.00');
+ assert.equal(core.rubles(payroll.unallocatedTotal),'240.00');
+ assert.equal(core.rubles(payroll.people.reduce((sum,row)=>sum+(row.payable>0n?row.payable:0n),0n)),'0.00');
+});
+
 test('allocation cannot exceed actual cash payout or silently credit employees',()=>{
  const result=core.payrollReconciliation({payments:[{type:'out',personId:'a',amount:'100',payrollAllocations:[{personId:'a',amount:'100.01'}]}]});
  assert.equal(result.people.length,0);
