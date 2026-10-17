@@ -149,7 +149,7 @@
       submitButton.disabled=true;
       try{
         await onboarding('send');submitButton.hidden=true;loginInstead.hidden=false;authHelp.hidden=false;
-        authHelp.textContent='Письмо отправлено. Откройте персональную ссылку — на открывшейся странице появятся два поля нового пароля.';
+        authHelp.textContent='Если для указанной почты предусмотрен первый вход, проверьте письмо со ссылкой. После перехода появятся поля нового пароля.';
         window.abMessage('Проверьте почту для завершения первого входа');
       }catch(error){submitButton.disabled=false;window.abMessage('Не удалось отправить ссылку: '+error.message)}
       return;
@@ -162,7 +162,7 @@
       await enter();
     }catch(error){
       showLogin();
-      try{const status=await onboarding();if(status.mode==='first_login'){showFirstLogin();return}}catch(e){}
+      showFirstLogin();
       passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Проверьте почту и пароль или запросите ссылку для первого входа / восстановления доступа.';
       window.abMessage(error.message==='Invalid login credentials'?'Почта или пароль не подошли':'Не удалось войти: '+error.message);
     }
@@ -177,7 +177,7 @@
     if(Number(localStorage.getItem(RECOVERY_COOLDOWN)||0)>Date.now()){window.abMessage('Отправка писем временно ограничена. Обратитесь к администратору или попробуйте позже.');return}
     const email=emailField.value.trim().toLowerCase();if(!email){window.abMessage('Сначала укажите электронную почту');emailField.focus();return}
     passwordLink.disabled=true;
-    try{await call('/auth/v1/recover?redirect_to='+encodeURIComponent('https://dmitriz832-bit.github.io/arbat-finance-test/app/'),{email},false);passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
+    try{await onboarding('recover');passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Если почта зарегистрирована, вы получите ссылку для установки пароля')}
     catch(error){if(/rate limit|429/i.test(error.message)){localStorage.setItem(RECOVERY_COOLDOWN,String(Date.now()+30*60*1000));window.abMessage('Supabase ограничил отправку писем. Повторите попытку позднее или обратитесь к администратору.')}else window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
   };
 

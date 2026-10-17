@@ -52,7 +52,7 @@ test('first login requires an invite or recovery session before password update'
   assert.match(auth,/\['invite','recovery'\]\.includes\(hash\.get\('type'\)\)/);
   assert.match(auth,/call\('\/auth\/v1\/user',\{password:passwordField\.value\},true,'PUT'\)/);
   assert.match(auth,/passwordField\.value!==passwordConfirm\.value/);
-  assert.match(auth,/\/auth\/v1\/recover/);
+  assert.match(auth,/onboarding\('recover'\)/);
   assert.match(auth,/\/functions\/v1\/staff-onboarding/);
   assert.match(auth,/showFirstLogin/);
   assert.match(auth,/Отправить ссылку для первого входа/);
