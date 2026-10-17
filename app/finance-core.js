@@ -330,7 +330,20 @@
     const revenue=(data.realizations||[]).filter(ok).reduce((v,x)=>v+documentPnlAmount(x),0n);
     const categories={direct:0n,production:0n,administrative:0n,commercial:0n,belowIncome:0n,belowExpenses:0n};
     for(const row of rows)if(Object.prototype.hasOwnProperty.call(categories,row.category))categories[row.category]+=row.amount;
-    const grossProfit=revenue-categories.direct-categories.production;
+    // The dashboard must recognize the same period WIP bridge as the P&L.
+    // Sum monthly adjustments for custom ranges; never treat an all-time selection
+    // as a single accounting month.
+    const periodKeys=new Set([...rows.map(x=>String(x.date||'').slice(0,7)),...(data.realizations||[]).filter(ok).map(x=>String(x.date||'').slice(0,7))].filter(x=>/^\\d{4}-\\d{2}$/.test(x)));
+    let deferredChange=0n;const wipIssues=[],wipBridges=[];
+    if(data.wipAccounting){
+      for(const period of [...periodKeys].sort()){
+        const bridge=wipPeriodBridge(data,period,org);
+        deferredChange+=bridge.deferredChange;
+        wipIssues.push(...bridge.issues.map(x=>({...x,period})));
+        wipBridges.push({period,...bridge});
+      }
+    }
+    const grossProfit=revenue-categories.direct-categories.production+deferredChange;
     const ebitda=grossProfit-categories.administrative-categories.commercial;
     const result=ebitda+categories.belowIncome-categories.belowExpenses;
     const byKind={};
@@ -338,7 +351,7 @@
     const cash=(data.cash||[]).filter(ok);
     const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
-    return {bounds,revenue,grossProfit,ebitda,result,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:ledger.issues.filter(x=>x.source&&ok(x.source)),rows};
+    return {bounds,revenue,grossProfit,ebitda,result,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&ok(x.source)),...wipIssues],rows};
   }
   function ownerDebtSnapshot(data,org=''){
     const projects=new Map(),issues=[];
