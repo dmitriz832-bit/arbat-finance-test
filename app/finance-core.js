@@ -350,7 +350,7 @@
     for(const doc of data.realizations||[]){
       const project=projects.get(String(doc.projectKey||''));
       if(!project){if(!org||doc.org===org)issues.push({code:'realization-unmatched-project',source:doc});continue}
-      project.revenue+=documentPnlAmount(doc);
+      project.revenue+=cents(doc.amountGross??doc.amount??0);
     }
     let unallocated=0n;
     for(const movement of data.cash||[]){
