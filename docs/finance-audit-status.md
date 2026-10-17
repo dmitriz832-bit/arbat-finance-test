@@ -106,3 +106,11 @@
 - GitHub Actions на коммите `2a15c9ba07eb6f5e8c516eaf12635cff13fb6b5a`: unit/integration и browser jobs — success; отдельная проверка исходников — success.
 - Финансовый payload: revision 65, MD5 `1a478cdd8b879c7233e4f98302737349`; склад: revision 17, MD5 `49087a28166c165570111fb96055d1fa`. Данные не менялись. Резервные snapshots существуют, восстановление не проверялось.
 - Не выполнены авторизованный E2E с реальной ролью сотрудника и production-приёмка интерфейса. Пункт 1 пока НЕ закрыт. Main не менялся.
+
+## Аудит привилегий (продолжение, 17.10.2026)
+
+- Миграции `20261017170000_lock_shared_state_table_grants.sql` и `20261017180000_harden_remaining_table_grants.sql` применены. Прямые права записи в общие состояния отозваны; права обычной записи в `salary_accruals` и `user_preferences` сохранены под RLS.
+- Полный SQL-аудит `information_schema.role_table_grants` по всей схеме `public` не обнаружил у `anon` и `authenticated` прав `TRUNCATE`, `TRIGGER`, `REFERENCES` ни на одной таблице.
+- В `public` не обнаружены представления (`view` / `materialized view`), которые могли бы раскрывать данные мимо RLS.
+- GitHub Actions после `7dae0d64f6983d36d23e915ce1de9d5c88c80af2`: `Finance core validation` и `Validate ARBAT FINANCE source` — **success**.
+- Осталось: реальные авторизованные end-to-end проверки RPC по ролям; проверка рабочего обновления данных с клиентом; production-приёмка после выпуска. До выполнения этих условий пункт 1 открыт, PR draft, main без слияния.
