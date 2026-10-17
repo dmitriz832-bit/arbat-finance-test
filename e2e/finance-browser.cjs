@@ -25,7 +25,7 @@ test('offline full application reconciles report, dashboard and project at deskt
    const context=await browser.newContext({viewport:{width,height:1000}}),errors=[];
    await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(['/app/auth.js','/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* isolated offline test: no auth or remote state writes */'});return route.continue()});
    await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],folders:[],places:[],moves:[],plans:[],projectIssues:[],imports:[]}))},fixture());
-   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(origin+'/app/',{waitUntil:'load'});
+   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(origin+'/app/',{waitUntil:'load'});
    await page.waitForFunction(()=>typeof window.arbatDashboardSnapshot==='function');
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
@@ -33,6 +33,7 @@ test('offline full application reconciles report, dashboard and project at deskt
     reportData();reportData();
     return {report:report.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ')[month],dashboard:dash.totals.operating,card:deal.actualProfit,project:dash.projects[0].result,cost:projectCost(window.arbatDealKey(db.deals[0])),laborUnchanged:before===JSON.stringify(db.labor),financial:document.getElementById('dashboardFinancial')?.innerText};
    });
+   await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results','finance-'+width+'.png'),fullPage:true});
    assert.equal(errors.length,0,'JavaScript errors at '+width+': '+errors.join('; '));
    assert.equal(Number(result.report.replace(/[^\d,.-]/g,'').replace(',','.')),28000);
    assert.equal(result.dashboard,28000);assert.equal(result.card,48000);assert.equal(result.project,48000);assert.equal(result.cost,12000);assert.equal(result.laborUnchanged,true);assert.ok(result.financial?.includes('28'));
