@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Verify warehouse regression cases
-        run: node --test tests/warehouse-regression.cjs
+      - name: Run regression tests
+        run: node --test tests/*.cjs
       - name: Check JavaScript syntax
         run: |
           for file in app/*.js; do node --check "$file"; done

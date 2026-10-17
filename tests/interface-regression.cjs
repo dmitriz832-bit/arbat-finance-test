@@ -22,6 +22,14 @@ test('static HTML ids are unique',()=>{
   assert.deepEqual(repeated,[]);
 });
 
+test('every legacy navigation key has a matching section',()=>{
+  const source=html.match(/const keys=\[([^\]]+)\]/)?.[1]||'';
+  const keys=[...source.matchAll(/'([^']+)'/g)].map(match=>match[1]);
+  assert.ok(keys.length>=12);
+  for(const key of keys)assert.match(html,new RegExp(`<section id="${key}"(?:\\s|>)`),`Missing section for route ${key}`);
+  assert.doesNotMatch(html,/<title>[^<]*(?:demo|демо)/i);
+});
+
 test('dashboard contains the four analytical views and uses real business collections',()=>{
   for(const id of ['dashboardCashFlow','dashboardWallets','dashboardPortfolio','dashboardDirections'])assert.match(dashboard,new RegExp(id));
   for(const collection of ['db.cash','db.wallets','db.deals','db.realizations','db.expenses'])assert.match(dashboard,new RegExp(collection.replace('.','\\.')));
@@ -32,6 +40,7 @@ test('column resizing uses a fixed table width and only writes the selected col'
   assert.match(business,/table\.dataset\.independentColumns/);
   assert.match(business,/syncTableWidth\(table,group\)/);
   assert.match(business,/group\.children\[index\]\.style\.width/);
+  assert.match(business,/group\.children\.length!==headers\.length/);
   assert.doesNotMatch(business,/forEach\([^)]*=>[^;]*style\.width=width/);
 });
 

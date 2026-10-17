@@ -66,6 +66,7 @@
   function enhanceTable(table){
     if(!table.tHead?.rows[0])return;const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
     let group=table.querySelector(':scope > colgroup');if(!group){group=document.createElement('colgroup');for(let i=0;i<table.tHead.rows[0].cells.length;i++)group.append(document.createElement('col'));table.prepend(group)}
+    if(group.children.length!==headers.length){group.replaceChildren(...headers.map(()=>document.createElement('col')));delete table.dataset.independentColumns}
     if(!table.dataset.independentColumns){
       const host=table.closest('.scroll,.whtable,#ab-profile-window')||table.parentElement,available=Math.max(0,(host?.clientWidth||0)-2);
       const widths=headers.map((_,index)=>Number(saved[index])||naturalColumnWidth(table,index)),total=widths.reduce((sum,width)=>sum+width,0);

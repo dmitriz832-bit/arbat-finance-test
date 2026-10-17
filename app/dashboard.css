@@ -1,6 +1,6 @@
 #overview .dashboard-visuals{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.85fr);gap:16px;margin:16px 0}
 #overview .dashboard-panel{margin:0;min-width:0;padding:20px;border:1px solid #e0e8f0;border-radius:18px;background:#fff;box-shadow:0 5px 22px rgba(27,57,86,.05)}
-#overview .dashboard-panel-wide{grid-row:span 2}#overview .dashboard-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+#overview .dashboard-panel-wide{grid-row:span 2}#overview .dashboard-panel-full{grid-column:1/-1}#overview .dashboard-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
 #overview .dashboard-panel h2{margin:0;font-size:17px;line-height:1.25;color:#203750}#overview .dashboard-subtitle{margin:4px 0 0;color:#718397;font-size:12px}
 #overview .dashboard-legend{display:flex;gap:12px;flex-wrap:wrap;color:#65788d;font-size:11px;white-space:nowrap}.dashboard-legend i{display:inline-block;width:9px;height:9px;margin-right:5px;border-radius:3px}
 #overview .dashboard-chart{min-height:246px;overflow:hidden}#overview .dashboard-chart svg{display:block;width:100%;height:auto;min-height:230px}
