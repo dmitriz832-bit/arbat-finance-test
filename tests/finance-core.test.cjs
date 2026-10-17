@@ -30,3 +30,14 @@ assert.equal(f.rubles(f.preliminaryPeriod(data,'2026-09','АИР-КЛИМАТ').
 test('report P&L component sum reconciles exactly to displayed result',()=>{const r=f.preliminaryPeriod({realizations:[{date:'2026-10-01',org:'A',amount:'60000'}],expenses:[{date:'2026-10-02',org:'A',amount:'10000'}],workActs:[{date:'2026-10-03',org:'A',status:'approved',rate:'2000',qty:'1'}],costs:[{date:'2026-10-04',org:'A',dir:'Installation',amount:'3000'},{date:'2026-10-05',org:'A',amount:'4000'}],labor:[{date:'2026-10-06',org:'A',expenseType:'administrative',amount:'13000'}]},'2026-10','A');const c=r.components;const costs=c.projectExpenses+c.productionLaborAndWorks+c.assignedExpenses+c.commonExpenses+c.commercialLabor;assert.equal(f.rubles(c.revenue-costs),'28000.00');assert.equal(r.result,c.revenue-costs);assert.equal(c.administrativeLabor, f.cents('13000'))});
 
 test('deal expense core counts approved acts and fractional quantity once',()=>{const expenses=[{amount:'20000.00'}];const acts=[{status:'approved',rate:'1000.00',qty:'1.5'},{status:'draft',rate:'10000',qty:'1'}];assert.equal(f.rubles(f.projectExpenseTotal(expenses,acts)),'21500.00');assert.equal(f.rubles(f.projectResult('30000.00',[f.rubles(f.projectExpenseTotal(expenses,acts))])),'8500.00')});
+
+test('project payroll uses stable key, not ambiguous free-text deal',()=>{
+const rows=[{projectKey:'A::1C#42',amount:'10000.00',employerContributions:'3000.00'},{deal:'Same project label',amount:'5000.00'},{projectKey:'OTHER',amount:'4000.00'}];
+const result=f.projectPayroll(rows,'A::1C#42');
+assert.equal(f.rubles(result.total),'13000.00');assert.equal(result.unresolved.length,1);
+});
+test('project payroll excludes unrelated keys and uses explicit shares',()=>{
+const rows=[{shares:[{projectKey:'one',amount:'300.01'},{projectKey:'two',amount:'400.02'}],amount:'700.03'}];
+assert.equal(f.rubles(f.projectPayroll(rows,'one').total),'300.01');
+assert.equal(f.rubles(f.projectPayroll(rows,'two').total),'400.02');
+});
