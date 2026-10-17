@@ -59,6 +59,21 @@
     }
     return {total,unresolved,conflicts,possibleOverlaps};
   }
+  function projectSnapshot(data,deal,projectKey){
+    const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
+    const netOf=x=>{const rate=x.vatRate==null?(x.org==='АРБАТ.ГК'?22:0):Number(x.vatRate);if(!Number.isInteger(rate)||rate<0)throw new RangeError('Invalid VAT rate');const divisor=BigInt(100+rate);return (cents(x.amount||0)*100n+divisor/2n)/divisor};
+    const revenue=realization.reduce((a,x)=>a+netOf(x),0n);
+    const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
+    const acts=(data.workActs||[]).filter(x=>x.projectKey===projectKey);
+    const labor=projectPayroll(data.labor||[],projectKey,acts);
+    const cost=projectExpenseTotal(expenses,acts)+labor.total;
+    const issues=[];
+    if(expenses.some(x=>x.valuationStatus==='requires-review'))issues.push('expense-valuation');
+    if(labor.conflicts.length)issues.push('linked-work-overlap');
+    if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
+    if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
+    return {revenue,cost,result:revenue-cost,issues,payroll:labor};
+  }
   function projectExpenseTotal(expenses,acts){
     const external=sum((expenses||[]).map(x=>x.amount||0));
     const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+(cents(x.rate||0)*cents(x.qty||0)+50n)/100n,0n);
@@ -103,5 +118,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot});
 });
