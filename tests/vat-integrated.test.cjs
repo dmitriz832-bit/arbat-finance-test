@@ -17,3 +17,8 @@ test('document VAT inconsistencies are rejected rather than silently adjusted',(
  assert.throws(()=>f.documentPnlAmount({amountGross:'122',vatRate:22,amountNet:'101'}),/mismatch/);
  assert.throws(()=>f.documentPnlAmount({amountGross:'122',amountNet:'100'}),/Incomplete/);
 });
+
+test('standalone project expense aggregation follows shared VAT deduction rules',()=>{
+ const expenses=[{amountGross:'1220',vatRate:22,vatDeductible:true},{amountGross:'1220',vatRate:22,vatDeductible:false}];
+ assert.equal(f.rubles(f.projectExpenseTotal(expenses,[])),'2220.00');
+});
