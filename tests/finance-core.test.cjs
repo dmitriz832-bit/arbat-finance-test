@@ -41,3 +41,5 @@ const rows=[{shares:[{projectKey:'one',amount:'300.01'},{projectKey:'two',amount
 assert.equal(f.rubles(f.projectPayroll(rows,'one').total),'300.01');
 assert.equal(f.rubles(f.projectPayroll(rows,'two').total),'400.02');
 });
+
+test('project wages and employer contributions included once in cost',()=>{const p=f.projectPayroll([{projectKey:'a',amount:'10000',employerContributions:'3000'},{projectKey:'b',amount:'5000'}],'a');const costs=f.projectExpenseTotal([{amount:'20000'}],[{status:'approved',rate:'8000',qty:1}])+p.total;assert.equal(f.rubles(costs),'41000.00');assert.equal(f.rubles(f.cents('60000')-costs),'19000.00')});
