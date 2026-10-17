@@ -380,7 +380,11 @@
     }
     const people=[...totals.values()].map(x=>({...x,payable:x.payable-x.paid}));
     for(const p of people)if(p.payable<0n)issues.push({code:'payroll-overpayment',personId:p.personId,amount:-p.payable});
-    return {people,issues,unallocatedPayments,expense:people.reduce((a,x)=>a+x.expense,0n)};
+    const unallocatedTotal=unallocatedPayments.reduce((a,x)=>a+x.amount,0n);
+    const overpaidTotal=people.reduce((a,x)=>a+(x.payable<0n?-x.payable:0n),0n);
+    const grossTotal=people.reduce((a,x)=>a+x.gross,0n);
+    const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
+    return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
   return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
