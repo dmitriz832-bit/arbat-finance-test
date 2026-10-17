@@ -33,6 +33,11 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
+  function projectExpenseTotal(expenses,acts){
+    const external=sum((expenses||[]).map(x=>x.amount||0));
+    const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+(cents(x.rate||0)*cents(x.qty||0)+50n)/100n,0n);
+    return external+work;
+  }
   function projectResult(revenue,costs){return cents(revenue)-sum(costs)}
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
   function preliminaryPeriod(data,period,org=''){
@@ -72,5 +77,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal});
 });
