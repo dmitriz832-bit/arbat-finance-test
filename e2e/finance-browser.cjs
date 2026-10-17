@@ -33,6 +33,13 @@ test('offline full application reconciles report, dashboard and project at deskt
     return {ratePresent:!!rate,net:form.elements.amountNet.value,tax:form.elements.vatAmount.value,source:form.elements.vatRateSource.value,salesRatePresent:!!document.getElementById('realizationForm').elements.vatRate};
    });
    assert.deepEqual(vatForm,{ratePresent:true,net:'100000.00',tax:'22000.00',source:'document-explicit',salesRatePresent:true});
+   const expenseVat=await page.evaluate(()=>{
+    const form=document.getElementById('expenseForm');
+    form.elements.amount.value='24400';form.elements.vatRate.value='22';form.elements.vatDeductible.value='true';
+    form.elements.vatRate.dispatchEvent(new Event('change',{bubbles:true}));
+    return {rate:form.elements.vatRate.value,deductible:form.elements.vatDeductible.value,gross:form.elements.amountGross.value,vat:form.elements.vatAmount.value,net:form.elements.amountNet.value};
+   });
+   assert.deepEqual(expenseVat,{rate:'22',deductible:'true',gross:'24400.00',vat:'4400.00',net:'20000.00'});
 
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
