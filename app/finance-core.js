@@ -363,6 +363,7 @@
     for(const doc of data.realizations||[]){
       const project=projects.get(String(doc.projectKey||''));
       if(!project){if(!org||doc.org===org)issues.push({code:'realization-unmatched-project',source:doc});continue}
+      if(doc.org&&project.org&&doc.org!==project.org){issues.push({code:'realization-organization-mismatch',source:doc});continue}
       project.revenue+=cents(doc.amountGross??doc.amount??0);
     }
     let unallocated=0n;
@@ -379,7 +380,7 @@
           const project=projects.get(String(a.projectKey||''));
           let portion;
           try{portion=cents(a.amount)}catch(_){invalid=true;continue}
-          if(portion<=0n||!project||org&&project.org!==org){invalid=true;continue}
+          if(portion<=0n||!project||org&&project.org!==org||movement.org&&project.org&&movement.org!==project.org){invalid=true;continue}
           pending.push({project,portion});
           assigned+=portion;
         }
@@ -392,7 +393,9 @@
         for(const {project,portion} of pending)project.received+=portion;
         unallocated+=amount-assigned;
       }else if(movement.projectKey&&projects.has(String(movement.projectKey))){
-        projects.get(String(movement.projectKey)).received+=amount;
+        const project=projects.get(String(movement.projectKey));
+        if(movement.org&&project.org&&movement.org!==project.org){unallocated+=amount;issues.push({code:'receipt-organization-mismatch',source:movement});continue}
+        project.received+=amount;
       }else{
         unallocated+=amount;
         issues.push({code:'unallocated-receipt',source:movement});
