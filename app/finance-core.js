@@ -51,7 +51,7 @@
       const type=item.expenseType||'production',amount=item.amount??item.salary??0;
       (type==='administrative'?common:type==='commercial'?commercial:production).push(amount);
     }
-    return pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});
+    const result=pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});return {...result,components:{revenue:sum(amounts),projectExpenses:sum(direct),productionLaborAndWorks:sum(production),assignedExpenses:sum(assigned),commonExpenses:sum(common),commercialLabor:sum(commercial)}};
   }
   function walletBalance(opening,entries,walletId){
     let balance=cents(opening||0);
