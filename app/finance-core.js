@@ -348,7 +348,7 @@
       if(!entry.personId){issues.push({code:'payroll-missing-person',source:entry});continue}
       try{
         const p=payroll({gross:entry.gross??entry.amount??0,ndfl:entry.ndfl??0,other:entry.otherDeductions??entry.other??0,contributions:entry.employerContributions??entry.contributions??0});
-        const t=get(String(entry.personId));for(const k of ['gross','ndfl','contributions','expense'])t[k]+=p[k];t.other+=p.deductions;t.payable+=p.payable;
+        const t=get(String(entry.personId));t.gross+=p.gross;t.ndfl+=p.tax;t.contributions+=p.contributions;t.expense+=p.expense;t.other+=p.deductions;t.payable+=p.payable;
       }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
     }
     for(const payment of payments.filter(x=>x.type==='out'&&x.personId)){
