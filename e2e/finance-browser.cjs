@@ -69,6 +69,34 @@ test('offline full application reconciles report, dashboard and project at deskt
     return {loaded,updated:{rate:updated.vatRate,gross:updated.amountGross,tax:updated.vatAmount,net:updated.amountNet},reopened:{rate:reopened.elements.vatRate.value,gross:reopened.elements.amountGross.value,tax:reopened.elements.vatAmount.value}};
    });
    assert.deepEqual(editedVat,{loaded:{rate:'22',gross:'12200.00',tax:'2200.00'},updated:{rate:'5',gross:'10600.00',tax:'504.76',net:'10095.24'},reopened:{rate:'5',gross:'10600.00',tax:'504.76'}});
+   const expenseCycle=await page.evaluate(()=>{
+    const form=document.getElementById('expenseForm'),key=window.arbatDealKey(db.deals[0]);
+    form.elements.date.value=new Date().toISOString().slice(0,10);
+    form.elements.projectKey.value=key;
+    form.elements.category.value='Оборудование';
+    form.elements.amount.value='24400';
+    form.elements.vatRate.value='22';
+    form.elements.vatDeductible.value='true';
+    form.elements.vatRate.dispatchEvent(new Event('change',{bubbles:true}));
+    const before=db.expenses.length;
+    form.requestSubmit();
+    const expense=db.expenses.find(x=>x.projectKey===key&&String(x.amountGross)==='24400.00');
+    if(!expense)return {created:false};
+    const created={gross:expense.amountGross,rate:expense.vatRate,deductible:expense.vatDeductible,net:expense.amountNet};
+    openRecord('expenses',expense._id);
+    const editor=document.getElementById('genericEditForm');
+    editor.elements.amount.value='12600';
+    editor.elements.vatRate.value='5';
+    editor.elements.vatDeductible.value='false';
+    editor.requestSubmit();
+    const updated=db.expenses.find(x=>x._id===expense._id);
+    openRecord('expenses',expense._id);
+    const reopened=document.getElementById('genericEditForm');
+    const result={created:true,count:db.expenses.length-before,createdFields:created,updated:{gross:updated.amountGross,rate:updated.vatRate,deductible:updated.vatDeductible,tax:updated.vatAmount,net:updated.amountNet},reopenedRate:reopened.elements.vatRate.value};
+    db.expenses=db.expenses.filter(x=>x._id!==expense._id);
+    return result;
+   });
+   assert.deepEqual(expenseCycle,{created:true,count:1,createdFields:{gross:'24400.00',rate:'22',deductible:'true',net:'20000.00'},updated:{gross:'12600.00',rate:'5',deductible:'false',tax:'600.00',net:'12000.00'},reopenedRate:'5'});
    await page.evaluate(()=>{db.realizations=db.realizations.filter(x=>x.document!=='AUDIT-VAT-REAL')});
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
