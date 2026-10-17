@@ -2,3 +2,8 @@ body:not(.ab-ready)>*:not(#ab-auth){visibility:hidden!important}#ab-auth{positio
 body.ab-profile-only>*:not(#ab-auth):not(#ab-logout):not(#ab-profile-open):not(#ab-profile-overlay){display:none!important}body.ab-profile-only{background:#f2f5f9!important}body.ab-profile-only #ab-profile-open{right:108px}
 #ab-profile-logout-area #ab-logout{position:static!important;right:auto!important;bottom:auto!important;z-index:auto!important;box-shadow:none!important;background:#fff;color:#a12323;border:1px solid #e3c5c5}body.ab-profile-only #ab-profile-open{position:fixed;right:12px;bottom:12px;z-index:9999;width:auto;background:#102339;color:white;padding:11px 15px;border-radius:9px}
 #ab-auth .ab-secondary{background:#fff!important;color:#176fae!important;border:1px solid #b9d2e5!important}#ab-auth .ab-auth-help{margin:2px 0 0;color:#61758a;font-size:13px;line-height:1.45}#ab-auth #ab-message{line-height:1.4}#ab-auth input[hidden],#ab-auth label[hidden]{display:none!important}
+
+#ab-auth .card{max-height:calc(100dvh - 32px);overflow-y:auto;max-width:100%;box-sizing:border-box}
+#ab-auth #ab-password-link{white-space:normal;min-height:42px;cursor:pointer}
+#ab-auth #ab-password-link:disabled{opacity:.65;cursor:wait}
+@media(max-width:375px){#ab-auth{padding:12px}#ab-auth .card{padding:20px 16px;border-radius:14px}#ab-auth h2{font-size:21px}}
