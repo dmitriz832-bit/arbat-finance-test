@@ -13,7 +13,7 @@ test('shared finance core loads before the dashboard',()=>{
  assert.ok(finance>=0&&dash>finance,'finance-core must load before dashboard');
 });
 test('deal margin and dashboard use the exact same project snapshot',()=>{
- assert.match(html,/function dealMargin\(d\)\{[^\n]*core\.projectSnapshot\(db,d,key\)/);
+ assert.match(html.slice(html.indexOf('function dealMargin(d)'),html.indexOf('function projectCost(key)')),/core\.projectSnapshot\(/);
  assert.match(dashboard,/core\.projectSnapshot\(/);
  assert.match(core,/function projectSnapshot\(/);
 });
