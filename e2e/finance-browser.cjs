@@ -59,3 +59,29 @@ test('unauthenticated browser presents login gate without requesting cloud finan
   await context.close();
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
 });
+
+test('employee profile is isolated from finance database in mocked authenticated browser session',async()=>{
+ const server=http.createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=path.resolve(root,'.'+(pathname.endsWith('/')?pathname+'index.html':pathname));if(!file.startsWith(root+path.sep))throw Error('Invalid path');const body=await fs.readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(body)}catch{res.writeHead(404);res.end()}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
+ try{
+  browser=await chromium.launch({headless:true});const origin='http://127.0.0.1:'+server.address().port;
+  const context=await browser.newContext({viewport:{width:390,height:844}});const requests=[];
+  await context.addInitScript(()=>localStorage.setItem('arbat-session-v1',JSON.stringify({access_token:'AUDIT-FAKE-NOT-A-REAL-TOKEN',refresh_token:'AUDIT-FAKE',expires_at:4102444800})));
+  await context.route('**/*',route=>{
+   const url=new URL(route.request().url());
+   if(url.origin===origin)return route.continue();
+   requests.push(url.pathname);
+   if(url.pathname.endsWith('/rpc/claim_staff_access'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({role:'employee',employee_id:'AUDIT-person',email:'audit@example.invalid',full_name:'Audit Employee'})});
+   if(url.pathname.endsWith('/rpc/my_payroll'))return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({earned:100,withheld:13,paid:20,balance:67,rows:[]})});
+   return route.abort();
+  });
+  const page=await context.newPage();await page.goto(origin+'/app/',{waitUntil:'load'});
+  await page.waitForSelector('#ab-profile-overlay.open');
+  await page.getByText('Мои начисления и выплаты').waitFor();
+  assert.equal(await page.locator('body').evaluate(el=>el.classList.contains('ab-profile-only')),true);
+  assert.equal(await page.locator('#ab-profile-tabs button').count(),1,'employee cannot see admin tabs');
+  assert.equal(await page.getByText('67,00', {exact:false}).count()>0,true);
+  assert.equal(requests.some(p=>/finance_state|warehouse_state|admin_staff_list|admin_set_staff/.test(p)),false,'employee must not query shared state or admin RPC');
+  await context.close();
+ }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
+});
