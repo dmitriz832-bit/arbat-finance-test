@@ -49,7 +49,15 @@
       }
       if(item.deal&&!item.projectKey)unresolved.push(item);
     }
-    return {total,unresolved,conflicts};
+    const possibleOverlaps=[];
+    for(const item of labor||[]){
+      if(item.projectKey!==projectKey||item.workActId||item.actId||item.batchId)continue;
+      const date=String(item.date||item.dt||'').slice(0,10);
+      if(!date||!item.personId)continue;
+      const matching=approvedActs.filter(a=>a.status==='approved'&&String(a.date||'').slice(0,10)===date&&((a.memberIds||[]).includes(item.personId)||a.leadId===item.personId));
+      if(matching.length)possibleOverlaps.push({accrualId:item._id||item.id||null,actIds:matching.map(a=>a.id)});
+    }
+    return {total,unresolved,conflicts,possibleOverlaps};
   }
   function projectExpenseTotal(expenses,acts){
     const external=sum((expenses||[]).map(x=>x.amount||0));
