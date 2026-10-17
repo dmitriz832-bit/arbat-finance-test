@@ -49,7 +49,7 @@
     return result;
   }
   async function sendPasswordLink(email){
-    const response=await fetch(base+'/auth/v1/recover',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email,redirect_to:'https://dmitriz832-bit.github.io/arbat-finance-test/app/'})});
+    const response=await fetch(base+'/auth/v1/recover?redirect_to='+encodeURIComponent('https://dmitriz832-bit.github.io/arbat-finance-test/app/'),{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email})});
     const result=await response.json().catch(()=>({}));if(!response.ok)throw Error(result.message||result.error_description||result.error||'HTTP '+response.status);return result;
   }
 
