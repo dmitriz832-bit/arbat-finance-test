@@ -1,35 +1,28 @@
-name: Publish ARBAT FINANCE test build
+name: Validate ARBAT FINANCE source
 on:
   workflow_dispatch:
   push:
     paths:
+      - 'app/**'
+      - 'tests/**'
       - '.github/workflows/publish-app.yml'
+  pull_request:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  publish:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Download current tested app from Vercel
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify warehouse regression cases
+        run: node --test tests/warehouse-regression.cjs
+      - name: Check JavaScript syntax
         run: |
-          mkdir -p app
-          curl -fsSL --retry 3 'https://arbat-finance-demo-802a6i4jd-617247.vercel.app/' -o app/index.html
-          for file in auth.css auth.js sync.js; do
-            curl -fsSL --retry 3 "https://arbat-finance-demo-802a6i4jd-617247.vercel.app/$file" -o "app/$file"
-          done
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('app/index.html')
-          s=p.read_text()
-          for name in ('auth.css','auth.js','sync.js'):
-              s=s.replace('="/'+name+'"', '="./'+name+'"')
-          if '="./auth.js"' not in s or '="./sync.js"' not in s: raise Exception('App assets missing')
-          p.write_text(s)
-          PY
-      - name: Commit static app files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/index.html app/auth.css app/auth.js app/sync.js
-          git diff --cached --quiet || (git commit -m "Publish static ARBAT FINANCE test app" && git push)
+          for file in app/*.js; do node --check "$file"; done
+          node - <<'JS'
+          const fs=require('fs');
+          const html=fs.readFileSync('app/index.html','utf8');
+          for (const [,attrs,code] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+            if (!/\bsrc=/.test(attrs)) new Function(code);
+          }
+          JS

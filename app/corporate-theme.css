@@ -37,7 +37,6 @@ body.ab-ready:not(.ab-profile-only) .hv-form-toggle{background:#eef6fd!important
 body.ab-ready:not(.ab-profile-only) .hv-workspace-actions .hv-selected{box-shadow:0 0 0 2px #77b6de50!important}
 body.ab-ready:not(.ab-profile-only) .hv-jumps button{background:#f2f7fc!important;border-color:#d8e7f4!important;color:#275574!important}
 body.ab-ready:not(.ab-profile-only) .ok{color:#137f65!important}body.ab-ready:not(.ab-profile-only) .danger{color:#b94355!important}
-body.ab-ready:not(.ab-profile-only) .banner{display:none!important}
 @media(max-width:700px){body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 10px!important}body.ab-ready:not(.ab-profile-only) .card{padding:13px!important}body.ab-ready:not(.ab-profile-only) .fields{grid-template-columns:minmax(0,1fr)!important}body.ab-ready:not(.ab-profile-only) .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}}
 
 /* Corporate content hierarchy and dense operational workspace */
@@ -103,10 +102,44 @@ body.ab-ready:not(.ab-profile-only) section>.hv-entry-panel{border-left:3px soli
 
 
 
-/* Corporate navigation: the menu scrolls independently, expanded groups never trap bottom items. */
-body.ab-ready:not(.ab-profile-only) .layout .sidebar{height:calc(100dvh - 76px)!important;min-height:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
+/* One vertical scroll container. Base nav used flex-wrap:wrap, creating
+   clipped columns instead of vertical overflow when a group expands. */
+body.ab-ready:not(.ab-profile-only) > header{position:sticky;top:0;z-index:100;padding:16px 24px}
+body.ab-ready:not(.ab-profile-only) > header > div{max-width:none!important;margin:0!important}
+body.ab-ready:not(.ab-profile-only) .layout{grid-template-columns:260px minmax(0,1fr);min-height:calc(100dvh - var(--ab-header-height,76px))}
+body.ab-ready:not(.ab-profile-only) .layout.collapsed{grid-template-columns:68px minmax(0,1fr)}
+body.ab-ready:not(.ab-profile-only) .layout .sidebar{position:sticky;top:var(--ab-header-height,76px);height:calc(100dvh - var(--ab-header-height,76px))!important;min-height:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:12px 10px;gap:10px;align-self:start}
 body.ab-ready:not(.ab-profile-only) .sidebar .sidecontrols,body.ab-ready:not(.ab-profile-only) .sidebar .side-bottom{flex:0 0 auto!important}
-body.ab-ready:not(.ab-profile-only) .sidebar #tabs{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b5c9db transparent;padding-bottom:24px!important}
-body.ab-ready:not(.ab-profile-only) .sidebar #tabs .arbat-nav-children{flex-shrink:0}
-body.ab-ready:not(.ab-profile-only) .sidebar #tabs:focus-within{scroll-behavior:smooth}
-@media(max-width:700px){body.ab-ready:not(.ab-profile-only) .layout .sidebar{height:100dvh!important;min-height:0!important}body.ab-ready:not(.ab-profile-only) .sidebar #tabs{padding-bottom:42px!important}}
+body.ab-ready:not(.ab-profile-only) .sidebar #tabs{display:flex;flex-direction:column;flex-wrap:nowrap!important;align-content:stretch;flex:1 1 0!important;min-height:0!important;width:100%;margin:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#b5c9db transparent;padding:0 3px 16px 0!important;scroll-padding:12px}
+body.ab-ready:not(.ab-profile-only) #tabs > *,body.ab-ready:not(.ab-profile-only) #tabs .arbat-nav-children{flex:0 0 auto}
+body.ab-ready:not(.ab-profile-only) #tabs .arbat-nav-main{min-height:44px;padding:10px 12px;font-size:14px}
+body.ab-ready:not(.ab-profile-only) #tabs .arbat-menu-caption{padding:14px 12px 4px;margin:0;font-weight:650}
+body.ab-ready:not(.ab-profile-only) #tabs .arbat-nav-children{margin-left:22px;padding-left:12px;border-left:1px solid #dce5ef}
+body.ab-ready:not(.ab-profile-only) .layout.collapsed #tabs .arbat-menu-caption{display:none}
+body.ab-ready:not(.ab-profile-only) .sidebar .side-bottom{margin-top:0}
+body.ab-ready:not(.ab-profile-only) .content{min-width:0}
+body.ab-ready:not(.ab-profile-only) .content main > label{display:flex;align-items:center;gap:12px;color:#637990;font-size:13px;margin:0 0 20px}
+body.ab-ready:not(.ab-profile-only) .content main > label select{min-width:200px}
+body.ab-ready:not(.ab-profile-only) .hv-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px}
+body.ab-ready:not(.ab-profile-only) .hv-hero-copy h2{margin:8px 0!important}
+body.ab-ready:not(.ab-profile-only) .hv-hero-copy p{margin:0;max-width:650px;line-height:1.6}
+body.ab-ready:not(.ab-profile-only) .hv-hero-visual{display:none}
+body.ab-ready:not(.ab-profile-only) .hv-jumps{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+body.ab-ready:not(.ab-profile-only) .hv-jumps button{font-size:13px;padding:10px 14px}
+body.ab-ready:not(.ab-profile-only) .hv-eyebrow{letter-spacing:.08em;font-size:11px;font-weight:700}
+body.ab-ready:not(.ab-profile-only) .arbat-section-tabs button.active{background:#e8f3fd!important;color:#125f9c!important;border-color:#b9d6ed!important}
+body.ab-ready:not(.ab-profile-only) input[type=checkbox],body.ab-ready:not(.ab-profile-only) input[type=radio]{min-height:0;accent-color:#176eb5}
+body.ab-ready:not(.ab-profile-only) button:disabled{opacity:.5;cursor:not-allowed}
+body.ab-ready:not(.ab-profile-only) .banner{display:block!important;background:#fff7e6!important;color:#805a14!important;border:1px solid #eed9ae}
+body.ab-ready:not(.ab-profile-only) :is(.whmodal,.cw-modal){background:#fff!important;color:#263c52!important;border:1px solid #d8e3ee!important}
+@media(max-width:700px){
+ body.ab-ready:not(.ab-profile-only) > header{padding:12px 14px}
+ body.ab-ready:not(.ab-profile-only) .layout,body.ab-ready:not(.ab-profile-only) .layout.collapsed,body.ab-ready:not(.ab-profile-only) .layout.mobile-open{grid-template-columns:49px minmax(0,1fr)}
+ body.ab-ready:not(.ab-profile-only) .layout .sidebar{padding:7px 3px;height:calc(100dvh - var(--ab-header-height,76px))!important}
+ body.ab-ready:not(.ab-profile-only) .layout.mobile-open .sidebar{position:fixed;top:0;height:100dvh!important;width:min(290px,88vw);padding:12px 8px;z-index:1100}
+ body.ab-ready:not(.ab-profile-only) .layout:not(.mobile-open) #tabs .arbat-menu-caption{display:none}
+ body.ab-ready:not(.ab-profile-only) .layout:not(.mobile-open) #tabs .arbat-nav-main{padding:9px 5px}
+ body.ab-ready:not(.ab-profile-only) .content main > label{flex-wrap:wrap;gap:6px}
+ body.ab-ready:not(.ab-profile-only) .content main > label select{min-width:0;width:100%}
+ body.ab-ready:not(.ab-profile-only) .hv-hero-copy h2{font-size:21px!important}
+}
