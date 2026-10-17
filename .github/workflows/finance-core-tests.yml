@@ -1,10 +1,12 @@
 name: Finance core validation
 on:
   push:
-    branches: [audit/finance-core-20261017]
+    branches: [main, audit/finance-core-20261017]
   pull_request:
     paths:
       - 'app/finance-core.js'
+      - 'app/vat-forms.js'
+      - 'tests/vat*.cjs'
       - 'tests/finance*.cjs'
       - 'e2e/**'
       - 'package.json'
