@@ -28,3 +28,15 @@ test('consolidation applies distinct per-wallet cutoff dates',()=>{
  const r=f.walletConsolidation(w,[{date:'2026-10-02',type:'in',walletId:'a',amount:'10'},{date:'2026-10-02',type:'in',walletId:'b',amount:'10'}]);
  assert.equal(f.rubles(r.total),'310.00');
 });
+test('consolidation exposes missing opening date and absent bank reconciliation',()=>{
+ const r=f.walletConsolidation([{id:'w',org:'АИР-КЛИМАТ',verified:true,openingBalance:'100'}],[]);
+ assert.equal(r.rows[0].reconciliation.status,'not-configured');
+ assert.ok(r.controlIssues.some(x=>x.code==='opening-balance-date-missing'));
+ assert.ok(r.controlIssues.some(x=>x.code==='bank-reconciliation-not-configured'));
+});
+test('consolidation exposes bank mismatch and retains exact difference',()=>{
+ const wallet={id:'w',org:'АИР-КЛИМАТ',verified:true,openingBalance:'100',openingBalanceDate:'2026-10-01',bankStatementDate:'2026-10-02',bankStatementBalance:'90'};
+ const r=f.walletConsolidation([wallet],[]),issue=r.controlIssues.find(x=>x.code==='bank-reconciliation-mismatch');
+ assert.equal(r.rows[0].reconciliation.status,'mismatch');
+ assert.equal(f.rubles(issue.difference),'10.00');
+});
