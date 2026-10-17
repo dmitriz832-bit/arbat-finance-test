@@ -338,7 +338,7 @@
     const cash=(data.cash||[]).filter(ok);
     const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
-    return {bounds,revenue,grossProfit,ebitda,result,categories,byKind,cash:{income,outgoing,net:income-outgoing},issues:ledger.issues.filter(x=>x.source&&ok(x.source)),rows};
+    return {bounds,revenue,grossProfit,ebitda,result,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:ledger.issues.filter(x=>x.source&&ok(x.source)),rows};
   }
   function cashFlow(entries,period='',org=''){
     const categories=new Map();let income=0n,outgoing=0n,transfers=0n;
