@@ -33,10 +33,23 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
+  function walletBalance(opening,entries,walletId){
+    let balance=cents(opening||0);
+    for(const item of entries||[]){
+      const amount=cents(item.amount||0);
+      if(item.type==='in'&&item.walletId===walletId)balance+=amount;
+      else if(item.type==='out'&&item.walletId===walletId)balance-=amount;
+      else if(item.type==='transfer'){
+        if(item.walletId===walletId)balance-=amount;
+        if(item.toWalletId===walletId)balance+=amount;
+      }
+    }
+    return balance;
+  }
   function payroll({gross,ndfl='0',other='0',contributions='0',paid='0'}){
     const g=cents(gross),tax=cents(ndfl),ded=cents(other),ins=cents(contributions),payment=cents(paid);
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance});
 });
