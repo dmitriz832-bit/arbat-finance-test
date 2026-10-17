@@ -138,9 +138,12 @@
     const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
     const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const ledger=expenseLedger(data),assigned=ledger.rows.filter(x=>x.dir===name&&ok(x));
-    const cost=assigned.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
+    const accruedCost=assigned.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
+    const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
+    const deferred=bridge?bridge.projects.filter(x=>x.dir===name).reduce((v,x)=>v+x.deferredChange,0n):0n;
+    const cost=accruedCost-deferred;
     const otherIncome=assigned.filter(x=>x.category==='belowIncome').reduce((a,x)=>a+x.amount,0n);
-    return {revenue,cost,otherIncome,result:revenue+otherIncome-cost,issues:ledger.issues};
+    return {revenue,cost,otherIncome,result:revenue+otherIncome-cost,issues:[...ledger.issues,...(bridge?.issues||[])]};
   }
   function directionReconciliation(data,period='',org=''){
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
@@ -152,7 +155,9 @@
     const unallocatedRevenue=(data.realizations||[]).filter(ok).filter(x=>!deals.find(d=>dealKey(d)===x.projectKey)?.dir).reduce((v,x)=>v+documentPnlAmount(x),0n);
     const unallocatedRows=ledger.rows.filter(x=>ok(x)&&!x.dir);
     const unallocatedIncome=unallocatedRows.filter(x=>x.category==='belowIncome').reduce((v,x)=>v+x.amount,0n);
-    const unallocatedExpense=unallocatedRows.filter(x=>x.category!=='belowIncome').reduce((v,x)=>v+x.amount,0n);
+    const unallocatedAccrued=unallocatedRows.filter(x=>x.category!=='belowIncome').reduce((v,x)=>v+x.amount,0n);
+    const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
+    const unallocatedExpense=unallocatedAccrued-(bridge?.projects||[]).filter(x=>!x.dir).reduce((v,x)=>v+x.deferredChange,0n);
     const unallocatedResult=unallocatedRevenue+unallocatedIncome-unallocatedExpense;
     const difference=total.result-directionResult-unallocatedResult;
     return {directions,directionResult,unallocatedRevenue,unallocatedIncome,unallocatedExpense,unallocatedResult,totalResult:total.result,difference,balanced:difference===0n,issues:ledger.issues};
@@ -280,8 +285,9 @@
     const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
     const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
     const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
-    const result=pnl({revenue:[rubles(revenue)],direct:rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
-    return {...result,issues:ledger.issues.filter(x=>ok(x.source)),components:{revenue,
+    const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
+    const result=pnl({revenue:[rubles(revenue)],direct:[...rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),...(bridge?[rubles(-bridge.deferredChange)]:[])],administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
+    return {...result,issues:[...ledger.issues.filter(x=>ok(x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
       productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
       assignedExpenses:total(x=>x.kind==='general-expense'&&x.category==='direct'),
