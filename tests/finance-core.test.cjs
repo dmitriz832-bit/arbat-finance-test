@@ -43,3 +43,5 @@ assert.equal(f.rubles(f.projectPayroll(rows,'two').total),'400.02');
 });
 
 test('project wages and employer contributions included once in cost',()=>{const p=f.projectPayroll([{projectKey:'a',amount:'10000',employerContributions:'3000'},{projectKey:'b',amount:'5000'}],'a');const costs=f.projectExpenseTotal([{amount:'20000'}],[{status:'approved',rate:'8000',qty:1}])+p.total;assert.equal(f.rubles(costs),'41000.00');assert.equal(f.rubles(f.cents('60000')-costs),'19000.00')});
+
+test('linked accrual is not counted again over its approved work act',()=>{const acts=[{id:'act-1',batchId:'batch-1',status:'approved',rate:'1000',qty:'1'}];const labor=[{projectKey:'p',amount:'1000',workActId:'act-1'},{projectKey:'p',amount:'500'}];const result=f.projectPayroll(labor,'p',acts);assert.equal(f.rubles(result.total),'500.00');assert.equal(result.conflicts.length,1)});
