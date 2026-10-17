@@ -55,6 +55,20 @@ test('offline full application reconciles report, dashboard and project at deskt
     return {created:true,rate:item.vatRate,gross:item.amountGross,tax:item.vatAmount,net:item.amountNet,source:item.vatRateSource,count:db.realizations.length-before};
    });
    assert.deepEqual(savedVat,{created:true,rate:'22',gross:'12200.00',tax:'2200.00',net:'10000.00',source:'document-explicit',count:1});
+   const editedVat=await page.evaluate(()=>{
+    const item=db.realizations.find(x=>x.document==='AUDIT-VAT-REAL');
+    openRecord('realizations',item._id);
+    const editor=document.getElementById('genericEditForm');
+    const loaded={rate:editor.elements.vatRate.value,gross:editor.elements.amountGross.value,tax:editor.elements.vatAmount.value};
+    editor.elements.amount.value='10600';
+    editor.elements.vatRate.value='5';
+    editor.requestSubmit();
+    const updated=db.realizations.find(x=>x._id===item._id);
+    openRecord('realizations',updated._id);
+    const reopened=document.getElementById('genericEditForm');
+    return {loaded,updated:{rate:updated.vatRate,gross:updated.amountGross,tax:updated.vatAmount,net:updated.amountNet},reopened:{rate:reopened.elements.vatRate.value,gross:reopened.elements.amountGross.value,tax:reopened.elements.vatAmount.value}};
+   });
+   assert.deepEqual(editedVat,{loaded:{rate:'22',gross:'12200.00',tax:'2200.00'},updated:{rate:'5',gross:'10600.00',tax:'504.76',net:'10095.24'},reopened:{rate:'5',gross:'10600.00',tax:'504.76'}});
    await page.evaluate(()=>{db.realizations=db.realizations.filter(x=>x.document!=='AUDIT-VAT-REAL')});
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
