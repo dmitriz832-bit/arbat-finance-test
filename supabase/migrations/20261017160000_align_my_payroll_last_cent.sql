@@ -1,0 +1,24 @@
+-- ARBAT FINANCE audit item 1: align the last-member cent remainder with finance-core.allocate.
+-- Reapplicable CREATE OR REPLACE; preserves staff access check, permissions, and financial payload.
+-- Original function source fingerprint at inspection: 5f875b78930702a06efe00d7ccba08f9
+CREATE OR REPLACE FUNCTION public.my_payroll()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare employee text;src jsonb;act jsonb;payment jsonb;payment_cash jsonb;members text[];position_in_crew integer;member_count integer;total_cents bigint;member_cents bigint;total_earned numeric:=0;total_withheld numeric:=0;total_paid numeric:=0;line_items jsonb:='[]'::jsonb;amount numeric;tax numeric;
+begin
+select s.employee_id into employee from public.staff_access s where s.user_id=auth.uid() and s.enabled;if employee is null then raise exception 'Access denied';end if;select f.payload into src from public.finance_state f where f.id='main';
+for act in select value from jsonb_array_elements(coalesce(src->'workActs','[]'::jsonb)) loop
+if act->>'status' is distinct from 'approved' or jsonb_typeof(act->'memberIds') is distinct from 'array' then continue;end if;
+select array_agg(distinct m.value order by m.value)into members from jsonb_array_elements_text(act->'memberIds')m(value);member_count:=coalesce(cardinality(members),0);if member_count=0 then continue;end if;position_in_crew:=array_position(members,employee);if position_in_crew is null then continue;end if;
+total_cents:=round(coalesce(nullif(act->>'qty','')::numeric,0)*coalesce(nullif(act->>'rate','')::numeric,0)*100)::bigint;member_cents:=case when position_in_crew=member_count then total_cents-(total_cents/member_count)*(member_count-1) else total_cents/member_count end;amount:=member_cents/100.0;total_earned:=total_earned+amount;line_items:=line_items||jsonb_build_array(jsonb_build_object('kind','accrual','date',act->>'date','description',act->>'priceName','project',act->>'projectKey','amount',amount,'ndfl',0,'id',act->>'id'));end loop;
+for act in select value from jsonb_array_elements(coalesce(src->'labor','[]'::jsonb)) loop
+if act->>'personId' is distinct from employee or coalesce(act->>'employeeVisible','true')='false' then continue;end if;amount:=coalesce(nullif(act->>'amount','')::numeric,0);tax:=coalesce(nullif(act->>'ndfl','')::numeric,0);total_earned:=total_earned+amount;total_withheld:=total_withheld+tax;line_items:=line_items||jsonb_build_array(jsonb_build_object('kind','accrual','date',act->>'date','description',case act->>'accrualType' when 'salary'then'Заработная плата' when'bonus'then'Премия' when'vacation'then'Отпускные' when'sick'then'Больничный' when'compensation'then'Компенсация' when'alimony'then'Удержание' else coalesce(act->>'article','Начисление')end,'project',coalesce(act->>'deal',''),'amount',amount,'ndfl',tax,'id',act->>'_id'));end loop;
+for payment in select value from jsonb_array_elements(coalesce(src->'crewSettlements','[]'::jsonb)) loop
+if payment->>'personId' is distinct from employee then continue;end if;payment_cash:=null;select c.value into payment_cash from jsonb_array_elements(coalesce(src->'cash','[]'::jsonb))c(value)where c.value->>'_id'=payment->>'cashId' and c.value->>'type'='out' limit 1;if payment_cash is null then continue;end if;amount:=coalesce(nullif(payment->>'amount','')::numeric,0);total_paid:=total_paid+amount;line_items:=line_items||jsonb_build_array(jsonb_build_object('kind','payment','date',payment_cash->>'date','description',coalesce(payment_cash->>'note','Выплата'),'amount',amount,'id',payment->>'id'));end loop;
+for payment in select value from jsonb_array_elements(coalesce(src->'cash','[]'::jsonb)) loop
+if payment->>'type' is distinct from'out' or payment->>'personId' is distinct from employee then continue;end if;if exists(select 1 from jsonb_array_elements(coalesce(src->'crewSettlements','[]'::jsonb))link(value)where link.value->>'cashId'=payment->>'_id' and link.value->>'personId'=employee)then continue;end if;if not exists(select 1 from jsonb_array_elements(coalesce(src->'articles','[]'::jsonb))article(value)where article.value->>'id'=payment->>'articleId' and(article.value->>'name' ilike'%зарплат%' or article.value->>'name' ilike'%оплат% труда%' or article.value->>'name' ilike'%расчет% персонал%' or article.value->>'name' ilike'%выплат% сотрудник%'))and coalesce(payment->>'note','')not ilike'%зарплат%' then continue;end if;amount:=coalesce(nullif(payment->>'amount','')::numeric,0);total_paid:=total_paid+amount;line_items:=line_items||jsonb_build_array(jsonb_build_object('kind','payment','date',payment->>'date','description',coalesce(payment->>'note','Выплата зарплаты'),'amount',amount,'id',payment->>'_id'));end loop;
+return jsonb_build_object('earned',total_earned,'withheld',total_withheld,'paid',total_paid,'balance',total_earned-total_withheld-total_paid,'rows',line_items);end$function$
+;

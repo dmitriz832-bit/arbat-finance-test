@@ -1,7 +1,7 @@
 (()=>{
   const COLORS=['#168b68','#2385c7','#d88b22','#755bc2','#c85b8e','#4b8d8a','#8c6b49'];
   const money=value=>Number(value||0);
-  const sum=(rows,selector=item=>money(item.amount))=>rows.reduce((total,item)=>total+selector(item),0);
+  const sum=(rows,selector=item=>money(item.amount))=>Number(window.ArbatFinanceCore.rubles(window.ArbatFinanceCore.sum(rows.map(selector))));
   const rub=value=>money(value).toLocaleString('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0});
   const compact=value=>new Intl.NumberFormat('ru-RU',{notation:'compact',maximumFractionDigits:1}).format(money(value))+' ₽';
   const percent=value=>Number.isFinite(value)?value.toLocaleString('ru-RU',{maximumFractionDigits:1})+'%':'—';
@@ -18,8 +18,12 @@
     return result;
   }
   function walletRows(org){
-    const wallets=(db.wallets||[]).filter(wallet=>wallet.verified&&(!org||wallet.org===org||wallet.org==='Общий'));
-    return wallets.map(wallet=>{const rows=(db.cash||[]).filter(item=>item.walletId===wallet.id||item.type==='transfer'&&item.toWalletId===wallet.id),received=sum(rows.filter(item=>item.type==='in'&&item.walletId===wallet.id||item.type==='transfer'&&item.toWalletId===wallet.id)),spent=sum(rows.filter(item=>item.type==='out'&&item.walletId===wallet.id||item.type==='transfer'&&item.walletId===wallet.id));return {...wallet,balance:money(wallet.openingBalance)+received-spent}});
+    const core=window.ArbatFinanceCore;
+    if(!core)throw new Error('Финансовый расчетный модуль не загружен');
+    return (db.wallets||[]).filter(wallet=>wallet.verified&&(!org||wallet.org===org||wallet.org==='Общий')).map(wallet=>{
+      const balance=core.walletBalance(wallet.openingBalance||0,db.cash||[],wallet.id);
+      return {...wallet,balance:Number(core.rubles(balance))};
+    });
   }
   function calendarOccurrences(org){
     const today=iso(new Date()),out=[];
@@ -36,14 +40,14 @@
   }
   function snapshot(){
     const org=document.getElementById('orgFilter')?.value||'',months=lastMonths(),cash=(db.cash||[]).filter(item=>matchesOrg(item,org)),deals=(db.deals||[]).filter(item=>matchesOrg(item,org)),realizations=(db.realizations||[]).filter(item=>matchesOrg(item,org)),expenses=(db.expenses||[]).filter(item=>matchesOrg(item,org)),costs=(db.costs||[]).filter(item=>matchesOrg(item,org)),labor=(db.labor||[]).filter(item=>matchesOrg(item,org)),acts=(db.workActs||[]).filter(item=>item.status==='approved'&&matchesOrg(item,org));
-    const flow=months.map(month=>({label:month.label,income:sum(cash.filter(item=>item.type==='in'&&monthKey(item.date)===month.key)),outcome:sum(cash.filter(item=>item.type==='out'&&monthKey(item.date)===month.key))}));
+    const flow=months.map(month=>{const core=window.ArbatFinanceCore,result=core.cashFlow(cash,month.key,org);return {label:month.label,income:Number(core.rubles(result.income)),outcome:Number(core.rubles(result.outgoing))}});
     const names=[...new Set([...(typeof dirs!=='undefined'?dirs:[]),...deals.map(item=>item.dir).filter(Boolean)])];
-    const directions=names.map(name=>{const selected=deals.filter(deal=>deal.dir===name),keys=new Set(selected.map(projectKey)),revenue=sum(realizations.filter(item=>keys.has(item.projectKey)),item=>money(item.amount)/(item.org==='АРБАТ.ГК'?1.22:1)),direct=sum(expenses.filter(item=>keys.has(item.projectKey)))+sum(acts.filter(item=>keys.has(item.projectKey)),item=>money(item.qty)*money(item.rate))+sum(costs.filter(item=>item.dir===name));return {name,revenue,cost:direct,result:revenue-direct,margin:revenue?(revenue-direct)/revenue*100:NaN}});
-    const projects=deals.map(deal=>{const key=projectKey(deal),gross=sum(realizations.filter(item=>item.projectKey===key)),revenue=sum(realizations.filter(item=>item.projectKey===key),item=>money(item.amount)/(item.org==='АРБАТ.ГК'?1.22:1)),direct=sum(expenses.filter(item=>item.projectKey===key))+sum(acts.filter(item=>item.projectKey===key),item=>money(item.qty)*money(item.rate))+sum(costs.filter(item=>item.projectKey===key)),contract=money(deal.contractTotal??deal.revenue),remaining=Math.max(0,contract-gross);return {key,name:deal.name||'Без названия',org:deal.org,contract,realized:gross,revenue,cost:direct,result:revenue-direct,remaining,progress:contract?Math.min(100,gross/contract*100):0}}).sort((a,b)=>b.remaining-a.remaining);
+    const directions=names.map(name=>{const core=window.ArbatFinanceCore,result=core.directionSnapshot({deals,realizations,expenses,costs,labor,workActs:acts,people:db.people},name),num=x=>Number(core.rubles(x));return {name,revenue:num(result.revenue),cost:num(result.cost),result:num(result.result),margin:result.revenue?Number(result.result)/Number(result.revenue)*100:NaN}});
+    const warehouseState=(()=>{try{return JSON.parse(localStorage.getItem('arbat-warehouse-v1')||'{}')}catch{return {}}})();const fifo=typeof window.arbatFifo==='function'?window.arbatFifo(warehouseState):null;const projects=deals.map(deal=>{const key=projectKey(deal),core=window.ArbatFinanceCore,snapshot=core.projectSnapshot({realizations,costs:db.costs||[],expenses:db.expenses||[],workActs:acts,labor:db.labor||[],warehouse:warehouseState,fifo},deal,key),gross=sum(realizations.filter(item=>item.projectKey===key)),contract=money(deal.contractTotal??deal.revenue),remaining=Math.max(0,contract-gross),revenue=Number(core.rubles(snapshot.revenue)),cost=Number(core.rubles(snapshot.cost));return {key,name:deal.name||'Без названия',org:deal.org,contract,realized:gross,revenue,cost,result:snapshot.issues.length?null:Number(core.rubles(snapshot.result)),reviewRequired:snapshot.issues.length>0,issues:snapshot.issues,remaining,progress:contract?Math.min(100,gross/contract*100):0}}).sort((a,b)=>b.remaining-a.remaining);
     const wallets=walletRows(org),calendar=calendarOccurrences(org),payments30=calendar.filter(item=>item.days<=30),contract=sum(deals,deal=>money(deal.contractTotal??deal.revenue)),realized=sum(realizations),remaining=Math.max(0,contract-realized),uncategorized=cash.filter(item=>item.type!=='transfer'&&!item.articleId).length,unverified=(db.wallets||[]).filter(item=>!item.verified&&(!org||item.org===org||item.org==='Общий')).length,brokenTransfers=cash.filter(item=>item.type==='transfer'&&!item.toWalletId).length,uncertain=expenses.filter(item=>item.valuationStatus==='requires-review').length;
-    const liquidity=sum(wallets,item=>item.balance),operating=sum(directions,item=>item.result)-sum(costs.filter(item=>!item.dir))-sum(labor,item=>money(item.amount??item.salary)+money(item.employerContributions)),current=flow.at(-1)||{income:0,outcome:0},previous=flow.at(-2)||{income:0,outcome:0},net=current.income-current.outcome,previousNet=previous.income-previous.outcome,obligations=sum(payments30),quality={uncategorized,unverified,brokenTransfers,uncertain};
+    const core=window.ArbatFinanceCore;const liquidity=Number(core.rubles(core.sum(wallets.map(item=>item.balance)))),financial=core.preliminaryPeriod({deals,realizations,expenses,costs,labor,workActs:acts,people:db.people},monthKey(iso(new Date())),org),operating=Number(core.rubles(financial.result)),current=flow.at(-1)||{income:0,outcome:0},previous=flow.at(-2)||{income:0,outcome:0},net=current.income-current.outcome,previousNet=previous.income-previous.outcome,obligations=sum(payments30),quality={uncategorized,unverified,brokenTransfers,uncertain};
     const attention=Object.values(quality).reduce((a,b)=>a+b,0)+calendar.filter(item=>item.days<=5).length+(liquidity<obligations?1:0)+projects.filter(item=>item.result<0&&item.realized>0).length;
-    return {org,months,flow,directions,projects,wallets,calendar,payments30,portfolio:{contract,realized,remaining,count:deals.length},quality,totals:{liquidity,operating,net,previousNet,obligations,attention}};
+    return {org,financial,months,flow,directions,projects,wallets,calendar,payments30,portfolio:{contract,realized,remaining,count:deals.length},quality,totals:{liquidity,operating,net,previousNet,obligations,attention}};
   }
   window.arbatDashboardSnapshot=snapshot;
 
@@ -128,7 +132,7 @@
     target.innerHTML='<div class="dashboard-project-table executive-project-table"><div class="dashboard-project-row head"><span>Проект</span><span>Договор</span><span>План затрат</span><span>Факт</span><span>Остаток</span><span>Реализация</span><span>Прибыль</span><span>Маржа</span><span>Статус</span></div>'+rows.map(item=>{
       const deal=deals.find(d=>projectKey(d)===item.key),plan=Number(deal?.cost??deal?.directCostPlan??deal?.plannedDirectCosts??deal?.planCosts??NaN);
       const known=Number.isFinite(plan),left=plan-item.cost,margin=item.revenue?item.result/item.revenue*100:NaN;
-      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan):'—')+'</span><span>'+rub(item.cost)+'</span><span class="'+(known&&left<0?'dashboard-negative':'dashboard-positive')+'">'+(known?rub(left):'—')+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><span>'+percent(margin)+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+esc(projectLabels[deal?.projectStatus]||'Не указан')+'</span></div>'
+      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan):'—')+'</span><span>'+rub(item.cost)+'</span><span class="'+(known&&left<0?'dashboard-negative':'dashboard-positive')+'">'+(known?rub(left):'—')+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+(item.reviewRequired?'Требует проверки':rub(item.result))+'</strong><span>'+(item.reviewRequired?'—':percent(margin))+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+esc(projectLabels[deal?.projectStatus]||'Не указан')+'</span></div>'
     }).join('')+'</div>';
   }
   function calendar(data){
@@ -139,7 +143,7 @@
   function executiveExtras(data){
     const currentMonth=lastMonths(1)[0]?.key;
     const current=data.flow.at(-1)||{income:0,outcome:0};
-    const revenue=sum(data.directions,d=>d.revenue),direct=sum(data.directions,d=>d.cost);
+    const core=window.ArbatFinanceCore,revenue=Number(core.rubles(data.financial.revenue)),direct=Number(core.rubles(data.financial.direct));
     const rows=[['Реализация',revenue],['Прямые затраты',direct],['Валовый результат',revenue-direct],['Операционный результат',data.totals.operating]];
     const fin=document.getElementById('dashboardFinancial');
     if(fin)fin.innerHTML='<div class="executive-finance-table"><div class="executive-finance-row head"><span>Показатель</span><span>Факт</span><span>Комментарий</span></div>'+rows.map(([label,value],i)=>'<div class="executive-finance-row"><span>'+esc(label)+'</span><strong class="'+(value<0?'dashboard-negative':'')+'">'+rub(value)+'</strong><small>'+(i===0?'По актам реализации':i===1?'Учтённые прямые расходы':i===2?'До косвенных расходов':'По внесённым данным')+'</small></div>').join('')+'</div><div class="executive-note">План и отклонения появятся после внесения утверждённого бюджета. Значения не являются условными.</div>';
