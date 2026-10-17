@@ -127,7 +127,7 @@
   }
   // Explicit per-document VAT, calculated entirely in integer kopecks.
   function documentVat(gross,vatRate,vatDeductible=false){
-    const rate=Number(vatRate);
+    const rate=vatRate==null||String(vatRate).trim()===''?NaN:Number(vatRate);
     if(![0,5,7,10,20,22].includes(rate))throw new RangeError('Unsupported document VAT rate');
     const amountGross=cents(gross),abs=amountGross<0n?-amountGross:amountGross;
     const divisor=BigInt(100+rate),tax=(abs*BigInt(rate)+divisor/2n)/divisor;
