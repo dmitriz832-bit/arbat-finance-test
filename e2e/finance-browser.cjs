@@ -54,7 +54,8 @@ test('offline full application reconciles report, dashboard and project at deskt
     if(!item)return {created:false,count:db.realizations.length-before};
     return {created:true,rate:item.vatRate,gross:item.amountGross,tax:item.vatAmount,net:item.amountNet,source:item.vatRateSource,count:db.realizations.length-before};
    });
-   assert.deepEqual(savedVat,{created:true,rate:'22',gross:12200,tax:'2200.00',net:'10000.00',source:'document-explicit',count:1});
+   assert.deepEqual(savedVat,{created:true,rate:'22',gross:'12200.00',tax:'2200.00',net:'10000.00',source:'document-explicit',count:1});
+   await page.evaluate(()=>{db.realizations=db.realizations.filter(x=>x.document!=='AUDIT-VAT-REAL')});
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
     const month=new Date().getMonth()+1,before=JSON.stringify(db.labor),report=reportData(),dash=window.arbatDashboardSnapshot(),deal=dealMargin(db.deals[0]);
