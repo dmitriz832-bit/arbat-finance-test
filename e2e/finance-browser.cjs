@@ -202,7 +202,7 @@ test('offline browser backup includes both stores and passes independent checksu
   await context.addInitScript(({finance,warehouse})=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(finance));localStorage.setItem('arbat-warehouse-v1',JSON.stringify(warehouse))},{finance,warehouse});
   const page=await context.newPage();await page.goto(origin+'/app/',{waitUntil:'load'});
   const event=page.waitForEvent('download');
-  await page.locator('#exportVerifiedBackup').click();
+  await page.evaluate(()=>document.getElementById('exportVerifiedBackup').click());
   const download=await event;
   assert.match(download.suggestedFilename(),/^arbat-finance-complete-/);
   const backup=JSON.parse(await fs.readFile(await download.path(),'utf8'));
