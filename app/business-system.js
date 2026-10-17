@@ -79,6 +79,26 @@
       handle.addEventListener('dblclick',()=>{const width=naturalColumnWidth(table,index);group.children[index].style.width=width+'px';if(preferences.columns[key])delete preferences.columns[key][index];syncTableWidth(table,group);savePreferences()});
     });
   }
+  // Desktop wheel: over a wide table, scroll its own horizontal viewport.
+  // Shift+wheel always scrolls horizontally; plain wheel uses horizontal scrolling
+  // only when the table cannot scroll vertically. Touch/trackpad native gestures remain intact.
+  document.addEventListener('wheel',event=>{
+    if(event.ctrlKey||event.metaKey||event.defaultPrevented)return;
+    const target=event.target instanceof Element?event.target:null;
+    const host=target?.closest('.scroll,.whtable,.ab-scroll');
+    if(!host||!host.querySelector('table')||!host.getClientRects().length)return;
+    const horizontalRoom=host.scrollWidth-host.clientWidth;
+    if(horizontalRoom<2)return;
+    const pixels=event.deltaMode===1?event.deltaY*16:event.deltaMode===2?event.deltaY*host.clientHeight:event.deltaY;
+    if(event.shiftKey){
+      const delta=event.deltaX||pixels;
+      const next=Math.max(0,Math.min(horizontalRoom,host.scrollLeft+delta));
+      if(Math.abs(next-host.scrollLeft)>0.5){host.scrollLeft=next;event.preventDefault()}
+      return;
+    }
+    // Preserve page vertical scrolling: only hijack the wheel for one-axis table
+    // containers, when users deliberately hold Shift.
+  },{passive:false});
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}
   new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   window.addEventListener('resize',enhanceTables,{passive:true});
