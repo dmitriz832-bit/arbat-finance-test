@@ -309,6 +309,37 @@
       administrativeLabor:total(x=>x.kind==='payroll'&&x.category==='administrative'),
       generalCostTotal:total(x=>x.kind==='general-expense'&&x.category==='administrative')}};
   }
+  function ownerPeriodBounds(mode,reference='',from='',to=''){
+    const ref=String(reference||new Date().toISOString().slice(0,10)).slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(ref))throw new RangeError('Invalid reference date');
+    const year=ref.slice(0,4),month=Number(ref.slice(5,7));
+    if(month<1||month>12)throw new RangeError('Invalid reference month');
+    if(mode==='all')return {from:'',to:'',label:'За всё время'};
+    if(mode==='month')return {from:year+'-'+ref.slice(5,7)+'-01',to:year+'-'+ref.slice(5,7)+'-31',label:'Месяц '+ref.slice(0,7)};
+    if(mode==='quarter'){const first=String(Math.floor((month-1)/3)*3+1).padStart(2,'0'),last=String(Math.floor((month-1)/3)*3+3).padStart(2,'0');return {from:year+'-'+first+'-01',to:year+'-'+last+'-31',label:'Квартал '+Math.ceil(month/3)+' / '+year}}
+    if(mode==='year')return {from:year+'-01-01',to:year+'-12-31',label:'Год '+year};
+    if(mode==='range'&&/^\d{4}-\d{2}-\d{2}$/.test(from)&&/^\d{4}-\d{2}-\d{2}$/.test(to)&&from<=to)return {from,to,label:from+' — '+to};
+    throw new RangeError('Invalid dashboard period');
+  }
+  function ownerPeriodSnapshot(data,bounds,org=''){
+    const from=bounds.from||'',to=bounds.to||'';
+    const inRange=x=>{const d=String(x.date||x.dt||'').slice(0,10);return (!from||d>=from)&&(!to||d<=to)};
+    const ok=x=>(!org||x.org===org)&&inRange(x);
+    const ledger=expenseLedger(data);
+    const rows=ledger.rows.filter(ok);
+    const revenue=(data.realizations||[]).filter(ok).reduce((v,x)=>v+documentPnlAmount(x),0n);
+    const categories={direct:0n,production:0n,administrative:0n,commercial:0n,belowIncome:0n,belowExpenses:0n};
+    for(const row of rows)if(Object.prototype.hasOwnProperty.call(categories,row.category))categories[row.category]+=row.amount;
+    const grossProfit=revenue-categories.direct-categories.production;
+    const ebitda=grossProfit-categories.administrative-categories.commercial;
+    const result=ebitda+categories.belowIncome-categories.belowExpenses;
+    const byKind={};
+    for(const row of rows)byKind[row.kind]=(byKind[row.kind]||0n)+row.amount;
+    const cash=(data.cash||[]).filter(ok);
+    const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
+    const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
+    return {bounds,revenue,grossProfit,ebitda,result,categories,byKind,cash:{income,outgoing,net:income-outgoing},issues:ledger.issues.filter(x=>x.source&&ok(x.source)),rows};
+  }
   function cashFlow(entries,period='',org=''){
     const categories=new Map();let income=0n,outgoing=0n,transfers=0n;
     for(const item of entries||[]){
@@ -514,5 +545,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
