@@ -920,7 +920,7 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
   const parent=mainButton(entry);group.append(parent);buttons.set(parent.dataset.route,parent);groups.set(entry.key,group);
   if(entry.children){
    let children=document.createElement('div');children.className='arbat-nav-children';for(let [route,label] of entry.children){let b=document.createElement('button');b.type='button';b.className='arbat-nav-sub';b.dataset.route=route;b.title=label;let span=document.createElement('span');span.className='arbat-nav-sub-label';span.textContent=label;b.append(span);children.append(b);buttons.set(route,b)}group.append(children);
-   parent.onclick=()=>{if(layout.classList.contains('collapsed')){document.getElementById('toggleSide').click()}const expand=!group.classList.contains('open');if(expand)for(let g of groups.values())g.classList.remove('open');group.classList.toggle('open',expand);parent.setAttribute('aria-expanded',String(expand));if(expand)navigate(entry.children[0][0])};
+   parent.onclick=()=>{if(layout.classList.contains('collapsed')){document.getElementById('toggleSide').click()}const expand=!group.classList.contains('open');if(expand)for(let g of groups.values())g.classList.remove('open');group.classList.toggle('open',expand);parent.setAttribute('aria-expanded',String(expand));if(expand){const child=group.querySelector('.arbat-nav-sub.active');if(child)child.scrollIntoView({block:'nearest'})}};
    children.onclick=e=>{let b=e.target.closest('[data-route]');if(b)navigate(b.dataset.route)}
   }else parent.onclick=()=>navigate(entry.route);
   nav.append(group)
