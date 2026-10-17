@@ -20,7 +20,7 @@ test('actual report, dashboard, project card and table adapters execute against 
  const p=vm.runInContext('dealMargin(db.deals[0])',ctx);assert.equal(p.actualProfit,52800);assert.equal(p.wipProfit,52800);assert.equal(p.recognizedCost,7200);assert.equal(p.wipBalance,4800);assert.equal(vm.runInContext('projectCost(window.arbatDealKey(db.deals[0]))',ctx),12000);
  // Freeze the runtime clock to the fixture month.
  const snapshot=ctx.window.arbatDashboardSnapshot();assert.equal(snapshot.projects[0].cost,12000);assert.equal(snapshot.directions[0].result,45000);
- assert.equal(snapshot.totals.operating,28000);assert.equal(snapshot.financial.result,core.ownerPeriodSnapshot(db,core.ownerPeriodBounds('month','2026-10-17')).result);
+ assert.equal(snapshot.totals.operating,32800);assert.equal(snapshot.financial.result,core.ownerPeriodSnapshot({...db,wipAccounting:true},core.ownerPeriodBounds('month','2026-10-17')).result);
  vm.runInContext('reportData(); reportData()',ctx);assert.equal(JSON.stringify(db),before);
 });
 test('runtime adapters preserve linked-act contributions and project general expenses',()=>{
