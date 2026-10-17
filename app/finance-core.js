@@ -196,6 +196,38 @@
     return expense&&item.vatDeductible!==true&&item.vatDeductible!=='true'?tax.amountGross:tax.amountNet;
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
+  function projectWipSnapshot(data,deal,projectKey,period=''){
+    const contractGross=deal.contractTotal??deal.revenue;
+    const issues=[];
+    if(contractGross==null||cents(contractGross)<=0n)return {status:'requires-review',issues:['missing-project-contract'],contractNet:null};
+    const contractNet=documentPnlAmount({...deal,amountGross:contractGross});
+    if(contractNet<=0n)return {status:'requires-review',issues:['invalid-project-contract'],contractNet};
+    const until=(item,p)=>!p||String(item.date||item.dt||'').slice(0,7)<=p;
+    const before=(item,p)=>String(item.date||item.dt||'').slice(0,7)<p;
+    const realizations=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
+    const ledger=expenseLedger(data);
+    const projectRows=ledger.rows.filter(x=>x.projectKey===projectKey&&x.category==='direct');
+    const totalOf=(xs)=>xs.reduce((a,x)=>a+x.amount,0n);
+    const earned=(p,previous)=>realizations.filter(x=>previous?before(x,p):until(x,p)).reduce((a,x)=>a+documentPnlAmount(x),0n);
+    const accrued=(p,previous)=>totalOf(projectRows.filter(x=>previous?before(x,p):until(x,p)));
+    const recognized=(revenue,cost)=>{
+      const numerator=revenue<0n?0n:revenue>contractNet?contractNet:revenue;
+      const sign=cost<0n?-1n:1n,absolute=cost<0n?-cost:cost;
+      return sign*((absolute*numerator+contractNet/2n)/contractNet);
+    };
+    const revenue=earned(period,false),priorRevenue=period?earned(period,true):0n;
+    const accruedCost=accrued(period,false),priorCost=period?accrued(period,true):0n;
+    if(revenue>contractNet)issues.push('realization-exceeds-contract');
+    if(revenue<0n)issues.push('negative-cumulative-realization');
+    const recognizedCost=recognized(revenue,accruedCost);
+    const previouslyRecognizedCost=period?recognized(priorRevenue,priorCost):0n;
+    const currentCost=recognizedCost-previouslyRecognizedCost;
+    const wip=accruedCost-recognizedCost;
+    for(const issue of ledger.issues)if(issue.source?.projectKey===projectKey)issues.push(issue.code);
+    if((data.expenses||[]).some(x=>x.projectKey===projectKey&&x.valuationStatus==='requires-review'))issues.push('expense-valuation');
+    if(data.warehouse?.moves?.some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId)&&!data.fifo)issues.push('warehouse-fifo-unavailable');
+    return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,operatingProfit:revenue-recognizedCost};
+  }
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
     const netOf=x=>documentPnlAmount(x);
@@ -267,5 +299,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot});
 });
