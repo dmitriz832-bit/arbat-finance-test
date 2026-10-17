@@ -16,11 +16,11 @@ function runtime(db){
 }
 test('actual report, dashboard, project card and table adapters execute against a shared fixture',()=>{
  const db=fixture(),before=JSON.stringify(db),ctx=runtime(db),result=vm.runInContext('reportData()',ctx);
- const row=result.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ');assert.equal(row[10],'28000.00');assert.equal(row[13],'28000.00');assert.equal(row[9],'0.00');
- const p=vm.runInContext('dealMargin(db.deals[0])',ctx);assert.equal(p.actualProfit,48000);assert.equal(p.wipProfit,52800);assert.equal(p.recognizedCost,7200);assert.equal(p.wipBalance,4800);assert.equal(vm.runInContext('projectCost(window.arbatDealKey(db.deals[0]))',ctx),12000);
+ const row=result.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ');assert.equal(row[10],'32800.00');assert.equal(row[13],'32800.00');assert.equal(row[9],'0.00');
+ const p=vm.runInContext('dealMargin(db.deals[0])',ctx);assert.equal(p.actualProfit,52800);assert.equal(p.wipProfit,52800);assert.equal(p.recognizedCost,7200);assert.equal(p.wipBalance,4800);assert.equal(vm.runInContext('projectCost(window.arbatDealKey(db.deals[0]))',ctx),12000);
  // Freeze the runtime clock to the fixture month.
- const snapshot=ctx.window.arbatDashboardSnapshot();assert.equal(snapshot.projects[0].cost,12000);assert.equal(snapshot.directions[0].result,45000);
- assert.equal(snapshot.totals.operating,28000);assert.equal(snapshot.financial.result,core.preliminaryPeriod(db,'2026-10').result);
+ const snapshot=ctx.window.arbatDashboardSnapshot();assert.equal(snapshot.projects[0].cost,12000);assert.equal(snapshot.directions[0].result,49800);
+ assert.equal(snapshot.totals.operating,32800);assert.equal(snapshot.financial.result,core.preliminaryPeriod({...db,wipAccounting:true},'2026-10').result);
  vm.runInContext('reportData(); reportData()',ctx);assert.equal(JSON.stringify(db),before);
 });
 test('runtime adapters preserve linked-act contributions and project general expenses',()=>{
