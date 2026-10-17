@@ -33,6 +33,7 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
+  function projectResult(revenue,costs){return cents(revenue)-sum(costs)}
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
   function walletBalance(opening,entries,walletId){
     let balance=cents(opening||0);
@@ -52,5 +53,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult});
 });
