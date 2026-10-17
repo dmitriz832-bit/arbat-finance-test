@@ -165,7 +165,7 @@
     return {revenue,cost,result:revenue-cost,issues:[...new Set(issues)],payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
-    const external=sum((expenses||[]).map(x=>x.amount||0));
+    const external=(expenses||[]).reduce((total,item)=>total+documentPnlAmount(item,true),0n);
     const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+workAmount(x),0n);
     return external+work;
   }
