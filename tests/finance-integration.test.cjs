@@ -32,3 +32,5 @@ test('project warehouse valuation must distinguish unresolved FIFO',()=>{
 });
 
 test('direction financial rollups use shared net VAT and project arithmetic',()=>{assert.match(dashboard,/core\.netAmount\(item\.amount,item\.org,item\.vatRate\)/);assert.match(dashboard,/core\.projectResult\(revenue,\[direct\]\)/)});
+
+test('direction wages are not double counted when explicitly allocated to project',()=>{assert.match(dashboard,/!item\.projectKey/);assert.match(dashboard,/!Array\.isArray\(item\.shares\)/)});
