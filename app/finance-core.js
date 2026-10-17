@@ -110,7 +110,7 @@
     for(const item of data.labor||[]){
       const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
       for(const code of result.issues)issues.push({code,source:item});
-      for(const part of result.parts)push(item,'payroll',part.amount,part.projectKey,type==='administrative'?'administrative':type==='commercial'?'commercial':'direct');
+      const group=String(item.pnlGroup||'').toLowerCase(),level=String(item.pnlLevel||'').toLowerCase();const category=level==='below'?'belowExpenses':group.includes('общепроизвод')?'production':group.includes('коммерч')?'commercial':group.includes('администр')?'administrative':group.includes('прям')?'direct':type==='administrative'?'administrative':type==='commercial'?'commercial':'direct';for(const part of result.parts)push(item,'payroll',part.amount,part.projectKey,category);
     }
     return {rows,issues};
   }
