@@ -75,9 +75,10 @@
     for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
     return issues;
   }
+  function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
-    const netOf=x=>{const rate=x.vatRate==null?(x.org==='АРБАТ.ГК'?22:0):Number(x.vatRate);if(!Number.isInteger(rate)||rate<0)throw new RangeError('Invalid VAT rate');const divisor=BigInt(100+rate);return (cents(x.amount||0)*100n+divisor/2n)/divisor};
+    const netOf=x=>netAmount(x.amount,x.org,x.vatRate);
     const revenue=realization.reduce((a,x)=>a+netOf(x),0n);
     const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
     const acts=(data.workActs||[]).filter(x=>x.projectKey===projectKey);
@@ -135,5 +136,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount});
 });
