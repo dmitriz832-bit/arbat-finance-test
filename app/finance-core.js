@@ -137,8 +137,25 @@
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
     const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
     const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
-    const ledger=expenseLedger(data),cost=ledger.rows.filter(x=>x.dir===name&&ok(x)).reduce((a,x)=>a+x.amount,0n);
-    return {revenue,cost,result:revenue-cost,issues:ledger.issues};
+    const ledger=expenseLedger(data),assigned=ledger.rows.filter(x=>x.dir===name&&ok(x));
+    const cost=assigned.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
+    const otherIncome=assigned.filter(x=>x.category==='belowIncome').reduce((a,x)=>a+x.amount,0n);
+    return {revenue,cost,otherIncome,result:revenue+otherIncome-cost,issues:ledger.issues};
+  }
+  function directionReconciliation(data,period='',org=''){
+    const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
+    const deals=data.deals||[],ledger=expenseLedger(data);
+    const names=new Set([...deals.map(x=>x.dir).filter(Boolean),...ledger.rows.map(x=>x.dir).filter(Boolean)]);
+    const directions=[...names].sort().map(name=>({name,...directionSnapshot(data,name,period,org)}));
+    const total=preliminaryPeriod(data,period,org);
+    const directionResult=directions.reduce((v,x)=>v+x.result,0n);
+    const unallocatedRevenue=(data.realizations||[]).filter(ok).filter(x=>!deals.find(d=>dealKey(d)===x.projectKey)?.dir).reduce((v,x)=>v+documentPnlAmount(x),0n);
+    const unallocatedRows=ledger.rows.filter(x=>ok(x)&&!x.dir);
+    const unallocatedIncome=unallocatedRows.filter(x=>x.category==='belowIncome').reduce((v,x)=>v+x.amount,0n);
+    const unallocatedExpense=unallocatedRows.filter(x=>x.category!=='belowIncome').reduce((v,x)=>v+x.amount,0n);
+    const unallocatedResult=unallocatedRevenue+unallocatedIncome-unallocatedExpense;
+    const difference=total.result-directionResult-unallocatedResult;
+    return {directions,directionResult,unallocatedRevenue,unallocatedIncome,unallocatedExpense,unallocatedResult,totalResult:total.result,difference,balanced:difference===0n,issues:ledger.issues};
   }
   function warehouseCostAudit(expenses,moves,fifo){
     const issues=[];
@@ -250,5 +267,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation});
 });
