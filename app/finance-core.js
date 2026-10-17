@@ -33,31 +33,81 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
-  function projectPayroll(labor,projectKey,approvedActs=[]){
-    let total=0n,unresolved=[],conflicts=[];
-    const actIds=new Set(approvedActs.filter(a=>a.status==='approved').map(a=>String(a.id||a._id||'')).filter(Boolean));
-    const batchIds=new Set(approvedActs.filter(a=>a.status==='approved').map(a=>String(a.batchId||'')).filter(Boolean));
-    for(const item of labor||[]){
-      const amount=cents(item.amount??item.salary??0)+cents(item.employerContributions||0);
-      const linkedAct=String(item.workActId||item.actId||''),linkedBatch=String(item.batchId||'');
-      if((linkedAct&&actIds.has(linkedAct))||(linkedBatch&&batchIds.has(linkedBatch))){conflicts.push(item);continue}
-      if(item.projectKey===projectKey){total+=amount;continue}
-      if(Array.isArray(item.shares)&&item.shares.length){
-        const matched=item.shares.filter(share=>share.projectKey===projectKey);
-        if(matched.length)total+=sum(matched.map(share=>share.amount||0));
-        continue;
-      }
-      if(item.deal&&!item.projectKey)unresolved.push(item);
+  function dealKey(deal){const n=String(deal.order1c||'').trim();return String(deal.org||'')+'::'+(n?'1C#'+encodeURIComponent(n):String(deal.name||''))}
+  function workAmount(item){
+    // Quantity is not money: preserve all its decimal places before rounding the line total.
+    const raw=String(item.qty??0).trim().replace(',','.');
+    if(!/^-?\d+(?:\.\d+)?$/.test(raw))throw new TypeError('Invalid work quantity');
+    const decimals=(raw.split('.')[1]||'').length,den=10n**BigInt(decimals);
+    const value=cents(item.rate||0)*BigInt(raw.replace('.','')),sign=value<0n?-1n:1n;
+    return sign*((value*sign+den/2n)/den);
+  }
+  function laborType(item,people=[]){return item.expenseType||people.find(p=>p.id===item.personId)?.expenseType||'production'}
+  function linkedWork(item,acts){
+    return acts.filter(a=>a.status==='approved'&&(!item.org||!a.org||item.org===a.org)&&
+      ((item.workActId||item.actId)&&String(item.workActId||item.actId)===String(a.id||a._id||'')||
+       item.batchId&&String(item.batchId)===String(a.batchId||'')));
+  }
+  function payrollParts(item,acts=[]){
+    const gross=cents(item.amount??item.salary??0),contributions=cents(item.employerContributions||0);
+    const referenced=linkedWork(item,acts),linked=referenced.filter(a=>!item.projectKey||!a.projectKey||a.projectKey===item.projectKey),issues=[];
+    if(referenced.length!==linked.length)issues.push('work-link-project-mismatch');
+    if(linked.length)issues.push('linked-work-overlap');
+    const expenseGross=linked.length?0n:gross;
+    if(item.projectKey)return {parts:[{projectKey:item.projectKey,amount:expenseGross+contributions}],issues};
+    const shares=Array.isArray(item.shares)?item.shares:[];
+    if(!shares.length)return {parts:[{projectKey:'',amount:expenseGross+contributions}],issues};
+    const weights=shares.map(x=>cents(x.amount||0)),used=weights.reduce((a,b)=>a+b,0n);
+    if(gross<0n||weights.some(x=>x<0n)||used>gross){
+      issues.push('invalid-payroll-allocation');return {parts:[{projectKey:'',amount:expenseGross+contributions}],issues};
     }
-    const possibleOverlaps=[];
+    const all=[...weights,gross-used];
+    // Allocate contributions using integer gross cents; put rounding remainder on the last nonzero share.
+    const nonzero=all.map((w,i)=>({w,i})).filter(x=>x.w>0n),insurance=all.map(()=>0n);
+    if(nonzero.length){let remainder=contributions;nonzero.forEach(({w,i},n)=>{const value=n===nonzero.length-1?remainder:contributions*w/gross;insurance[i]=value;remainder-=value})}
+    else insurance[insurance.length-1]=contributions;
+    const parts=all.map((value,i)=>({projectKey:shares[i]?.projectKey||'',amount:(linked.length?0n:value)+insurance[i]}));
+    if(gross!==used)issues.push('unallocated-payroll');
+    return {parts,issues};
+  }
+  function projectPayroll(labor,projectKey,approvedActs=[]){
+    let total=0n;const unresolved=[],conflicts=[],possibleOverlaps=[],issues=[];
     for(const item of labor||[]){
+      const result=payrollParts(item,approvedActs);
+      const parts=result.parts.filter(p=>p.projectKey===projectKey);
+      total+=parts.reduce((a,p)=>a+p.amount,0n);
+      if(parts.length){issues.push(...result.issues);if(result.issues.includes('linked-work-overlap'))conflicts.push(item)}
+      if(item.deal&&!item.projectKey&&!(item.shares||[]).length)unresolved.push(item);
       if(item.projectKey!==projectKey||item.workActId||item.actId||item.batchId)continue;
       const date=String(item.date||item.dt||'').slice(0,10);
       if(!date||!item.personId)continue;
       const matching=approvedActs.filter(a=>a.status==='approved'&&String(a.date||'').slice(0,10)===date&&((a.memberIds||[]).includes(item.personId)||a.leadId===item.personId));
       if(matching.length)possibleOverlaps.push({accrualId:item._id||item.id||null,actIds:matching.map(a=>a.id)});
     }
-    return {total,unresolved,conflicts,possibleOverlaps};
+    return {total,unresolved,conflicts,possibleOverlaps,issues:[...new Set(issues)]};
+  }
+  function expenseLedger(data){
+    const rows=[],issues=[],deals=data.deals||[],acts=data.workActs||[];
+    const push=(source,kind,amount,projectKey=source.projectKey||'',category='direct')=>{
+      const deal=deals.find(d=>dealKey(d)===projectKey);
+      rows.push({source,kind,amount,projectKey,dir:deal?.dir||source.dir||'',org:source.org||deal?.org||'',date:source.date||source.dt||'',category});
+    };
+    for(const item of data.expenses||[])push(item,'project-expense',cents(item.amount||0));
+    for(const item of acts.filter(a=>a.status==='approved'))push(item,'work-act',workAmount(item));
+    for(const item of data.costs||[])push(item,'general-expense',cents(item.amount||0),item.projectKey||'',item.projectKey||item.dir?'direct':'administrative');
+    for(const item of data.labor||[]){
+      const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
+      for(const code of result.issues)issues.push({code,source:item});
+      for(const part of result.parts)push(item,'payroll',part.amount,part.projectKey,type==='administrative'?'administrative':type==='commercial'?'commercial':'direct');
+    }
+    return {rows,issues};
+  }
+  function directionSnapshot(data,name,period='',org=''){
+    const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
+    const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
+    const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+netAmount(x.amount,x.org,x.vatRate),0n);
+    const ledger=expenseLedger(data),cost=ledger.rows.filter(x=>x.dir===name&&ok(x)).reduce((a,x)=>a+x.amount,0n);
+    return {revenue,cost,result:revenue-cost,issues:ledger.issues};
   }
   function warehouseCostAudit(expenses,moves,fifo){
     const issues=[];
@@ -83,54 +133,69 @@
     const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
     const acts=(data.workActs||[]).filter(x=>x.projectKey===projectKey);
     const labor=projectPayroll(data.labor||[],projectKey,acts);
-    const cost=projectExpenseTotal(expenses,acts)+labor.total;
-    const issues=[];
+    const ledger=expenseLedger(data),cost=ledger.rows.filter(x=>x.projectKey===projectKey).reduce((a,x)=>a+x.amount,0n);
+    const issues=ledger.issues.filter(x=>(x.source.projectKey===projectKey||(x.source.shares||[]).some(p=>p.projectKey===projectKey))).map(x=>x.code);
     if(expenses.some(x=>x.valuationStatus==='requires-review'))issues.push('expense-valuation');
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
     if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&m.projectIssueId);const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(expenses.some(e=>e.warehouseMoveId&&moves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
-    return {revenue,cost,result:revenue-cost,issues,payroll:labor};
+    return {revenue,cost,result:revenue-cost,issues:[...new Set(issues)],payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
     const external=sum((expenses||[]).map(x=>x.amount||0));
-    const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+(cents(x.rate||0)*cents(x.qty||0)+50n)/100n,0n);
+    const work=(acts||[]).filter(x=>x.status==='approved').reduce((acc,x)=>acc+workAmount(x),0n);
     return external+work;
   }
   function projectResult(revenue,costs){return cents(revenue)-sum(costs)}
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
   function preliminaryPeriod(data,period,org=''){
-    const ok=x=>(!org||x.org===org)&&String(x.date||x.dt||'').slice(0,7)===period;
-    const amounts=(data.realizations||[]).filter(ok).map(x=>rubles(netAmount(x.amount,x.org,x.vatRate)));
-    const direct=(data.expenses||[]).filter(ok).map(x=>x.amount||0);
-    const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles((cents(x.rate||0)*cents(x.qty||0)+50n)/100n));
-    const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
-    const common=(data.costs||[]).filter(x=>ok(x)&&!x.dir).map(x=>x.amount||0);
-    const workActTotal=sum(production),generalCostTotal=sum(common),commercial=[];
-    const labor=(data.labor||[]).filter(ok);
-    for(const item of labor){
-      const type=item.expenseType||'production',amount=item.amount??item.salary??0;
-      (type==='administrative'?common:type==='commercial'?commercial:production).push(amount);
-    }
-    const result=pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});return {...result,components:{revenue:sum(amounts),projectExpenses:sum(direct),productionLaborAndWorks:sum(production),assignedExpenses:sum(assigned),commonExpenses:sum(common),commercialLabor:sum(commercial),workActTotal,productionLabor:sum(production)-workActTotal,administrativeLabor:sum(common)-generalCostTotal,generalCostTotal}};
+    const ok=x=>(!org||x.org===org)&&(!period||String(x.date||x.dt||'').slice(0,7)===period);
+    const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
+    const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
+    const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+netAmount(x.amount,x.org,x.vatRate),0n);
+    const result=pnl({revenue:[rubles(revenue)],direct:rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount))});
+    return {...result,issues:ledger.issues.filter(x=>ok(x.source)),components:{revenue,
+      projectExpenses:total(x=>x.kind==='project-expense'),
+      productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
+      assignedExpenses:total(x=>x.kind==='general-expense'&&x.category==='direct'),
+      commonExpenses:total(x=>x.category==='administrative'),
+      commercialLabor:total(x=>x.kind==='payroll'&&x.category==='commercial'),
+      workActTotal:total(x=>x.kind==='work-act'),productionLabor:total(x=>x.kind==='payroll'&&x.category==='direct'),
+      administrativeLabor:total(x=>x.kind==='payroll'&&x.category==='administrative'),
+      generalCostTotal:total(x=>x.kind==='general-expense'&&x.category==='administrative')}};
   }
-  function walletBalance(opening,entries,walletId){
-    let balance=cents(opening||0);
+  function cashFlow(entries,period='',org=''){
+    const categories=new Map();let income=0n,outgoing=0n,transfers=0n;
+    for(const item of entries||[]){
+      if(org&&item.org!==org||period&&String(item.date||'').slice(0,7)!==period)continue;
+      const amount=cents(item.amount||0);
+      if(item.type==='transfer'){transfers+=amount;continue}
+      if(!['in','out'].includes(item.type))continue;
+      if(item.type==='in')income+=amount;else outgoing+=amount;
+      const key=item.articleId||'no-article',row=categories.get(key)||{articleId:key,income:0n,outgoing:0n};
+      row[item.type==='in'?'income':'outgoing']+=amount;categories.set(key,row);
+    }
+    return {income,outgoing,transfers,net:income-outgoing,categories:[...categories.values()]};
+  }
+  function walletSnapshot(opening,entries,walletId){
+    const initial=cents(opening||0);let received=0n,spent=0n;
     for(const item of entries||[]){
       const amount=cents(item.amount||0);
-      if(item.type==='in'&&item.walletId===walletId)balance+=amount;
-      else if(item.type==='out'&&item.walletId===walletId)balance-=amount;
+      if(item.type==='in'&&item.walletId===walletId)received+=amount;
+      else if(item.type==='out'&&item.walletId===walletId)spent+=amount;
       else if(item.type==='transfer'){
-        if(item.walletId===walletId)balance-=amount;
-        if(item.toWalletId===walletId)balance+=amount;
+        if(item.walletId===walletId)spent+=amount;
+        if(item.toWalletId===walletId)received+=amount;
       }
     }
-    return balance;
+    return {opening:initial,received,spent,balance:initial+received-spent};
   }
+  function walletBalance(opening,entries,walletId){return walletSnapshot(opening,entries,walletId).balance}
   function payroll({gross,ndfl='0',other='0',contributions='0',paid='0'}){
     const g=cents(gross),tax=cents(ndfl),ded=cents(other),ins=cents(contributions),payment=cents(paid);
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
 });

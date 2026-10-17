@@ -72,3 +72,54 @@ test('contract and recognized revenue use identical VAT rounding',()=>{assert.eq
 test('deal contract net and realized net use identical tax method',()=>{const contract=f.netAmount('122000','АРБАТ.ГК');const key='АРБАТ.ГК::1C#1';const deal={org:'АРБАТ.ГК',name:'Тест'};const snap=f.projectSnapshot({realizations:[{projectKey:key,org:'АРБАТ.ГК',amount:'122000'}]},deal,key);assert.equal(contract,snap.revenue);assert.equal(f.rubles(contract),'100000.00')});
 
 test('monthly P&L applies the same VAT to sales and negative corrections',()=>{const rows={realizations:[{date:'2026-10-01',org:'АРБАТ.ГК',amount:'1220.00'},{date:'2026-10-02',org:'АРБАТ.ГК',amount:'-122.00'}]};const p=f.preliminaryPeriod(rows,'2026-10','АРБАТ.ГК');assert.equal(f.rubles(p.revenue),'900.00');assert.equal(p.revenue,f.netAmount('1220.00','АРБАТ.ГК')+f.netAmount('-122.00','АРБАТ.ГК'))});
+
+test('period expenses include employer contributions exactly once, without mutating payroll',()=>{
+ const labor=[{date:'2026-10-17',org:'A',amount:'57471',ndfl:'7471',employerContributions:'14717',expenseType:'administrative'}];
+ const original=JSON.stringify(labor),d={labor};
+ assert.equal(f.rubles(f.preliminaryPeriod(d,'2026-10','A').result),'-72188.00');
+ assert.equal(f.rubles(f.preliminaryPeriod(d,'2026-10','A').result),'-72188.00');
+ assert.equal(JSON.stringify(labor),original);
+});
+test('linked payroll skips duplicate gross but retains employer contributions in every view',()=>{
+ const deal={org:'A',order1c:'1',dir:'Service'},key=f.dealKey(deal),d={deals:[deal],realizations:[{projectKey:key,date:'2026-10-17',org:'A',amount:5000}],workActs:[{id:'act',projectKey:key,date:'2026-10-01',org:'A',rate:1000,qty:1,status:'approved'}],labor:[{projectKey:key,date:'2026-10-17',org:'A',workActId:'act',amount:1000,employerContributions:300}]};
+ assert.equal(f.rubles(f.projectSnapshot(d,deal,key).cost),'1300.00');
+ assert.equal(f.rubles(f.directionSnapshot(d,'Service').cost),'1300.00');
+ assert.equal(f.rubles(f.preliminaryPeriod(d,'2026-10','A').direct),'1300.00');
+});
+test('payroll allocations conserve gross and contributions across directions including residual',()=>{
+ const a={org:'A',order1c:'1',dir:'One'},b={org:'A',order1c:'2',dir:'Two'};
+ const d={deals:[a,b],labor:[{date:'2026-10-17',org:'A',amount:'100.00',employerContributions:'30.01',shares:[{projectKey:f.dealKey(a),amount:'33.33'},{projectKey:f.dealKey(b),amount:'66.67'}]}]};
+ const one=f.directionSnapshot(d,'One').cost,two=f.directionSnapshot(d,'Two').cost;
+ assert.equal(f.rubles(one),'43.33');assert.equal(f.rubles(two),'86.68');
+ assert.equal(one+two,f.preliminaryPeriod(d,'2026-10','A').direct);
+ assert.equal(f.projectSnapshot(d,a,f.dealKey(a)).cost,one);
+ d.labor[0].shares.pop();
+ const ledger=f.expenseLedger(d);assert.equal(f.rubles(ledger.rows.reduce((a,x)=>a+x.amount,0n)),'130.01');assert.ok(ledger.issues.some(x=>x.code==='unallocated-payroll'));
+});
+test('common costs, project costs and directional payroll appear once in consolidated P&L',()=>{
+ const deal={org:'A',order1c:'1',dir:'Service'},key=f.dealKey(deal),base={org:'A',date:'2026-10-17'};
+ const d={deals:[deal],costs:[{...base,projectKey:key,dir:'Service',amount:300},{...base,amount:400}],labor:[{...base,projectKey:key,dir:'Service',amount:1000,employerContributions:300},{...base,dir:'Service',amount:500,employerContributions:150}]};
+ assert.equal(f.rubles(f.projectSnapshot(d,deal,key).cost),'1600.00');
+ assert.equal(f.rubles(f.directionSnapshot(d,'Service').cost),'2250.00');
+ assert.equal(f.rubles(f.preliminaryPeriod(d,'2026-10','A').result),'-2650.00');
+});
+test('quantity retains precision beyond hundredths and negative corrections round symmetrically',()=>{
+ assert.equal(f.rubles(f.workAmount({qty:'0.125',rate:'1000'})),'125.00');
+ assert.equal(f.rubles(f.workAmount({qty:'-0.125',rate:'0.04'})),'-0.01');
+});
+test('legacy employee category resolves identically for directions and monthly reports',()=>{
+ const d={people:[{id:'e',expenseType:'administrative'}],labor:[{personId:'e',date:'2026-10-17',org:'A',amount:1000,employerContributions:300}]};
+ const p=f.preliminaryPeriod(d,'2026-10','A');assert.equal(f.rubles(p.administrative),'1300.00');assert.equal(f.rubles(p.direct),'0.00');
+});
+test('a link to work on another project cannot suppress this project payroll expense',()=>{
+ const deal={org:'A',order1c:'1',dir:'One'},key=f.dealKey(deal),data={deals:[deal],workActs:[{id:'other-act',projectKey:'A::1C#2',org:'A',status:'approved',rate:1000,qty:1}],labor:[{projectKey:key,org:'A',amount:1000,employerContributions:300,workActId:'other-act'}]};
+ const p=f.projectSnapshot(data,deal,key);assert.equal(f.rubles(p.cost),'1300.00');assert.ok(p.issues.includes('work-link-project-mismatch'));
+});
+test('direction rollups exclude other organizations and periods',()=>{
+ const a={org:'A',order1c:'1',dir:'Same'},b={org:'B',order1c:'1',dir:'Same'},data={deals:[a,b],realizations:[{org:'A',date:'2026-10-17',projectKey:f.dealKey(a),amount:'100'},{org:'B',date:'2026-10-17',projectKey:f.dealKey(b),amount:'200'},{org:'A',date:'2026-09-17',projectKey:f.dealKey(a),amount:'300'}],costs:[{org:'A',date:'2026-10-17',dir:'Same',amount:'10'}]};
+ assert.equal(f.rubles(f.directionSnapshot(data,'Same','2026-10','A').result),'90.00');assert.equal(f.rubles(f.directionSnapshot(data,'Same').result),'590.00');
+});
+test('cash flow categories reconcile fractional receipts, negative net and excluded transfers',()=>{
+ const cash=[{date:'2026-10-17',org:'A',type:'in',amount:'0.10'},{date:'2026-10-17',org:'A',type:'in',amount:'0.20'},{date:'2026-10-17',org:'A',type:'out',amount:'1.00',articleId:'supplier'},{date:'2026-10-17',org:'A',type:'transfer',amount:'100.00'},{date:'2026-09-17',org:'A',type:'in',amount:'500.00'},{date:'2026-10-17',org:'B',type:'in',amount:'200.00'}];
+ const r=f.cashFlow(cash,'2026-10','A');assert.equal(f.rubles(r.income),'0.30');assert.equal(f.rubles(r.net),'-0.70');assert.equal(f.rubles(r.transfers),'100.00');assert.equal(r.categories.reduce((a,c)=>a+c.income-c.outgoing,0n),r.net);
+});

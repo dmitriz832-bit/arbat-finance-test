@@ -5,7 +5,13 @@ on:
   pull_request:
     paths:
       - 'app/finance-core.js'
-      - 'tests/finance-core.test.cjs'
+      - 'tests/finance*.cjs'
+      - 'e2e/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app/index.html'
+      - 'app/dashboard.js'
+      - 'app/business-system.js'
       - '.github/workflows/finance-core-tests.yml'
 jobs:
   test:
@@ -16,4 +22,15 @@ jobs:
         with:
           node-version: '22'
       - run: node --check app/finance-core.js
-      - run: node --test tests/finance-core.test.cjs tests/finance-integration.test.cjs
+      - run: node --test tests/*.cjs
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

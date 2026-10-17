@@ -18,7 +18,7 @@ test('deal margin and dashboard use the exact same project snapshot',()=>{
  assert.match(core,/function projectSnapshot\(/);
 });
 test('monthly P&L and dashboard derive from the same period engine',()=>{
- assert.match(html,/const monthlyFinancials=revenue\.map\(\(v,i\)=>window\.ArbatFinanceCore\.preliminaryPeriod\(/);
+ assert.match(html,/const monthlyFinancials=monthNumbers\(m=>window\.ArbatFinanceCore\.preliminaryPeriod\(/);
  assert.match(dashboard,/core\.preliminaryPeriod\(/);
 });
 test('wallet balances use core and preserve internal transfers',()=>{
@@ -31,8 +31,6 @@ test('project warehouse valuation must distinguish unresolved FIFO',()=>{
  assert.match(core,/warehouse-duplicate-global-expense/);
 });
 
-test('direction financial rollups use shared net VAT and project arithmetic',()=>{assert.match(dashboard,/core\.netAmount\(item\.amount,item\.org,item\.vatRate\)/);assert.match(dashboard,/revenueC-costC/)});
+test('direction financial rollups delegate to shared expense ledger',()=>{assert.match(dashboard,/core\.directionSnapshot\(/);assert.match(core,/function expenseLedger\(/)});
 
-test('direction wages are not double counted when explicitly allocated to project',()=>{assert.match(dashboard,/!item\.projectKey/);assert.match(dashboard,/!\(Array\.isArray\(item\.shares\)\&\&item\.shares\.length\)/)});
-
-test('direction costs allocate project payroll through shared helper',()=>{assert.match(dashboard,/core\.projectPayroll\(labor,projectKey\(deal\),acts\.filter/);assert.ok(!dashboard.includes('labor.filter(item=>keys.has(item.projectKey)).map(item=>item.amount'))});
+test('P&L adapter never mutates source payroll to add contributions',()=>{const business=fs.readFileSync(path.join(root,'app/business-system.js'),'utf8');assert.ok(!business.includes('item.amount=Number(item.amount'));assert.match(core,/cents\(item.employerContributions/)});

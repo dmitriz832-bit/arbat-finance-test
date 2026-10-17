@@ -1,0 +1,11 @@
+{
+  "name": "arbat-finance-validation",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.cjs",
+    "test:browser": "node --test e2e/finance-browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
