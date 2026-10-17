@@ -391,13 +391,14 @@ const KEY='arbat-warehouse-v1';
 const def={items:[],places:[{id:'place-main-air',org:'АИР-КЛИМАТ',name:'Основной склад',type:'warehouse',owner:''},{id:'place-main-arbat',org:'АРБАТ.ГК',name:'Основной склад',type:'warehouse',owner:''}],moves:[]};
 let wh;try{wh=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!wh||!Array.isArray(wh.items)||!Array.isArray(wh.moves)||!Array.isArray(wh.places))wh=def;
+wh.folders=Array.isArray(wh.folders)?wh.folders:[];
 const $=id=>document.getElementById(id), h=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])), id=()=>crypto.randomUUID?crypto.randomUUID():'wh-'+Date.now()+'-'+Math.random(), rub=x=>Number(x||0).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽', num=x=>Number(x||0).toLocaleString('ru-RU',{maximumFractionDigits:3});
 function persist(){let old=JSON.parse(localStorage.getItem(KEY)||'{}'),previous=new Set(window.arbatFifo(old).warnings.map(x=>x.id+'|'+x.reason));let added=window.arbatFifo(wh).warnings.filter(x=>!previous.has(x.id+'|'+x.reason));if(added.length)throw Error('Нельзя сохранить движение: '+added[0].reason+'. Уточните дату, остаток или закупочную цену.');localStorage.setItem(KEY,JSON.stringify(wh));draw();window.dispatchEvent(new Event('arbat-warehouse-changed'))}
 function item(i){return wh.items.find(x=>x.id===i)}
 function place(i){return wh.places.find(x=>x.id===i)}
 function qty(itemId,placeId){return wh.moves.reduce((s,m)=>m.itemId!==itemId?s:m.to===placeId?s+m.qty:m.from===placeId?s-m.qty:s,0)}
 function avg(itemId,org){let opening=wh.moves.filter(m=>m.itemId===itemId&&m.org===org&&(m.kind==='receipt'||m.kind==='opening'||m.kind==='intercompany'));let priced=opening.filter(m=>Number(m.price)>0&&Number(m.qty)>0),pricedQty=priced.reduce((s,m)=>s+Number(m.qty),0),reference=pricedQty?priced.reduce((s,m)=>s+Number(m.qty)*Number(m.price),0)/pricedQty:0;let purchase=opening.reduce((s,m)=>s+Number(m.qty)*(Number(m.price)>0?Number(m.price):(m.kind==='opening'||(m.kind==='receipt'&&String(m.note||'').includes('Массовое оприходование')))?reference:0),0),total=opening.reduce((s,m)=>s+Number(m.qty),0);return total?purchase/total:0}
-function fields(list){return list.map(f=>'<label class="whfield">'+h(f.label)+(f.type==='select'?'<select name="'+h(f.name)+'" '+(f.required?'required':'')+'>'+f.opts.map(o=>'<option value="'+h(o[0])+'">'+h(o[1])+'</option>').join('')+'</select>':'<input name="'+h(f.name)+'" type="'+(f.type||'text')+'" '+(f.required?'required':'')+' '+(f.type==='number'?'min="0" step="any"':'')+' value="'+h(f.value??'')+'">')+'</label>').join('')}
+function fields(list){return list.map(f=>'<label class="whfield">'+h(f.label)+(f.type==='select'?'<select name="'+h(f.name)+'" '+(f.required?'required':'')+'>'+(f.required?'<option value="">Выберите значение</option>':'')+f.opts.map(o=>'<option value="'+h(o[0])+'">'+h(o[1])+'</option>').join('')+'</select>':'<input name="'+h(f.name)+'" type="'+(f.type||'text')+'" '+(f.required?'required':'')+' '+(f.type==='number'?'min="0" step="any"':'')+' value="'+h(f.value??'')+'">')+'</label>').join('')}
 const orgs=[['АИР-КЛИМАТ','АИР-КЛИМАТ'],['АРБАТ.ГК','АРБАТ.ГК']];
 let action=()=>{};
 function dialog(title,fs,save){$('whDlgForm').querySelectorAll('[data-wh-delete-action]').forEach(n=>n.remove());$('whDlgTitle').textContent=title;$('whDlgFields').innerHTML=fields(fs);action=save;$('whDialog').classList.add('open')}
@@ -429,6 +430,7 @@ $('whMovements').innerHTML=table(['№ / дата','Операция','Мате�
 const total=balances.reduce((v,r)=>v+fifoSnapshot.lots(r.p.id,r.i.id).reduce((t,l)=>t+l.qty*l.cost,0),0),onCrew=balances.filter(r=>r.p.type==='crew').reduce((v,r)=>v+fifoSnapshot.lots(r.p.id,r.i.id).reduce((t,l)=>t+l.qty*l.cost,0),0);let issues=fifoSnapshot.warnings;let integrity=document.getElementById('whIntegrityWarnings');if(!integrity){integrity=document.createElement('div');integrity.id='whIntegrityWarnings';$('whSummary').parentElement.insertBefore(integrity,$('whSummary'))}integrity.innerHTML=issues.length?'<div style="padding:12px 0;color:#b42318"><strong>Нужна проверка стоимости и последовательности складских документов: '+issues.length+' ошибок</strong><div style="font-size:13px;margin-top:6px">'+issues.slice(0,12).map(x=>'Движение '+h((wh.moves.find(m=>m.id===x.id)||{}).n||x.id)+' · '+h(wh.items.find(i=>i.id===x.itemId)?.name||'Материал')+' — '+h(x.reason)).join('<div style="margin:4px 0"></div>')+'</div></div>':'';$('whSummary').innerHTML=[['Позиций',wh.items.length],['Мест хранения',wh.places.length],['Остатки в учёте',rub(total)],['У монтажников',rub(onCrew)]].map(a=>'<div class="card"><div class="muted">'+a[0]+'</div><div class="stat">'+a[1]+'</div></div>').join('');
 }
 $('whNewItem').onclick=()=>itemForm();$('whNewPlace').onclick=()=>placeForm();$('whNewMove').onclick=()=>{try{moveForm()}catch(e){alert(e.message)}};$('whOrg').onchange=draw;$('whSearch').oninput=draw;$('whItems').onclick=e=>{let tr=e.target.closest('[data-wh-item]');if(tr)itemForm(item(tr.dataset.whItem))};
+window.addEventListener('arbat:cloud-update',event=>{if(event.detail?.warehouse){wh=event.detail.warehouse;wh.folders=Array.isArray(wh.folders)?wh.folders:[];draw()}});
 function editMovement(m){
 if(!m)return;
 dialog('Движение №'+m.n+' · исправление',[{name:'itemId',label:'Номенклатура',type:'select',opts:wh.items.map(i=>[i.id,i.name+' ('+i.unit+')'])},{name:'qty',label:'Количество',type:'number',required:true,value:m.qty},{name:'price',label:'Цена за единицу, ₽',type:'number',value:m.price},{name:'note',label:'Документ / примечание',value:m.note}],v=>{
@@ -926,8 +928,8 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  };
  const entries=[
  {key:'overview',label:'Главная',route:'overview'},
- {key:'finance',label:'Финансы',children:[['cash','Движение денежных средств'],['calendar','Платёжный календарь'],['expenses:project','Расходы проектов'],['expenses:general','Общие расходы'],['realizations','Реализации']]},
- {key:'deals',label:'Сделки и проекты',route:'deals'},
+ {key:'finance',label:'Финансы',children:[['cash','Движение денежных средств'],['calendar','Платёжный календарь'],['expenses:project','Расходы проектов'],['expenses:general','Общие расходы']]},
+ {key:'deals',label:'Сделки и проекты',children:[['deals','Сделки'],['realizations','Акты и реализация']]},
  {key:'production',label:'Производство',children:[['work','Выполненные работы и бригады'],['labor','Начисления сотрудникам']]},
  {key:'materials',label:'Склад',children:[['materials:receipt','Поступление товаров'],['materials:movement','Комплектация и движение'],['materials:catalog','Остатки и номенклатура']]},
  {key:'reports',label:'Отчёты',children:[['reports:cash','ДДС'],['reports:pnl','ОПиУ'],['reports:stock','Склад']]},
@@ -1015,7 +1017,7 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
    }
  }
  const sectionMap={'overview':'overview','cash':'cash','calendar':'calendar','deals':'deals','realizations':'realizations','expenses:project':'expenses','expenses:general':'costs','materials:receipt':'materials','materials:movement':'materials','materials:catalog':'materials','work':'work','labor':'labor','reports:cash':'reports','reports:pnl':'reports','reports:stock':'reports','settings':'settings'};
- const labelMap={overview:'Главная',cash:'ДДС',calendar:'Платёжный календарь',deals:'Сделки',realizations:'Реализации', 'expenses:project':'Расходы · По проектам','expenses:general':'Расходы · Общие','materials:receipt':'Склад · Поступление товаров от поставщиков','materials:movement':'Склад · Движение товаров по проектам','materials:catalog':'Склад · Номенклатура',work:'Производство',labor:'Сотрудники','reports:cash':'Отчёты · ДДС','reports:pnl':'Отчёты · ОПиУ','reports:stock':'Отчёты · Склад',settings:'Настройки'};
+ const labelMap={overview:'Главная',cash:'ДДС',calendar:'Платёжный календарь',deals:'Сделки',realizations:'Акты и реализация', 'expenses:project':'Расходы · По проектам','expenses:general':'Расходы · Общие','materials:receipt':'Склад · Поступление товаров от поставщиков','materials:movement':'Склад · Движение товаров по проектам','materials:catalog':'Склад · Номенклатура',work:'Производство',labor:'Сотрудники','reports:cash':'Отчёты · ДДС','reports:pnl':'Отчёты · ОПиУ','reports:stock':'Отчёты · Склад',settings:'Настройки'};
  let current='overview';
  function shortcuts(section,rows){
   let el=document.getElementById(section);if(!el)return;
@@ -1024,8 +1026,8 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  }
  shortcuts('cash',[['cash','Денежные операции'],['calendar','Платёжный календарь']]);
  shortcuts('calendar',[['cash','Денежные операции'],['calendar','Платёжный календарь']]);
- shortcuts('deals',[['deals','Сделки'],['realizations','Реализации']]);
- shortcuts('realizations',[['deals','Сделки'],['realizations','Реализации']]);
+ shortcuts('deals',[['deals','Сделки'],['realizations','Акты и реализация']]);
+ shortcuts('realizations',[['deals','Сделки'],['realizations','Акты и реализация']]);
  const warehouse=document.getElementById('warehouseApp');
  const warehouseCards=warehouse?[...warehouse.querySelectorAll(':scope > .card')]:[];
  const receiptIds=new Set(['whImportPanel']);
@@ -1090,7 +1092,7 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
   if(!sectionMap[route])return;
   current=route;try{sessionStorage.setItem('arbat-last-route',route)}catch(e){}let section=sectionMap[route];document.querySelectorAll('main.wrap > section').forEach(el=>el.classList.toggle('active',el.id===section));
   title.textContent=labelMap[route]||'Главная';
-  for(let [name,g] of groups){let active=name===section||name===route.split(':')[0]||(name==='finance'&&['cash','calendar','realizations','expenses:project','expenses:general'].includes(route))||(name==='production'&&['work','labor'].includes(route));
+  for(let [name,g] of groups){let active=name===section||name===route.split(':')[0]||(name==='finance'&&['cash','calendar','expenses:project','expenses:general'].includes(route))||(name==='deals'&&['deals','realizations'].includes(route))||(name==='production'&&['work','labor'].includes(route));
    g.querySelector('.arbat-nav-main').classList.toggle('active-parent',active);g.querySelector('.arbat-nav-main').classList.toggle('active',active);
    if(g.querySelector('.arbat-nav-children')){g.classList.toggle('open',active);g.querySelector('.arbat-nav-main').setAttribute('aria-expanded',String(active))}
   }
@@ -1112,4 +1114,4 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const mo=new MutationObserver(()=>{if(current==='reports:stock'){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display==='none')audit.style.display=''}else if(current.startsWith('reports:')){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display!=='none')audit.style.display='none'}});
  if(firstReport)mo.observe(firstReport,{childList:true,subtree:true});
 })();
-</script><link rel="stylesheet" href="./corporate-theme.css?v=3"><link rel="stylesheet" href="./cash-workspace.css?v=1"><link rel="stylesheet" href="./document-lists.css?v=1"><link rel="stylesheet" href="./profile-corporate.css?v=1"><link rel="stylesheet" href="./interface.css?v=3"><script src="./interface.js?v=3"></script><script src="./cash-workspace.js?v=2"></script><script src="./document-lists.js?v=2"></script><script src="./sync.js"></script><script src="./profile.js"></script><script src="./auth.js?v=2"></script></body></html>
+</script><link rel="stylesheet" href="./corporate-theme.css?v=3"><link rel="stylesheet" href="./cash-workspace.css?v=1"><link rel="stylesheet" href="./document-lists.css?v=1"><link rel="stylesheet" href="./profile-corporate.css?v=1"><link rel="stylesheet" href="./interface.css?v=3"><link rel="stylesheet" href="./business-system.css?v=1"><script src="./interface.js?v=3"></script><script src="./cash-workspace.js?v=2"></script><script src="./document-lists.js?v=2"></script><script src="./business-system.js?v=1"></script><script src="./sync.js?v=2"></script><script src="./profile.js?v=2"></script><script src="./auth.js?v=3"></script></body></html>

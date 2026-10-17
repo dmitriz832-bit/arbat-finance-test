@@ -74,6 +74,8 @@
     window.abMessage('Проверяем права и загружаем общую базу…');
     await window.abGetToken();
     const identity=await call('/rest/v1/rpc/claim_staff_access',{});
+    window.abIdentity=identity;
+    window.dispatchEvent(new CustomEvent('arbat:identity',{detail:identity}));
     if(identity.role==='employee'){
       const keys=['arbat-finance-demo-live','arbat-warehouse-v1','arbat-cloud-revision-v1'];
       if(keys.some(x=>localStorage.getItem(x)!==null)){
