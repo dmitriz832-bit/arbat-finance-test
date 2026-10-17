@@ -71,6 +71,8 @@
       if(!valued||valued.invalid||valued.amount==null){issues.push({moveId:move.id,reason:'unverified-fifo'});continue}
       if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
     }
+    const eligible=new Set((moves||[]).filter(x=>x.kind==='consume'&&x.projectIssueId).map(x=>String(x.id)));
+    for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
     return issues;
   }
   function projectSnapshot(data,deal,projectKey){
