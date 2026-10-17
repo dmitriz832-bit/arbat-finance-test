@@ -109,9 +109,19 @@
         if(localStorage.getItem(K[i])&&!localStorage.getItem(backup))baseSet.call(localStorage,backup,localStorage.getItem(K[i]));
       }
       applyRemote(rows);
-      location.reload();
+      // Allow one reload to rehydrate legacy in-memory state, never an infinite loop.
+      const bootKey='arbat-cloud-boot-reloads';
+      const count=Number(sessionStorage.getItem(bootKey)||0);
+      if(count<1){
+        sessionStorage.setItem(bootKey,String(count+1));
+        location.reload();
+      }else{
+        sessionStorage.removeItem(bootKey);
+        window.abMessage('Не удалось согласовать локальные данные с сервером. Автоматическая перезагрузка остановлена, чтобы не зациклить вход. Закройте другие вкладки ARBAT FINANCE и обновите страницу один раз.');
+      }
       return false;
     }
+    sessionStorage.removeItem('arbat-cloud-boot-reloads');
     rev=saved;
     for(let i=0;i<rows.length;i++)previous[i]=rows[i].payload;
     active=true;
