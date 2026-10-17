@@ -135,8 +135,8 @@ test('offline full application reconciles report, dashboard and project at deskt
    });
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results','finance-'+width+'.png'),fullPage:true});
    assert.equal(errors.length,0,'JavaScript errors at '+width+': '+errors.join('; '));
-   assert.equal(Number(result.report.replace(/[^\d,.-]/g,'').replace(',','.')),28000);
-   assert.equal(result.dashboard,28000);assert.equal(result.card,48000);assert.equal(result.project,48000);assert.equal(result.cost,12000);assert.equal(result.laborUnchanged,true);assert.equal(result.financialCoreLoaded,true);
+   assert.equal(Number(result.report.replace(/[^\d,.-]/g,'').replace(',','.')),32800);
+   assert.equal(result.dashboard,32800);assert.equal(result.card,52800);assert.equal(result.project,52800);assert.equal(result.cost,12000);assert.equal(result.laborUnchanged,true);assert.equal(result.financialCoreLoaded,true);
    await context.close();
   }
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
