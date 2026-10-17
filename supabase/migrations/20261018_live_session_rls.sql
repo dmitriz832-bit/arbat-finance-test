@@ -41,3 +41,21 @@ for all to authenticated using (
   public.has_active_finance_session()
   and exists(select 1 from public.staff_access s where s.user_id=auth.uid() and s.enabled and s.role='admin')
 );
+
+-- SECURITY DEFINER state writer bypasses table RLS; guard the RPC itself.
+create or replace function public.update_shared_state(p_store text,p_payload jsonb,p_expected_revision bigint)
+returns bigint language plpgsql security definer set search_path='' as $$
+declare v_rev bigint;
+begin
+ if not public.has_active_finance_session() then raise exception 'Session revoked or expired';end if;
+ if not exists(select 1 from public.staff_access a where a.user_id=auth.uid() and a.enabled and a.role in ('admin','accountant')) then raise exception 'Access denied';end if;
+ if p_store='finance' then
+   update public.finance_state set payload=p_payload,revision=revision+1,updated_at=now(),updated_by=auth.uid() where id='main' and revision=p_expected_revision returning revision into v_rev;
+ elsif p_store='warehouse' then
+   update public.warehouse_state set payload=p_payload,revision=revision+1,updated_at=now(),updated_by=auth.uid() where id='main' and revision=p_expected_revision returning revision into v_rev;
+ else raise exception 'Unknown store';end if;
+ if v_rev is null then raise exception 'Version conflict';end if;
+ return v_rev;
+end $$;
+revoke all on function public.update_shared_state(text,jsonb,bigint) from public,anon;
+grant execute on function public.update_shared_state(text,jsonb,bigint) to authenticated;
