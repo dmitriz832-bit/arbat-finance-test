@@ -86,6 +86,7 @@
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
+    if(data.warehouse&&data.fifo){const consumed=(data.warehouse.moves||[]).filter(m=>m.dealId===deal._id&&m.kind==='consume'&&m.projectIssueId);if(warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')};
     return {revenue,cost,result:revenue-cost,issues,payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
