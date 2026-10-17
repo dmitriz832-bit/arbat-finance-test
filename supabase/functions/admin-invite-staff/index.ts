@@ -50,7 +50,8 @@ Deno.serve(async(req:Request)=>{
         const {error:banError}=await admin.auth.admin.updateUserById(target.id,{ban_duration:"876000h"});
         if(banError)throw banError;
       }
-      await admin.from("staff_activity").insert({user_id:user.id,email:user.email,event:"access_removed",details:{target:email}});
+      const {error:auditError}=await admin.from("staff_activity").insert({user_id:user.id,email:user.email,event:"access_revoked",details:{target:email,auth_user_preserved:true}});
+      if(auditError)throw auditError;
       return reply(200,{ok:true,removed:true});
     }
     if(action!=="invite")return reply(400,{message:"Неизвестное действие"});
@@ -62,7 +63,7 @@ Deno.serve(async(req:Request)=>{
     const existing=list.users.find(candidate=>candidate.email?.toLowerCase()===email);
     let invited=false;
     if(existing){
-      const {error:updateError}=await admin.auth.admin.updateUserById(existing.id,{user_metadata:{...existing.user_metadata,full_name}});
+      const {error:updateError}=await admin.auth.admin.updateUserById(existing.id,{user_metadata:{...existing.user_metadata,full_name},ban_duration:"none"});
       if(updateError)throw updateError;
       await admin.from("staff_access").upsert({user_id:existing.id,email,employee_id,role,enabled:true},{onConflict:"user_id"});
     }else{
