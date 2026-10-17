@@ -105,7 +105,7 @@
         group.includes('общепроизвод')?'production':
         group.includes('администр')?'administrative':
         item.projectKey||item.dir?'direct':'administrative';
-      const amount=documentPnlAmount(item,true),allocations=Array.isArray(item.pnlAllocations)?item.pnlAllocations:[],rule=String(item.pnlAllocationRule||article?.allocationRule||'none');
+      const amount=documentPnlAmount(item,type!=='income'),allocations=Array.isArray(item.pnlAllocations)?item.pnlAllocations:[],rule=String(item.pnlAllocationRule||article?.allocationRule||'none');
       if(rule==='proportional'&&allocations.length){
         const targets=allocations.map(a=>({projectKey:String(a.projectKey||''),dir:String(a.dir||''),org:String(a.org||item.org||'')}));
         if(targets.some(a=>!a.projectKey&&!a.dir)||targets.some(a=>a.org!==String(item.org||''))){
