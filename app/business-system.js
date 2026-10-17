@@ -82,7 +82,7 @@
   // Desktop wheel: over a wide table, scroll its own horizontal viewport.
   // Shift+wheel always scrolls horizontally; plain wheel uses horizontal scrolling
   // only when the table cannot scroll vertically. Touch/trackpad native gestures remain intact.
-  let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,.ab-scroll table,#ab-profile-window table').forEach(table=>{
+  let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,.ab-scroll table,#ab-profile-window table').forEach(table=>{const container=table.closest('.scroll,.whtable,.ab-scroll');if(container&&container.scrollLeft!==0)container.scrollLeft=0;
       const heads=[...(table.tHead?.rows[0]?.cells||[])].map(c=>c.textContent.replace(/Потяните.*$/,'').trim());
       for(const row of table.tBodies||[])for(const tr of row.rows)[...tr.cells].forEach((cell,i)=>{const label=heads[i]||'Данные';if(cell.dataset.columnLabel!==label)cell.dataset.columnLabel=label});
     })})}
