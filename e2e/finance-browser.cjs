@@ -41,6 +41,20 @@ test('offline full application reconciles report, dashboard and project at deskt
    });
    assert.deepEqual(expenseVat,{rate:'22',deductible:'true',gross:'24400.00',vat:'4400.00',net:'20000.00'});
 
+   const savedVat=await page.evaluate(()=>{
+    const form=document.getElementById('realizationForm');
+    form.elements.date.value=new Date().toISOString().slice(0,10);
+    form.elements.projectKey.value=window.arbatDealKey(db.deals[0]);
+    form.elements.document.value='AUDIT-VAT-REAL';
+    form.elements.amount.value='12200';
+    form.elements.vatRate.value='22';
+    form.elements.vatRate.dispatchEvent(new Event('change',{bubbles:true}));
+    const before=db.realizations.length;form.requestSubmit();
+    const item=db.realizations.find(x=>x.document==='AUDIT-VAT-REAL');
+    if(!item)return {created:false,count:db.realizations.length-before};
+    return {created:true,rate:item.vatRate,gross:item.amountGross,tax:item.vatAmount,net:item.amountNet,source:item.vatRateSource,count:db.realizations.length-before};
+   });
+   assert.deepEqual(savedVat,{created:true,rate:'22',gross:12200,tax:'2200.00',net:'10000.00',source:'document-explicit',count:1});
    const result=await page.evaluate(()=>{
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
     const month=new Date().getMonth()+1,before=JSON.stringify(db.labor),report=reportData(),dash=window.arbatDashboardSnapshot(),deal=dealMargin(db.deals[0]);
