@@ -41,3 +41,21 @@ test('offline full application reconciles report, dashboard and project at deskt
   }
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
 });
+
+test('unauthenticated browser presents login gate without requesting cloud finance state',async()=>{
+ const server=http.createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=path.resolve(root,'.'+(pathname.endsWith('/')?pathname+'index.html':pathname));if(!file.startsWith(root+path.sep))throw Error('Invalid path');const body=await fs.readFile(file);res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(body)}catch{res.writeHead(404);res.end()}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
+ try{
+  browser=await chromium.launch({headless:true});const origin='http://127.0.0.1:'+server.address().port;
+  const context=await browser.newContext({viewport:{width:390,height:844}});
+  let financialRequests=0;
+  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===origin)return route.continue();if(/finance_state|warehouse_state/.test(url.pathname))financialRequests++;return route.abort()});
+  const page=await context.newPage();await page.goto(origin+'/app/',{waitUntil:'load'});
+  await page.waitForSelector('#ab-email:visible');
+  assert.equal(await page.locator('#ab-password:visible').count(),1);
+  assert.equal(await page.locator('#ab-form button[type="submit"]').innerText(),'Войти');
+  assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('ab-ready')),false);
+  assert.equal(financialRequests,0,'financial cloud read before authentication');
+  await context.close();
+ }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
+});
