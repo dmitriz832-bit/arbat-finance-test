@@ -92,3 +92,23 @@ create or replace function public.admin_set_staff(p_email text, p_enabled boolea
  SET search_path TO ''
 AS $function$ declare who text;begin perform public.require_active_finance_session(); if not exists(select 1 from public.staff_access where user_id=auth.uid() and enabled and role='admin') then raise exception 'Admin only';end if;who:=lower(trim(p_email));if who=(select lower(email) from auth.users where id=auth.uid()) and (not p_enabled or (p_role is not null and p_role<>'admin')) then raise exception 'Cannot remove your own administrator access';end if;if p_role is not null and p_role not in ('admin','accountant','employee') then raise exception 'Unknown role';end if;update public.allowed_emails set enabled=p_enabled,role=coalesce(p_role,role) where lower(email)=who;if not found then raise exception 'Staff record not found';end if;update public.staff_access set enabled=p_enabled,role=coalesce(p_role,role) where lower(email)=who;insert into public.staff_activity(user_id,email,event,details) values(auth.uid(),(select email from auth.users where id=auth.uid()),'access_changed',jsonb_build_object('target',who,'enabled',p_enabled,'role',p_role));return jsonb_build_object('ok',true);end $function$
 ;
+
+CREATE OR REPLACE FUNCTION public.admin_people_list()
+ RETURNS TABLE(employee_id text, full_name text, "position" text, work_status text, employment_status text, annual_leave_days numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$select p.value->>'id',p.value->>'name',p.value->>'position',p.value->>'workStatus',p.value->>'status',coalesce(nullif(p.value->>'annualLeaveDays','')::numeric,case when p.value->>'status'='Трудовой договор' then 28 else 0 end) from public.finance_state f,lateral jsonb_array_elements(coalesce(f.payload->'people','[]'::jsonb))p(value) where f.id='main' and public.has_active_finance_session() and exists(select 1 from public.staff_access s where s.user_id=auth.uid() and s.enabled and s.role='admin') order by p.value->>'name'$function$
+;
+
+CREATE OR REPLACE FUNCTION public.admin_staff_list()
+ RETURNS TABLE(email text, role text, enabled boolean, employee_id text, last_login timestamp with time zone, full_name text, "position" text, work_status text, employment_status text, annual_leave_days numeric)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+select a.email,a.role,a.enabled,a.employee_id,u.last_sign_in_at,coalesce(nullif(p.person->>'name',''),nullif(a.full_name,''),a.email),p.person->>'position',p.person->>'workStatus',p.person->>'status',coalesce(nullif(p.person->>'annualLeaveDays','')::numeric,case when p.person->>'status'='Трудовой договор' then 28 else 0 end)
+from public.allowed_emails a left join auth.users u on lower(u.email)=lower(a.email)
+left join lateral(select p.value person from public.finance_state f,lateral jsonb_array_elements(coalesce(f.payload->'people','[]'::jsonb)) p(value) where f.id='main' and p.value->>'id'=a.employee_id limit 1)p on true
+where public.has_active_finance_session() and exists(select 1 from public.staff_access s where s.user_id=auth.uid() and s.enabled and s.role='admin') order by coalesce(nullif(p.person->>'name',''),nullif(a.full_name,''),a.email)$function$
+;
