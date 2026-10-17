@@ -1,0 +1,5 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261018_live_session_rls.sql'),'utf8');
+test('active session checks auth.sessions and expiration',()=>{assert.match(sql,/from auth\.sessions s/);assert.match(sql,/s\.user_id=auth\.uid\(\)/);assert.match(sql,/s\.not_after>now\(\)/)});
+test('financial and warehouse reads require live session, not just unexpired JWT',()=>{assert.match(sql,/create policy "read finance for admin and accountant"/);assert.match(sql,/create policy "read warehouse for admin and accountant"/);assert.ok((sql.match(/public\.has_active_finance_session\(\)/g)||[]).length>=5)});
+test('shared state definer write explicitly verifies session and role',()=>{assert.match(sql,/create or replace function public\.update_shared_state/);assert.match(sql,/if not public\.has_active_finance_session\(\) then raise exception/);assert.match(sql,/a\.enabled and a\.role in/);assert.match(sql,/revision=p_expected_revision/);});
