@@ -22,3 +22,10 @@ test('standalone project expense aggregation follows shared VAT deduction rules'
  const expenses=[{amountGross:'1220',vatRate:22,vatDeductible:true},{amountGross:'1220',vatRate:22,vatDeductible:false}];
  assert.equal(f.rubles(f.projectExpenseTotal(expenses,[])),'2220.00');
 });
+
+test('form-serialized VAT deductibility is respected',()=>{
+ const deductible={amountGross:'1220',vatRate:'22',vatDeductible:'true'};
+ const nonDeductible={...deductible,vatDeductible:'false'};
+ assert.equal(f.rubles(f.documentPnlAmount(deductible,true)),'1000.00');
+ assert.equal(f.rubles(f.documentPnlAmount(nonDeductible,true)),'1220.00');
+});
