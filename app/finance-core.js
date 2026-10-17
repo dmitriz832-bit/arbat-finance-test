@@ -94,7 +94,19 @@
     };
     for(const item of data.expenses||[])push(item,'project-expense',documentPnlAmount(item,true));
     for(const item of acts.filter(a=>a.status==='approved'))push(item,'work-act',workAmount(item));
-    for(const item of data.costs||[])push(item,'general-expense',documentPnlAmount(item,true),item.projectKey||'',item.projectKey||item.dir?'direct':'administrative');
+    for(const item of data.costs||[]){
+      const article=(data.pnlArticles||[]).find(a=>a.id===item.pnlArticleId)||(data.pnlArticles||[]).find(a=>a.name===item.name);
+      const type=String(item.pnlType||article?.type||'expense').toLowerCase();
+      const group=String(item.pnlGroup||article?.group||'').toLowerCase();
+      const level=String(item.pnlLevel||article?.level||article?.ebitdaLevel||'').toLowerCase();
+      const category=type==='income'?'belowIncome':
+        level==='below'||level==='below-ebitda'||group.includes('ниже ebitda')?'belowExpenses':
+        group.includes('коммерч')?'commercial':
+        group.includes('общепроизвод')?'production':
+        group.includes('администр')?'administrative':
+        item.projectKey||item.dir?'direct':'administrative';
+      push(item,'general-expense',documentPnlAmount(item,true),item.projectKey||'',category);
+    }
     for(const item of data.labor||[]){
       const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
       for(const code of result.issues)issues.push({code,source:item});
@@ -176,7 +188,7 @@
     const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
     const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
     const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
-    const result=pnl({revenue:[rubles(revenue)],direct:rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount))});
+    const result=pnl({revenue:[rubles(revenue)],direct:rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
     return {...result,issues:ledger.issues.filter(x=>ok(x.source)),components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
       productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
