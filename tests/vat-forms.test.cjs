@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const form=fs.readFileSync(path.join(__dirname,'../app/vat-forms.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../app/index.html'),'utf8');
 test('VAT fields are present on contract and realization forms and prevent implicit rate',()=>{
- assert.match(form,/\['dealForm','realizationForm'\]/);
+ assert.match(form,/\['dealForm','realizationForm','expenseForm'\]/);
  assert.match(form,/select\.required=true/);
  assert.match(form,/placeholder\.value=''/);
  assert.match(form,/core\.documentVat\(amount,rate\)/);
