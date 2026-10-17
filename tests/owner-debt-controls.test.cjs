@@ -13,3 +13,9 @@ test('salary payable accounts for NDFL, deductions and payouts but not employer 
 const data={labor:[{personId:'P1',amount:1000,ndfl:130,otherDeductions:20,employerContributions:300}],cash:[{type:'out',personId:'P1',amount:400}]};
 const x=core.ownerDebtSnapshot(data);assert.equal(core.rubles(x.payrollPayable),'450.00');
 });
+
+test('customer debt is valued gross with VAT rather than P&L net revenue',()=>{
+ const deal={org:'АРБАТ.ГК',name:'НДС',order1c:'VAT1'},key=core.dealKey(deal);
+ const x=core.ownerDebtSnapshot({deals:[deal],realizations:[{projectKey:key,org:'АРБАТ.ГК',amount:1220,vatRate:22}],cash:[{projectKey:key,org:'АРБАТ.ГК',type:'in',amount:1000}]});
+ assert.equal(core.rubles(x.receivable),'220.00');
+});
