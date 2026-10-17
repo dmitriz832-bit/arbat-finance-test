@@ -96,8 +96,12 @@
       if(Math.abs(next-host.scrollLeft)>0.5){host.scrollLeft=next;event.preventDefault()}
       return;
     }
-    // Preserve page vertical scrolling: only hijack the wheel for one-axis table
-    // containers, when users deliberately hold Shift.
+    // Standard mouse wheel moves wide tables horizontally under the pointer;
+    // when reaching the edge, let the wheel continue scrolling the page.
+    if(Math.abs(event.deltaX)>Math.abs(event.deltaY))return;
+    if(host.scrollHeight>host.clientHeight+3)return;
+    const next=Math.max(0,Math.min(horizontalRoom,host.scrollLeft+pixels));
+    if(Math.abs(next-host.scrollLeft)>.5){host.scrollLeft=next;event.preventDefault()}
   },{passive:false});
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}
   new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
