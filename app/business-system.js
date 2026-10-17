@@ -40,7 +40,7 @@
   }
   async function loadPreferences(){
     try{const token=await window.abGetToken();userId=jwtUser(token);const rows=await prefApi('GET');preferences=rows[0]?.preferences||JSON.parse(localStorage.getItem(prefLocal())||'{"columns":{}}')}catch{try{preferences=JSON.parse(localStorage.getItem(prefLocal())||'{"columns":{}}')}catch{preferences={columns:{}}}}
-    preferences.columns||={};enhanceTables();
+    preferences.columns||={};document.querySelectorAll('table.arbat-resizable').forEach(table=>{delete table.dataset.independentColumns});enhanceTables();
   }
   let prefSaveTimer;
   function savePreferences(){
@@ -56,7 +56,7 @@
   }
   function naturalColumnWidth(table,index){
     const cells=[...table.rows].slice(0,36).map(row=>row.cells[index]).filter(Boolean);
-    const measured=cells.reduce((max,cell)=>Math.max(max,cell.scrollWidth+30),0);
+    const measured=cells.reduce((max,cell)=>Math.max(max,cell.scrollWidth+30,cell.getBoundingClientRect().width+16),0);
     return Math.max(82,Math.min(420,Math.ceil(measured||140)));
   }
   function syncTableWidth(table,group){
@@ -64,7 +64,7 @@
     table.style.setProperty('--arbat-table-width',Math.ceil(width)+'px');
   }
   function enhanceTable(table){
-    if(!table.tHead?.rows[0])return;const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
+    if(!table.tHead?.rows[0]||!table.getClientRects().length)return;const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
     let group=table.querySelector(':scope > colgroup');if(!group){group=document.createElement('colgroup');for(let i=0;i<table.tHead.rows[0].cells.length;i++)group.append(document.createElement('col'));table.prepend(group)}
     if(group.children.length!==headers.length){group.replaceChildren(...headers.map(()=>document.createElement('col')));delete table.dataset.independentColumns}
     if(!table.dataset.independentColumns){
@@ -80,7 +80,11 @@
     });
   }
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}
-  new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true});enhanceTables();
+  new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
+  window.addEventListener('resize',enhanceTables,{passive:true});
+  document.addEventListener('transitionend',event=>{if(event.propertyName==='grid-template-columns'||event.propertyName==='width')enhanceTables()});
+  document.addEventListener('click',event=>{if(event.target.closest('[data-route],.arbat-nav-sub,.side-nav button'))requestAnimationFrame(enhanceTables)},true);
+  enhanceTables();
 
   function ensureBusinessData(){
     if(typeof db==='undefined')return;db.priceHistory||=[];db.priceImports||=[];db.employeeEvents||=[];
