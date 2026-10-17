@@ -37,7 +37,11 @@
         <input id="ab-email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Почта сотрудника" required>
         <label for="ab-password">Пароль</label>
         <input id="ab-password" name="password" type="password" minlength="8" autocomplete="current-password" placeholder="Пароль" required>
-        <button type="submit">Войти</button>
+        <label for="ab-password-confirm" id="ab-confirm-label" hidden>Повторите пароль</label>
+        <input id="ab-password-confirm" name="password_confirm" type="password" minlength="8" autocomplete="new-password" placeholder="Повторите новый пароль" hidden>
+        <button type="submit" id="ab-submit">Войти</button>
+        <button type="button" id="ab-password-link" class="ab-secondary" hidden>Получить ссылку для установки пароля</button>
+        <p id="ab-auth-help" class="ab-auth-help" hidden></p>
       </form>
     </div>`;
   document.body.append(gate);
@@ -45,11 +49,26 @@
   const f=document.getElementById('ab-form');
   const message=document.getElementById('ab-message');
   const emailField=document.getElementById('ab-email');
+  const emailLabel=document.querySelector('label[for="ab-email"]');
+  const passwordField=document.getElementById('ab-password');
+  const passwordConfirm=document.getElementById('ab-password-confirm');
+  const confirmLabel=document.getElementById('ab-confirm-label');
+  const submitButton=document.getElementById('ab-submit');
+  const passwordLink=document.getElementById('ab-password-link');
+  const authHelp=document.getElementById('ab-auth-help');
+  let authMode='login';
   try{emailField.value=localStorage.getItem(LAST_EMAIL)||''}catch(e){}
   const showLogin=()=>{
+    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';
     f.hidden=false;
     gate.classList.remove('ab-checking');
     requestAnimationFrame(()=>{(emailField.value?f.elements.password:emailField).focus({preventScroll:true})});
+  };
+  const showPasswordSetup=(kind='invite')=>{
+    authMode='setup';f.hidden=false;gate.classList.remove('ab-checking');emailLabel.hidden=true;emailField.hidden=true;emailField.required=false;
+    passwordField.value='';passwordField.autocomplete='new-password';passwordField.placeholder='Не менее 8 символов';confirmLabel.hidden=false;passwordConfirm.hidden=false;passwordConfirm.required=true;passwordConfirm.value='';
+    submitButton.textContent='Сохранить пароль';passwordLink.hidden=true;authHelp.hidden=false;authHelp.textContent='После сохранения этого пароля последующие входы будут выполняться через обычную форму.';
+    message.textContent=kind==='recovery'?'Установите новый пароль':'Завершите первый вход';requestAnimationFrame(()=>passwordField.focus({preventScroll:true}));
   };
   if(session){
     f.hidden=true;
@@ -58,8 +77,8 @@
   }
   window.abMessage=x=>{message.textContent=x};
 
-  async function call(path,body,auth=true){
-    const r=await fetch(U+path,{method:'POST',headers:{apikey:K,'Content-Type':'application/json',...(auth&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify(body)});
+  async function call(path,body,auth=true,method='POST'){
+    const r=await fetch(U+path,{method,headers:{apikey:K,'Content-Type':'application/json',...(auth&&session?.access_token?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify(body)});
     const x=await r.json().catch(()=>({}));
     if(!r.ok)throw Error(x.msg||x.error_description||x.message||x.error||'HTTP '+r.status);
     return x;
@@ -98,6 +117,13 @@
   }
   f.onsubmit=async e=>{
     e.preventDefault();
+    if(authMode==='setup'){
+      if(passwordField.value!==passwordConfirm.value){window.abMessage('Пароли не совпадают. Проверьте оба поля.');passwordConfirm.focus();return}
+      submitButton.disabled=true;
+      try{await call('/auth/v1/user',{password:passwordField.value},true,'PUT');window.abMessage('Пароль сохранён. Загружаем систему…');await enter()}
+      catch(error){submitButton.disabled=false;window.abMessage('Не удалось сохранить пароль: '+error.message)}
+      return;
+    }
     const email=emailField.value.trim().toLowerCase();
     try{
       window.abMessage('Проверка пароля…');
@@ -106,16 +132,25 @@
       await enter();
     }catch(error){
       showLogin();
-      window.abMessage('Не удалось войти: '+error.message);
+      passwordLink.hidden=false;authHelp.hidden=false;authHelp.textContent='Если доступ выдан недавно или пароль ещё не создавался, запросите персональную ссылку на указанную почту.';
+      window.abMessage(error.message==='Invalid login credentials'?'Почта или пароль не подошли':'Не удалось войти: '+error.message);
     }
+  };
+
+  passwordLink.onclick=async()=>{
+    const email=emailField.value.trim().toLowerCase();if(!email){window.abMessage('Сначала укажите электронную почту');emailField.focus();return}
+    passwordLink.disabled=true;
+    try{await call('/auth/v1/recover',{email,redirect_to:location.origin+location.pathname},false);passwordLink.hidden=true;authHelp.hidden=false;authHelp.textContent='Проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
+    catch(error){window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
   };
 
   const hash=new URLSearchParams(location.hash.slice(1));
   if(hash.get('access_token')){
     save({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_at:Math.floor(Date.now()/1000)+Number(hash.get('expires_in')||3600)});
     history.replaceState(null,'',location.pathname);
+    if(['invite','recovery'].includes(hash.get('type')))showPasswordSetup(hash.get('type'));
   }
-  if(session)enter().catch(()=>{
+  if(session&&authMode!=='setup')enter().catch(()=>{
     showLogin();
     window.abMessage('Сессия завершена. Войдите снова.');
   });

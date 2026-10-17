@@ -54,14 +54,28 @@
     const heading=table.closest('.card')?.querySelector('h2,h3')?.textContent?.trim()||'';
     return (host+'-'+heading).replace(/\s+/g,'-').toLocaleLowerCase('ru-RU');
   }
+  function naturalColumnWidth(table,index){
+    const cells=[...table.rows].slice(0,36).map(row=>row.cells[index]).filter(Boolean);
+    const measured=cells.reduce((max,cell)=>Math.max(max,cell.scrollWidth+30),0);
+    return Math.max(82,Math.min(420,Math.ceil(measured||140)));
+  }
+  function syncTableWidth(table,group){
+    const width=[...group.children].reduce((sum,col)=>sum+(parseFloat(col.style.width)||0),0);
+    table.style.setProperty('--arbat-table-width',Math.ceil(width)+'px');
+  }
   function enhanceTable(table){
-    if(!table.tHead?.rows[0])return;table.classList.add('arbat-resizable');const key=tableKey(table),saved=preferences.columns?.[key]||[];
+    if(!table.tHead?.rows[0])return;const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
     let group=table.querySelector(':scope > colgroup');if(!group){group=document.createElement('colgroup');for(let i=0;i<table.tHead.rows[0].cells.length;i++)group.append(document.createElement('col'));table.prepend(group)}
-    [...group.children].forEach((col,index)=>{if(saved[index])col.style.width=saved[index]+'px'});
-    [...table.tHead.rows[0].cells].forEach((th,index)=>{
+    if(!table.dataset.independentColumns){
+      const host=table.closest('.scroll,.whtable,#ab-profile-window')||table.parentElement,available=Math.max(0,(host?.clientWidth||0)-2);
+      const widths=headers.map((_,index)=>Number(saved[index])||naturalColumnWidth(table,index)),total=widths.reduce((sum,width)=>sum+width,0);
+      if(total<available&&widths.length){const extra=(available-total)/widths.length;widths.forEach((width,index)=>widths[index]=Math.round(width+extra))}
+      [...group.children].forEach((col,index)=>col.style.width=widths[index]+'px');table.dataset.independentColumns='1';table.classList.add('arbat-resizable');syncTableWidth(table,group);
+    }
+    headers.forEach((th,index)=>{
       if(th.querySelector(':scope > .arbat-col-resizer'))return;const handle=document.createElement('span');handle.className='arbat-col-resizer';handle.title='Потяните для изменения ширины. Двойное нажатие — сбросить.';th.append(handle);
-      handle.addEventListener('pointerdown',event=>{event.preventDefault();handle.setPointerCapture(event.pointerId);const startX=event.clientX,startWidth=th.getBoundingClientRect().width,col=group.children[index];const move=e=>{const width=Math.max(72,Math.round(startWidth+e.clientX-startX));col.style.width=width+'px';preferences.columns[key]||=[];preferences.columns[key][index]=width};const up=()=>{handle.removeEventListener('pointermove',move);savePreferences()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up,{once:true})});
-      handle.addEventListener('dblclick',()=>{group.children[index].style.width='';if(preferences.columns[key])delete preferences.columns[key][index];savePreferences()});
+      handle.addEventListener('pointerdown',event=>{event.preventDefault();handle.setPointerCapture(event.pointerId);const startX=event.clientX,startWidth=parseFloat(group.children[index].style.width)||th.getBoundingClientRect().width,col=group.children[index];const move=e=>{const width=Math.max(72,Math.round(startWidth+e.clientX-startX));col.style.width=width+'px';preferences.columns[key]||=[];preferences.columns[key][index]=width;syncTableWidth(table,group)};const up=()=>{handle.removeEventListener('pointermove',move);savePreferences()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up,{once:true});handle.addEventListener('pointercancel',up,{once:true})});
+      handle.addEventListener('dblclick',()=>{const width=naturalColumnWidth(table,index);group.children[index].style.width=width+'px';if(preferences.columns[key])delete preferences.columns[key][index];syncTableWidth(table,group);savePreferences()});
     });
   }
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}

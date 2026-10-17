@@ -3,6 +3,9 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) :
 body.ab-ready.ui-modern:not(.ab-profile-only) td .cell-text,.cell-text{display:inline-block!important;max-width:none!important;white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important;overflow:visible!important;text-overflow:clip!important}
 .arbat-resizable th{position:relative}.arbat-col-resizer{position:absolute;z-index:3;top:0;right:-5px;width:11px;height:100%;cursor:col-resize;touch-action:none}
 .arbat-col-resizer:after{content:"";position:absolute;top:20%;bottom:20%;left:5px;width:1px;background:#c9d5e2;opacity:.75}.arbat-col-resizer:hover:after,.arbat-col-resizer:active:after{background:#1883ce;width:2px;opacity:1}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table.arbat-resizable{width:var(--arbat-table-width)!important;min-width:0!important;table-layout:fixed!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) table.arbat-resizable :is(th,td){overflow:hidden!important;text-overflow:ellipsis!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) table.arbat-resizable td .cell-text{max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;vertical-align:bottom}
 .arbat-sync-toast{position:fixed;right:18px;bottom:18px;z-index:2147483500;background:#17324d;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 28px #001a3344;font-size:13px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
 .arbat-sync-toast.show{opacity:1;transform:none}.arbat-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}.arbat-tools button{white-space:nowrap}
 .arbat-price-note{padding:10px 12px;background:#f4f8fc;border:1px solid #dce7f1;border-radius:10px;color:#50687f;font-size:12px;line-height:1.5}
