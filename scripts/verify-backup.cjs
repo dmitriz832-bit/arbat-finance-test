@@ -35,6 +35,24 @@ function inspect(finance,warehouse){
  }
  for(const x of finance.labor||[])if(x.personId&&!people.has(String(x.personId)))caution('missing-person','finance.labor',id(x));
  for(const x of warehouse.projectIssues||[])if(x.crewId&&!crew.has(String(x.crewId)))caution('missing-crew-place','warehouse.projectIssues',id(x));
+ const itemIds=new Set((warehouse.items||[]).map(x=>String(x.id||'')).filter(Boolean));
+ for(const deal of finance.deals||[]){
+  if(deal.contractTotal!=null){try{if(cents(deal.contractTotal)<0n)failure('negative-contract','finance.deals',id(deal))}catch{failure('invalid-contract','finance.deals',id(deal))}}
+ }
+ for(const section of ['realizations','expenses']){
+  for(const row of finance[section]||[]){
+   if(row.projectKey!=null&&!String(row.projectKey).trim())caution('empty-project-link','finance.'+section,id(row));
+   if(row.amount!=null){try{if(cents(row.amount)<0n)caution('negative-document-amount','finance.'+section,id(row))}catch{}}
+  }
+ }
+ for(const x of warehouse.moves||[]){
+  if(x.itemId&&!itemIds.has(String(x.itemId)))caution('unknown-material','warehouse.moves',id(x));
+  if(x.qty!=null&&(!Number.isFinite(Number(x.qty))||Number(x.qty)<0))failure('invalid-quantity','warehouse.moves',id(x));
+ }
+ for(const x of warehouse.projectIssues||[])for(const line of x.lines||[]){
+  if(line.itemId&&!itemIds.has(String(line.itemId)))caution('unknown-material','warehouse.projectIssues',id(x));
+  for(const prop of ['fromCrew','qty'])if(line[prop]!=null&&(!Number.isFinite(Number(line[prop]))||Number(line[prop])<0))failure('invalid-quantity','warehouse.projectIssues',id(x));
+ }
  const valuation=(finance.expenses||[]).filter(x=>x.valuationStatus==='requires-review').length;
  if(valuation)caution('unresolved-warehouse-cost','finance.expenses',String(valuation));
  return {ok:errors.length===0,errors,warnings,counts};
