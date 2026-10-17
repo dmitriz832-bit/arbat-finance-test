@@ -51,7 +51,7 @@ test('first login requires an invite or recovery session before password update'
   assert.match(auth,/call\('\/auth\/v1\/user',\{password:passwordField\.value\},true,'PUT'\)/);
   assert.match(auth,/passwordField\.value!==passwordConfirm\.value/);
   assert.match(auth,/\/auth\/v1\/recover/);
-  assert.match(auth,/Первый вход \/ восстановить пароль/);
+  assert.match(auth,/Забыли пароль\?/);
   assert.match(auth,/if\(!session&&authMode!=='setup'\)showLogin\(\)/);
   assert.doesNotMatch(auth,/service_role|sb_secret_/);
 });
