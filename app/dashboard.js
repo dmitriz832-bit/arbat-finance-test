@@ -92,10 +92,16 @@
     document.getElementById('dashboardUpdated').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   }
   function cashChart(data){
-    const target=document.getElementById('dashboardCashFlow');if(!target)return;const max=Math.max(1,...data.flow.flatMap(item=>[item.income,item.outcome,Math.abs(item.income-item.outcome)])),base=206,height=150,step=112,start=64,bar=25;
-    let points=[],svg='<svg viewBox="0 0 760 244" role="img" aria-label="Движение денег за шесть месяцев"><line class="axis" x1="42" y1="'+base+'" x2="744" y2="'+base+'"/>';
-    for(let level=0;level<=3;level++){const y=base-height*level/3;svg+='<line class="grid" x1="42" y1="'+y+'" x2="744" y2="'+y+'"/><text x="4" y="'+(y+4)+'">'+esc(new Intl.NumberFormat('ru-RU',{notation:'compact',maximumFractionDigits:0}).format(max*level/3))+'</text>'}
-    data.flow.forEach((item,index)=>{const x=start+index*step,income=height*item.income/max,outcome=height*item.outcome/max,net=item.income-item.outcome,netY=base-Math.max(0,net)/max*height;points.push((x+27)+','+netY);svg+='<rect x="'+x+'" y="'+(base-income)+'" width="'+bar+'" height="'+income+'" rx="5" class="cash-in"><title>'+esc(item.label+': поступления '+rub(item.income))+'</title></rect><rect x="'+(x+30)+'" y="'+(base-outcome)+'" width="'+bar+'" height="'+outcome+'" rx="5" class="cash-out"><title>'+esc(item.label+': выбытия '+rub(item.outcome))+'</title></rect><text x="'+(x+27)+'" y="230" text-anchor="middle">'+esc(item.label)+'</text>'});
+    const target=document.getElementById('dashboardCashFlow');if(!target)return;
+    const flow=data.flow,maximum=Math.max(1,...flow.flatMap(x=>[x.income,x.outcome,Math.abs(x.income-x.outcome)]));
+    const top=25,zero=135,half=87,step=112,start=64,bar=25;
+    let points=[],svg='<svg viewBox="0 0 760 260" role="img" aria-label="Движение денег: положительный и отрицательный чистый поток"><line class="axis" x1="42" y1="'+zero+'" x2="744" y2="'+zero+'"/>';
+    for(let level=-1;level<=1;level++){const y=zero-level*half;svg+='<line class="grid" x1="42" y1="'+y+'" x2="744" y2="'+y+'"/><text x="2" y="'+(y+4)+'">'+esc(new Intl.NumberFormat('ru-RU',{notation:'compact'}).format(maximum*level))+'</text>'}
+    flow.forEach((item,index)=>{
+      const x=start+index*step,income=half*item.income/maximum,outcome=half*item.outcome/maximum,net=item.income-item.outcome,netY=zero-net/maximum*half;
+      points.push((x+27)+','+netY);
+      svg+='<rect x="'+x+'" y="'+(zero-income)+'" width="'+bar+'" height="'+income+'" rx="3" class="cash-in"><title>'+esc(item.label+': поступления '+rub(item.income))+'</title></rect><rect x="'+(x+30)+'" y="'+(zero-outcome)+'" width="'+bar+'" height="'+outcome+'" rx="3" class="cash-out"><title>'+esc(item.label+': выплаты '+rub(item.outcome))+'</title></rect><text x="'+(x+27)+'" y="248" text-anchor="middle">'+esc(item.label)+'</text>';
+    });
     if(points.length>1)svg+='<polyline points="'+points.join(' ')+'" class="net-line"/>'+points.map(point=>{const [x,y]=point.split(',');return '<circle cx="'+x+'" cy="'+y+'" r="4" class="net-dot"/>'}).join('');
     target.innerHTML=svg+'</svg>';
   }
