@@ -28,7 +28,7 @@ test('isolated full transaction chain preserves P&L, cash, debt, salary and FIFO
  assert.equal(c.rubles(owner.result),'71000.00'); // 100k - 10k - 2k - 4k - 13k
  const debts=c.ownerDebtSnapshot(finance);
  assert.equal(c.rubles(debts.receivable),'42000.00');
- assert.equal(c.rubles(debts.payrollPayable),'4700.00');
+ assert.equal(c.rubles(debts.payrollPayable),'6700.00'); // 10k salary - 1.3k tax - 4k paid + 2k unpaid approved work
  const wallets=c.walletConsolidation(finance.wallets,finance.cash);
  assert.equal(c.rubles(wallets.total),'126000.00'); // 50k + 80k - 4k; internal transfer neutral
  assert.equal(c.rubles(owner.cash.net),'76000.00');
@@ -42,7 +42,7 @@ test('financial source objects are never mutated across repeated calculations',(
  const {finance,warehouse,fifo}=scenario(),before=JSON.stringify({finance,warehouse});
  for(let n=0;n<3;n++){
   c.ownerPeriodSnapshot(finance,c.ownerPeriodBounds('year','2026-10-18'));
-  c.ownerDebtSnapshot(finance);c.payrollReconciliation({accruals:finance.labor,payments:finance.cash});
+  c.ownerDebtSnapshot(finance);c.payrollReconciliation({accruals:finance.labor,payments:finance.cash,workActs:finance.workActs});
   c.ownerWarehouseSnapshot(warehouse,fifo);
  }
  assert.equal(JSON.stringify({finance,warehouse}),before);

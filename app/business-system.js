@@ -193,7 +193,15 @@
     if(people)people.innerHTML='<table><thead><tr><th>Сотрудник</th><th>Должность</th><th>Категория</th><th>Статус работы</th><th>Оформление</th><th>Дата приёма</th><th>Отпуск в год</th><th>Оклад</th><th>Действия</th></tr></thead><tbody>'+(db.people||[]).map(person=>'<tr><td>'+esc(person.name)+'</td><td>'+esc(person.position||'—')+'</td><td>'+esc(({production:'Производственные',administrative:'Административные',commercial:'Коммерческие'})[person.expenseType]||'Не определено')+'</td><td>'+esc(person.workStatus||'Работает')+'</td><td>'+esc(person.status||'—')+'</td><td>'+esc(person.hireDate||'—')+'</td><td>'+esc(person.annualLeaveDays??'—')+'</td><td>'+money(person.salary)+'</td><td><button type="button" class="employee-edit-button">Изменить</button></td></tr>').join('')+'</tbody></table>';
     if(people&&typeof window.bindEditButtons==='function')window.bindEditButtons();
   }
+  function withPayrollContext(run){
+    const core=window.ArbatFinanceCore;if(!core)return run();
+    window.ArbatFinanceCore={...core,
+      payrollReconciliation:options=>core.payrollReconciliation({...options,settlements:db.crewSettlements||[],workActs:db.workActs||[]}),
+      paymentExceptionRegister:options=>core.paymentExceptionRegister({...options,crewSettlements:db.crewSettlements||[],workActs:db.workActs||[]})
+    };
+    try{return run()}finally{window.ArbatFinanceCore=core}
+  }
   const originalReportData=window.reportData;if(typeof originalReportData==='function')window.reportData=function(){const result=originalReportData.apply(this,arguments);if(result?.kind!=='cash')result.hints='Начисления и страховые взносы работодателя рассчитаны единым финансовым модулем. НДФЛ является удержанием и не увеличивает расходы. Связанные с актами начисления не повторяют стоимость работ. Результат управленческий и не заменяет бухгалтерский расчёт.';return result};
-  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=originalRender.apply(this,arguments);enhancePriceBook();renderEnhancedLabor();enhanceTables();return result};
+  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceTables();return result};
   renderEnhancedLabor();
 })();
