@@ -40,7 +40,7 @@
         <label for="ab-password-confirm" id="ab-confirm-label" hidden>Повторите пароль</label>
         <input id="ab-password-confirm" name="password_confirm" type="password" minlength="8" autocomplete="new-password" placeholder="Повторите новый пароль" hidden>
         <button type="submit" id="ab-submit">Войти</button>
-        <button type="button" id="ab-password-link" class="ab-secondary">Первый вход / восстановить пароль</button>
+        <button type="button" id="ab-password-link" class="ab-secondary">Забыли пароль?</button>
         <p id="ab-auth-help" class="ab-auth-help" hidden></p>
       </form>
     </div>`;
@@ -59,7 +59,7 @@
   let authMode='login';
   try{emailField.value=localStorage.getItem(LAST_EMAIL)||''}catch(e){}
   const showLogin=()=>{
-    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Впервые в системе? Укажите рабочую почту и запросите персональную ссылку для создания пароля. Доступ предварительно выдаёт администратор.';
+    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Доступ выдаёт администратор. При первом входе откройте письмо-приглашение. Если забыли пароль, запросите ссылку для восстановления.';
     f.hidden=false;
     gate.classList.remove('ab-checking');
     requestAnimationFrame(()=>{(emailField.value?f.elements.password:emailField).focus({preventScroll:true})});
