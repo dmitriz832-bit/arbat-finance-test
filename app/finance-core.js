@@ -380,6 +380,35 @@
     const payrollState=payrollReconciliation({accruals:(data.labor||[]).filter(x=>!org||x.org===org),payments:(data.cash||[]).filter(x=>!org||x.org===org)});
     return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.people.reduce((v,p)=>v+(p.payable>0n?p.payable:0n),0n),issues:[...issues,...payrollState.issues]};
   }
+  function ownerWarehouseSnapshot(warehouse,fifo,org=''){
+    const rows=[],issues=[...(fifo?.warnings||[])],places=new Map((warehouse?.places||[]).map(x=>[String(x.id),x]));
+    if(!fifo?.bins)return {rows,totalValue:null,reservedQty:0,deficitQty:0,issues:[...issues,{reason:'FIFO valuation unavailable'}]};
+    const reservations=new Map();
+    for(const issue of warehouse.projectIssues||[]){
+      if(issue.closed)continue;
+      const place=String(issue.crewId||'');
+      for(const line of issue.lines||[]){
+        const key=place+'::'+String(line.itemId||'');
+        reservations.set(key,(reservations.get(key)||0)+Number(line.fromCrew||0));
+      }
+    }
+    let totalValue=0n,reservedQty=0,deficitQty=0,unpriced=false;
+    for(const [key,lots] of fifo.bins){
+      const divider=key.lastIndexOf('::');if(divider<0)continue;
+      const placeId=key.slice(0,divider),itemId=key.slice(divider+2),place=places.get(placeId);
+      if(org&&place?.org&&place.org!==org)continue;
+      const item=(warehouse.items||[]).find(x=>String(x.id)===itemId);
+      const qty=lots.reduce((v,l)=>v+Math.max(0,Number(l.qty||0)),0);
+      const reserved=reservations.get(key)||0;
+      const deficit=Math.max(0,reserved-qty);
+      const invalid=lots.some(l=>Number(l.qty)>0&&(!Number.isFinite(Number(l.cost))||Number(l.cost)<=0));
+      let value=null;
+      if(!invalid){value=lots.reduce((v,l)=>v+cents((Number(l.qty||0)*Number(l.cost||0)).toFixed(2)),0n);totalValue+=value}
+      else unpriced=true;
+      if(qty||reserved){rows.push({placeId,itemId,name:item?.name||itemId,place:place?.name||placeId,qty,reserved,free:Math.max(0,qty-reserved),deficit,value,unpriced:invalid});reservedQty+=reserved;deficitQty+=deficit}
+    }
+    return {rows,totalValue:unpriced?null:totalValue,knownValue:totalValue,reservedQty,deficitQty,issues:unpriced?[...issues,{reason:'Unpriced positive stock'}]:issues};
+  }
   function cashFlow(entries,period='',org=''){
     const categories=new Map();let income=0n,outgoing=0n,transfers=0n;
     for(const item of entries||[]){
@@ -585,5 +614,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
