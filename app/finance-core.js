@@ -92,9 +92,9 @@
       const deal=deals.find(d=>dealKey(d)===projectKey);
       rows.push({source,kind,amount,projectKey,dir:deal?.dir||source.dir||'',org:source.org||deal?.org||'',date:source.date||source.dt||'',category});
     };
-    for(const item of data.expenses||[])push(item,'project-expense',cents(item.amount||0));
+    for(const item of data.expenses||[])push(item,'project-expense',documentPnlAmount(item,true));
     for(const item of acts.filter(a=>a.status==='approved'))push(item,'work-act',workAmount(item));
-    for(const item of data.costs||[])push(item,'general-expense',cents(item.amount||0),item.projectKey||'',item.projectKey||item.dir?'direct':'administrative');
+    for(const item of data.costs||[])push(item,'general-expense',documentPnlAmount(item,true),item.projectKey||'',item.projectKey||item.dir?'direct':'administrative');
     for(const item of data.labor||[]){
       const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
       for(const code of result.issues)issues.push({code,source:item});
@@ -105,7 +105,7 @@
   function directionSnapshot(data,name,period='',org=''){
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
     const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
-    const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+netAmount(x.amount,x.org,x.vatRate),0n);
+    const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const ledger=expenseLedger(data),cost=ledger.rows.filter(x=>x.dir===name&&ok(x)).reduce((a,x)=>a+x.amount,0n);
     return {revenue,cost,result:revenue-cost,issues:ledger.issues};
   }
@@ -134,10 +134,23 @@
     const vatAmount=amountGross<0n?-tax:tax;
     return {vatRate:rate,amountGross,vatAmount,amountNet:amountGross-vatAmount,vatDeductible:Boolean(vatDeductible)};
   }
+  // Keep legacy documents unchanged until their VAT metadata is explicitly assigned.
+  // For newly enriched documents, VAT metadata is authoritative for both revenue and cost.
+  function documentPnlAmount(item,expense=false){
+    const gross=item.amountGross??item.amount??0;
+    if(item.vatRate==null||String(item.vatRate).trim()===''){
+      if(item.amountNet!=null||item.vatAmount!=null)throw new RangeError('Incomplete document VAT metadata');
+      return expense?cents(gross):netAmount(gross,item.org,item.vatRate);
+    }
+    const tax=documentVat(gross,item.vatRate,item.vatDeductible);
+    if(item.vatAmount!=null&&cents(item.vatAmount)!==tax.vatAmount)throw new RangeError('Document VAT amount mismatch');
+    if(item.amountNet!=null&&cents(item.amountNet)!==tax.amountNet)throw new RangeError('Document net amount mismatch');
+    return expense&&item.vatDeductible!==true?tax.amountGross:tax.amountNet;
+  }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
-    const netOf=x=>netAmount(x.amount,x.org,x.vatRate);
+    const netOf=x=>documentPnlAmount(x);
     const revenue=realization.reduce((a,x)=>a+netOf(x),0n);
     const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
     const acts=(data.workActs||[]).filter(x=>x.projectKey===projectKey);
@@ -162,7 +175,7 @@
     const ok=x=>(!org||x.org===org)&&(!period||String(x.date||x.dt||'').slice(0,7)===period);
     const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
     const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
-    const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+netAmount(x.amount,x.org,x.vatRate),0n);
+    const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const result=pnl({revenue:[rubles(revenue)],direct:rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount))});
     return {...result,issues:ledger.issues.filter(x=>ok(x.source)),components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
@@ -206,5 +219,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
 });
