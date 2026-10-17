@@ -228,9 +228,19 @@
     const previouslyRecognizedCost=period?recognized(priorRevenue,priorCost):0n;
     const currentCost=recognizedCost-previouslyRecognizedCost;
     const wip=accruedCost-recognizedCost;
-    for(const issue of ledger.issues)if(issue.source?.projectKey===projectKey)issues.push(issue.code);
-    if((data.expenses||[]).some(x=>x.projectKey===projectKey&&x.valuationStatus==='requires-review'))issues.push('expense-valuation');
-    if(data.warehouse?.moves?.some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId)&&!data.fifo)issues.push('warehouse-fifo-unavailable');
+    for(const issue of ledger.issues)if(issue.source?.projectKey===projectKey||(issue.source?.shares||[]).some(share=>share.projectKey===projectKey))issues.push(issue.code);
+    const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
+    if(expenses.some(x=>x.valuationStatus==='requires-review'))issues.push('expense-valuation');
+    const warehouseMoves=data.warehouse?.moves||[];
+    const consumed=warehouseMoves.filter(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId);
+    if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');
+    if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch');
+    if(data.warehouse&&expenses.some(e=>e.warehouseMoveId&&!warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');
+    if(expenses.some(e=>e.warehouseMoveId&&warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');
+    if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');
+    const labor=projectPayroll(data.labor||[],projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey));
+    if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
+    if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
     return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,operatingProfit:revenue-recognizedCost};
   }
   function projectSnapshot(data,deal,projectKey){
