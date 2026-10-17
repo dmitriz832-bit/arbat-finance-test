@@ -187,3 +187,43 @@ body.ab-ready:not(.ab-profile-only) #cash>.hv-ledger>.scroll{max-height:65vh;ove
 
 body.ab-ready:not(.ab-profile-only) section>.hv-collapsed{display:none!important}
 body.ab-ready:not(.ab-profile-only) section>.hv-entry-panel{border-left:3px solid #269fff!important}
+
+/* CORPORATE HVAC V2 — LIGHT OPERATIONAL UI */
+:root{color-scheme:light;--hv-bg:#f3f6fa;--hv-panel:#ffffff;--hv-panel2:#f7f9fc;--hv-stroke:#dce4ed;--hv-blue:#176cae;--hv-text:#192c40;--hv-muted:#66788b;--hv-good:#14866b;--hv-danger:#c44040}
+body.ab-ready:not(.ab-profile-only){background:#f3f6fa!important;color:#192c40!important}
+body.ab-ready:not(.ab-profile-only) header{background:#fff!important;border-bottom:1px solid #dae3ec!important;color:#1a3047!important;box-shadow:0 2px 9px #1d3f5c08}
+body.ab-ready:not(.ab-profile-only) header small{color:#657d92!important}
+body.ab-ready:not(.ab-profile-only) .layout{background:#f3f6fa!important}
+body.ab-ready:not(.ab-profile-only) .sidebar{background:#fff!important;border-right:1px solid #d9e4ed!important;color:#304a60!important}
+body.ab-ready:not(.ab-profile-only) .content{background:#f3f6fa!important}
+body.ab-ready:not(.ab-profile-only) .card,body.ab-ready:not(.ab-profile-only) .metric,body.ab-ready:not(.ab-profile-only) .stat-card{background:#fff!important;border:1px solid #dde6ee!important;color:#1c3045!important;box-shadow:0 2px 12px #2447660b!important;border-radius:11px!important}
+body.ab-ready:not(.ab-profile-only) h1,body.ab-ready:not(.ab-profile-only) h2,body.ab-ready:not(.ab-profile-only) h3{color:#20364e!important}
+body.ab-ready:not(.ab-profile-only) .card p,body.ab-ready:not(.ab-profile-only) p,body.ab-ready:not(.ab-profile-only) .muted,body.ab-ready:not(.ab-profile-only) .small{color:#61758b}
+body.ab-ready:not(.ab-profile-only) button,body.ab-ready:not(.ab-profile-only) input,body.ab-ready:not(.ab-profile-only) select,body.ab-ready:not(.ab-profile-only) textarea{color:#20374e!important;background:#fff!important;border:1px solid #cfdbe6!important;box-shadow:none!important}
+body.ab-ready:not(.ab-profile-only) input::placeholder,body.ab-ready:not(.ab-profile-only) textarea::placeholder{color:#8ba0b0!important}
+body.ab-ready:not(.ab-profile-only) button:hover{background:#edf5fb!important;border-color:#7bacd2!important}
+body.ab-ready:not(.ab-profile-only) button.primary,body.ab-ready:not(.ab-profile-only) .primary,body.ab-ready:not(.ab-profile-only) .hv-workspace-actions .hv-primary{background:#146da8!important;border-color:#146da8!important;color:white!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button{background:transparent!important;color:#3b526b!important;border-color:transparent!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button:hover{background:#edf5fb!important;color:#155d90!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button.active,body.ab-ready:not(.ab-profile-only) .side-nav button.active-parent{background:#e8f2f9!important;color:#125c96!important;box-shadow:inset 3px 0 #1684c4!important}
+body.ab-ready:not(.ab-profile-only) .fields label{color:#425b70!important}
+body.ab-ready:not(.ab-profile-only) table{color:#24394d!important;background:white!important}
+body.ab-ready:not(.ab-profile-only) th{background:#f1f5f9!important;color:#536b81!important;border-bottom:1px solid #dbe4ec!important}
+body.ab-ready:not(.ab-profile-only) td{border-bottom:1px solid #e6ebf0!important;color:#24384d!important}
+body.ab-ready:not(.ab-profile-only) tbody tr:hover{background:#f3f8fc!important}
+body.ab-ready:not(.ab-profile-only) .modal{background:#fff!important;color:#20374e!important;border:1px solid #d4e1eb!important;box-shadow:0 22px 80px #193b5638!important}
+body.ab-ready:not(.ab-profile-only) .modal-backdrop{background:#1c314780!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window{background:white!important;color:#1c3047!important;border:1px solid #dce4ed!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window .ab-note{color:#627b90!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window td,body.ab-ready:not(.ab-profile-only) #ab-profile-window th{border-color:#e1e8ef!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-profile-logout-area{border-top-color:#dce4eb!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-logout{color:#b63737!important;background:#fff5f5!important;border-color:#eccaca!important}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header{background:#fff!important;border:1px solid #dce6ee!important;box-shadow:0 2px 10px #2447660b!important}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header h2{color:#1c3751!important}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header p{color:#6a7e90!important}
+body.ab-ready:not(.ab-profile-only) .hv-eyebrow{color:#176cae!important}
+body.ab-ready:not(.ab-profile-only) section>.hv-entry-panel,body.ab-ready:not(.ab-profile-only) #cash>.hv-entry-panel{border-left-color:#1684bc!important}
+body.ab-ready:not(.ab-profile-only) .ok{color:#168268!important}
+body.ab-ready:not(.ab-profile-only) .danger{color:#bd4040!important}
+body.ab-ready:not(.ab-profile-only) .banner{display:none!important}
+@media(max-width:700px){body.ab-ready:not(.ab-profile-only) .content .wrap{padding:14px 10px!important}body.ab-ready:not(.ab-profile-only) .card{padding:14px!important}}
