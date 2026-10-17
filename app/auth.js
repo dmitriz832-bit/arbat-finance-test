@@ -99,8 +99,8 @@
       const keys=['arbat-finance-demo-live','arbat-warehouse-v1','arbat-cloud-revision-v1'];
       if(keys.some(x=>localStorage.getItem(x)!==null)){
         for(const key of keys)localStorage.removeItem(key);
-        location.reload();
-        return;
+        // Do not reload for an employee: the profile-only interface needs no finance_state.
+
       }
       document.body.classList.add('ab-profile-only','ab-ready');
       logoutButton.hidden=false;
