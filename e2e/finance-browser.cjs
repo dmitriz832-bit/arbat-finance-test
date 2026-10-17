@@ -6,11 +6,11 @@ function fixture(){
  const date=new Date().toISOString().slice(0,10),org='АИР-КЛИМАТ',projectKey=org+'::1C#AUDIT-20261017-browser',base={date,org};
  const state=Object.fromEntries(['cash','costs','crews','deals','labor','people','wallets','articles','calendar','expenses','workActs','dealPlans','materials','workBatches','costArticles','priceCatalog','priceHistory','priceImports','realizations','counterparties','employeeEvents','crewSettlements'].map(k=>[k,[]]));
  Object.assign(state,{
-  deals:[{...base,_id:'AUDIT-20261017-browser',name:'AUDIT browser project',order1c:'AUDIT-20261017-browser',dir:'Кондиционирование',contractTotal:100000,cost:50000}],
-  realizations:[{...base,_id:'AUDIT-sale',projectKey,amount:60000,document:'AUDIT-sale'}],
-  expenses:[{...base,_id:'AUDIT-expense',projectKey,amount:10000}],
+  deals:[{...base,_id:'AUDIT-20261017-browser',name:'AUDIT browser project',order1c:'AUDIT-20261017-browser',dir:'Кондиционирование',contractTotal:100000,cost:50000,vatRate:0}],
+  realizations:[{...base,_id:'AUDIT-sale',projectKey,amount:60000,document:'AUDIT-sale',vatRate:0}],
+  expenses:[{...base,_id:'AUDIT-expense',projectKey,amount:10000,vatRate:0}],
   workActs:[{...base,id:'AUDIT-act',projectKey,qty:1,rate:2000,status:'approved',memberIds:['AUDIT-person'],priceName:'AUDIT work'}],
-  costs:[{...base,_id:'AUDIT-direction',dir:'Кондиционирование',amount:3000},{...base,_id:'AUDIT-common',amount:4000}],
+  costs:[{...base,_id:'AUDIT-direction',dir:'Кондиционирование',amount:3000,vatRate:0},{...base,_id:'AUDIT-common',amount:4000,vatRate:0}],
   labor:[{...base,_id:'AUDIT-salary',personId:'AUDIT-person',expenseType:'administrative',amount:10000,ndfl:1300,employerContributions:3000}],
   people:[{id:'AUDIT-person',name:'AUDIT employee',expenseType:'administrative',annualLeaveDays:28}],
   wallets:[{id:'AUDIT-wallet',org,name:'AUDIT cash',verified:true,openingBalance:100}],
