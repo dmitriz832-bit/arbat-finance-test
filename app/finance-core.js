@@ -200,6 +200,19 @@
     if(item.amountNet!=null&&cents(item.amountNet)!==tax.amountNet)throw new RangeError('Document net amount mismatch');
     return expense&&item.vatDeductible!==true&&item.vatDeductible!=='true'?tax.amountGross:tax.amountNet;
   }
+  function vatControlRegister(data={},filters={}){
+    const issues=[],from=String(filters.from||''),to=String(filters.to||''),org=String(filters.org||''),projectKey=String(filters.projectKey||'');
+    const inScope=item=>{
+      if(org&&item.org!==org)return false;
+      if(projectKey){const key=item.projectKey||item.kind==='contract'&&dealKey(item);if(String(key||'')!==projectKey)return false}
+      const date=String(item.date||item.dt||'').slice(0,10);
+      return (!date||!from||date>=from)&&(!date||!to||date<=to);
+    };
+    const scan=(rows,documentKind)=>{for(const source of rows||[]){if(!inScope(source))continue;if(source.vatRate==null||String(source.vatRate).trim()==='')issues.push({code:'vat-rate-missing',documentKind,source})}};
+    scan((data.deals||[]).map(item=>({...item,kind:'contract'})),'contract');
+    scan(data.realizations,'realization');scan(data.expenses,'project-expense');scan(data.costs,'general-entry');
+    return {count:issues.length,issues};
+  }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function wipCheckPending(data,deal,key){return (data.expenses||[]).some(x=>x.projectKey===key&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId&&!data.fifo);}
   function projectWipSnapshot(data,deal,projectKey,period=''){
@@ -683,5 +696,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
