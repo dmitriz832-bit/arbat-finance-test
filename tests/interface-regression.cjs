@@ -30,9 +30,11 @@ test('every legacy navigation key has a matching section',()=>{
   assert.doesNotMatch(html,/<title>[^<]*(?:demo|демо)/i);
 });
 
-test('dashboard contains the four analytical views and uses real business collections',()=>{
-  for(const id of ['dashboardCashFlow','dashboardWallets','dashboardPortfolio','dashboardDirections'])assert.match(dashboard,new RegExp(id));
+test('owner dashboard contains distinct decision views and uses real business collections',()=>{
+  for(const id of ['dashboardKpis','dashboardCashFlow','dashboardAttention','dashboardDirections','dashboardWallets','dashboardProjects','dashboardCalendar'])assert.match(dashboard,new RegExp(id));
   for(const collection of ['db.cash','db.wallets','db.deals','db.realizations','db.expenses'])assert.match(dashboard,new RegExp(collection.replace('.','\\.')));
+  assert.match(dashboard,/Картина для собственника/);
+  assert.match(dashboard,/Платёжный горизонт/);
   assert.doesNotMatch(dashboard,/Math\.random\(\).*chart|fake|mock/i);
 });
 
