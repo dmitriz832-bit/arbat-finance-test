@@ -9,6 +9,14 @@ test('executive financial and direction snapshot follows owner period selection'
 test('executive wallet total uses consolidation rather than counting shared wallet again',()=>{
  assert.match(dashboard,/core\.walletConsolidation\(db\.wallets\|\|\[\],db\.cash\|\|\[\]\)/);
  assert.match(dashboard,/walletMoney\.total/);
+ assert.match(dashboard,/walletRows\(org,walletMoney\)/);
+ assert.doesNotMatch(dashboard,/core\.walletBalance\(/);
+});
+test('executive cash KPI never calls an unreconciled balance confirmed',()=>{
+ assert.match(dashboard,/cashCertified:unverified===0&&unreconciled===0/);
+ assert.match(dashboard,/Расчётно — требуется сверка/);
+ assert.match(dashboard,/Денежные остатки не подтверждены/);
+ assert.match(dashboard,/label='Деньги не сверены'/);
 });
 test('negative net cash flow is plotted below zero baseline',()=>{
  assert.match(dashboard,/netY=zero-net\/maximum\*half/);

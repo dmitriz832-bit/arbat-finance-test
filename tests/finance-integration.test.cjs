@@ -22,7 +22,8 @@ test('monthly P&L and dashboard derive from the same period engine',()=>{
  assert.match(dashboard,/core\.ownerPeriodSnapshot\(/);
 });
 test('wallet balances use core and preserve internal transfers',()=>{
- assert.match(dashboard,/core\.walletBalance\(/);
+ assert.match(dashboard,/core\.walletConsolidation\(/);
+ assert.match(dashboard,/core\.rubles\(wallet\.balance\)/);
  assert.match(core,/item\.type==='transfer'/);
 });
 test('project warehouse valuation must distinguish unresolved FIFO',()=>{

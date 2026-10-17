@@ -475,7 +475,7 @@
     return {opening:initial,received,spent,balance:initial+received-spent};
   }
   function walletConsolidation(wallets,entries){
-    const groups={'АИР-КЛИМАТ':0n,'АРБАТ.ГК':0n,'Общий':0n},rows=[],issues=[],seen=new Set();
+    const groups={'АИР-КЛИМАТ':0n,'АРБАТ.ГК':0n,'Общий':0n},rows=[],issues=[],controlIssues=[],seen=new Set();
     for(const wallet of wallets||[]){
       if(!wallet.verified)continue;
       const id=String(wallet.id||'');
@@ -486,7 +486,13 @@
         issues.push({code:'unclassified-wallet-organization',walletId:id,org});continue;
       }
       const snapshot=walletSnapshot(wallet.openingBalance||0,entries,id,wallet.openingBalanceDate||'');
-      rows.push({walletId:id,name:wallet.name||id,org,...snapshot});
+      let reconciliation;
+      try{reconciliation=bankReconciliation(wallet,entries)}catch(error){reconciliation={status:'invalid-statement',difference:null};controlIssues.push({code:'invalid-bank-statement',walletId:id,reason:error.message})}
+      if(!wallet.openingBalanceDate)controlIssues.push({code:'opening-balance-date-missing',walletId:id});
+      if(reconciliation.status==='not-configured')controlIssues.push({code:'bank-reconciliation-not-configured',walletId:id});
+      else if(reconciliation.status==='mismatch')controlIssues.push({code:'bank-reconciliation-mismatch',walletId:id,difference:reconciliation.difference});
+      else if(reconciliation.status==='invalid-statement-date')controlIssues.push({code:'invalid-bank-statement-date',walletId:id});
+      rows.push({walletId:id,name:wallet.name||id,org,...snapshot,reconciliation});
       groups[org]+=snapshot.balance;
     }
     for(const entry of entries||[]){
@@ -497,7 +503,7 @@
       }
     }
     const total=groups['АИР-КЛИМАТ']+groups['АРБАТ.ГК']+groups['Общий'];
-    return {rows,byOrg:groups,total,issues};
+    return {rows,byOrg:groups,total,issues,controlIssues};
   }
   function bankReconciliation(wallet,entries){
     const date=String(wallet.bankStatementDate||'').slice(0,10);

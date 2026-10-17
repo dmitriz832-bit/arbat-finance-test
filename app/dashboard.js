@@ -17,13 +17,11 @@
     for(let offset=count-1;offset>=0;offset--){const date=new Date(today.getFullYear(),today.getMonth()-offset,1);result.push({key:date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0'),label:date.toLocaleDateString('ru-RU',{month:'short'}).replace('.','')})}
     return result;
   }
-  function walletRows(org){
+  function walletRows(org,consolidated){
     const core=window.ArbatFinanceCore;
     if(!core)throw new Error('Финансовый расчетный модуль не загружен');
-    return (db.wallets||[]).filter(wallet=>wallet.verified&&(!org||wallet.org===org||wallet.org==='Общий')).map(wallet=>{
-      const balance=core.walletBalance(wallet.openingBalance||0,db.cash||[],wallet.id);
-      return {...wallet,balance:Number(core.rubles(balance))};
-    });
+    const source=consolidated||core.walletConsolidation(db.wallets||[],db.cash||[]);
+    return source.rows.filter(wallet=>!org||wallet.org===org).map(wallet=>({...wallet,balance:Number(core.rubles(wallet.balance))}));
   }
   function calendarOccurrences(org){
     const today=iso(new Date()),out=[];
@@ -44,9 +42,9 @@
     const names=[...new Set([...(typeof dirs!=='undefined'?dirs:[]),...deals.map(item=>item.dir).filter(Boolean)])];
     const warehouseState=(()=>{try{return JSON.parse(localStorage.getItem('arbat-warehouse-v1')||'{}')}catch{return {}}})();const fifo=typeof window.arbatFifo==='function'?window.arbatFifo(warehouseState):null;const period=monthKey(iso(new Date())),wipData={deals,realizations,expenses,costs,labor,workActs:acts,people:db.people,warehouse:warehouseState,fifo,wipAccounting:true};const directions=names.map(name=>{const core=window.ArbatFinanceCore,bounds=core.ownerPeriodBounds(document.getElementById('ownerPeriodMode')?.value||'month',document.getElementById('ownerPeriodReference')?.value||iso(new Date()),document.getElementById('ownerPeriodFrom')?.value||'',document.getElementById('ownerPeriodTo')?.value||''),selected=core.ownerPeriodSnapshot({...db,wipAccounting:true},bounds,org),assigned=selected.rows.filter(x=>x.dir===name),revenueDocs=selected.revenueDocuments.filter(x=>deals.some(d=>d.dir===name&&projectKey(d)===x.projectKey)),revenue=revenueDocs.reduce((v,x)=>v+core.documentPnlAmount(x),0n),cost=assigned.reduce((v,x)=>v+(x.category==='belowIncome'?-x.amount:x.amount),0n),result=revenue-cost,num=x=>Number(core.rubles(x));return {name,revenue:num(revenue),cost:num(cost),result:num(result),margin:revenue?Number(result)/Number(revenue)*100:NaN}});
     const projects=deals.map(deal=>{const key=projectKey(deal),core=window.ArbatFinanceCore,snapshot=core.projectSnapshot(wipData,deal,key),wip=core.projectWipSnapshot(wipData,deal,key),gross=sum(realizations.filter(item=>item.projectKey===key)),contract=money(deal.contractTotal??deal.revenue),remaining=Math.max(0,contract-gross),revenue=Number(core.rubles(snapshot.revenue)),cost=Number(core.rubles(snapshot.cost));return {key,name:deal.name||'Без названия',org:deal.org,contract,realized:gross,revenue,cost,result:snapshot.issues.length||wip.status!=='calculated'?null:Number(core.rubles(wip.operatingProfit)),reviewRequired:snapshot.issues.length>0||wip.status!=='calculated',issues:[...snapshot.issues,...wip.issues],remaining,progress:contract?Math.min(100,gross/contract*100):0}}).sort((a,b)=>b.remaining-a.remaining);
-    const wallets=walletRows(org),calendar=calendarOccurrences(org),payments30=calendar.filter(item=>item.days<=30),contract=sum(deals,deal=>money(deal.contractTotal??deal.revenue)),realized=sum(realizations),remaining=Math.max(0,contract-realized),uncategorized=cash.filter(item=>item.type!=='transfer'&&!item.articleId).length,unverified=(db.wallets||[]).filter(item=>!item.verified&&(!org||item.org===org||item.org==='Общий')).length,brokenTransfers=cash.filter(item=>item.type==='transfer'&&!item.toWalletId).length,uncertain=expenses.filter(item=>item.valuationStatus==='requires-review').length;
-    const core=window.ArbatFinanceCore,bounds=core.ownerPeriodBounds(document.getElementById('ownerPeriodMode')?.value||'month',document.getElementById('ownerPeriodReference')?.value||iso(new Date()),document.getElementById('ownerPeriodFrom')?.value||'',document.getElementById('ownerPeriodTo')?.value||''),walletMoney=core.walletConsolidation(db.wallets||[],db.cash||[]),liquidity=Number(core.rubles(org?walletMoney.byOrg[org]||0n:walletMoney.total)),financial=core.ownerPeriodSnapshot({...db,wipAccounting:true},bounds,org),operating=Number(core.rubles(financial.result)),current=flow.at(-1)||{income:0,outcome:0},previous=flow.at(-2)||{income:0,outcome:0},net=current.income-current.outcome,previousNet=previous.income-previous.outcome,obligations=sum(payments30),quality={uncategorized,unverified,brokenTransfers,uncertain};
-    const attention=Object.values(quality).reduce((a,b)=>a+b,0)+calendar.filter(item=>item.days<=5).length+(liquidity<obligations?1:0)+projects.filter(item=>item.result<0&&item.realized>0).length;
+    const core=window.ArbatFinanceCore,walletMoney=core.walletConsolidation(db.wallets||[],db.cash||[]),wallets=walletRows(org,walletMoney),calendar=calendarOccurrences(org),payments30=calendar.filter(item=>item.days<=30),contract=sum(deals,deal=>money(deal.contractTotal??deal.revenue)),realized=sum(realizations),remaining=Math.max(0,contract-realized),uncategorized=cash.filter(item=>item.type!=='transfer'&&!item.articleId).length,unverified=(db.wallets||[]).filter(item=>!item.verified&&(!org||item.org===org)).length,brokenTransfers=cash.filter(item=>item.type==='transfer'&&!item.toWalletId).length,uncertain=expenses.filter(item=>item.valuationStatus==='requires-review').length,unreconciled=wallets.filter(item=>item.reconciliation?.status!=='matched').length,mismatched=wallets.filter(item=>item.reconciliation?.status==='mismatch'||item.reconciliation?.status==='invalid-statement'||item.reconciliation?.status==='invalid-statement-date').length;
+    const bounds=core.ownerPeriodBounds(document.getElementById('ownerPeriodMode')?.value||'month',document.getElementById('ownerPeriodReference')?.value||iso(new Date()),document.getElementById('ownerPeriodFrom')?.value||'',document.getElementById('ownerPeriodTo')?.value||''),liquidity=Number(core.rubles(org?walletMoney.byOrg[org]||0n:walletMoney.total)),financial=core.ownerPeriodSnapshot({...db,wipAccounting:true},bounds,org),operating=Number(core.rubles(financial.result)),current=flow.at(-1)||{income:0,outcome:0},previous=flow.at(-2)||{income:0,outcome:0},net=current.income-current.outcome,previousNet=previous.income-previous.outcome,obligations=sum(payments30),quality={uncategorized,unverified,brokenTransfers,uncertain,unreconciled,mismatched,cashCertified:unverified===0&&unreconciled===0};
+    const attention=uncategorized+unverified+brokenTransfers+uncertain+unreconciled+calendar.filter(item=>item.days<=5).length+(liquidity<obligations?1:0)+projects.filter(item=>item.result<0&&item.realized>0).length;
     return {org,financial,bounds,months,flow,directions,projects,wallets,calendar,payments30,portfolio:{contract,realized,remaining,count:deals.length},quality,totals:{liquidity,operating,net,previousNet,obligations,attention}};
   }
   window.arbatDashboardSnapshot=snapshot;
@@ -70,7 +68,7 @@
     const incoming=nextWeek.filter(item=>item.type==='in'||item.kind==='income');
     const outgoings=nextWeek.filter(item=>!incoming.includes(item));
     const rows=[
-      ['Деньги сейчас',rub(data.totals.liquidity),'На подтверждённых счетах',data.totals.liquidity<0?'bad':'good','wallet'],
+      ['Деньги сейчас',rub(data.totals.liquidity),data.quality.cashCertified?'Сверено с выписками':'Расчётно — требуется сверка',data.quality.mismatched||data.totals.liquidity<0?'bad':data.quality.cashCertified?'good':'warn','wallet'],
       ['Поступления 7 дней',rub(sum(incoming)),'По платёжному календарю','good','flow'],
       ['Платежи 7 дней',rub(sum(outgoings)),'По платёжному календарю','warn','calendar'],
       ['Свободный остаток',rub(data.totals.liquidity-sum(outgoings)+sum(incoming)),'Прогноз после платежей',data.totals.liquidity-sum(outgoings)+sum(incoming)<0?'bad':'good','result'],
@@ -83,7 +81,8 @@
   function narrative(data){
     const target=document.getElementById('dashboardNarrative'),status=document.getElementById('dashboardStatus');if(!target||!status)return;
     let text='Деньги и обязательства сбалансированы, операционный результат положительный.',tone='good',label='Показатели в норме';
-    if(!data.portfolio.count&&!data.flow.some(item=>item.income||item.outcome)){text='Для управленческой картины пока недостаточно данных. Добавьте сделки, операции ДДС и обязательства.';tone='neutral';label='Недостаточно данных'}
+    if(!data.quality.cashCertified){text='Денежный остаток является расчётным: не все кошельки подтверждены начальной датой и банковской выпиской.';tone='warn';label='Деньги не сверены'}
+    else if(!data.portfolio.count&&!data.flow.some(item=>item.income||item.outcome)){text='Для управленческой картины пока недостаточно данных. Добавьте сделки, операции ДДС и обязательства.';tone='neutral';label='Недостаточно данных'}
     else if(data.totals.liquidity<data.totals.obligations){text='Ликвидности недостаточно для внесённых обязательств на 30 дней. Нужен план поступлений или перенос платежей.';tone='bad';label='Дефицит денег'}
     else if(data.totals.operating<0){text='Операционный результат отрицательный. Ниже показаны направления и проекты, требующие решения.';tone='bad';label='Требуется решение'}
     else if(data.totals.net<0){text='Текущий месяц идёт с отрицательным денежным потоком, ближайшие обязательства покрыты ликвидностью.';tone='warn';label='Контроль потока'}
@@ -112,7 +111,8 @@
     if(data.quality.uncategorized)issues.push(['bad','ДДС без статьи',data.quality.uncategorized+' операций требуют классификации','cash']);
     if(data.quality.brokenTransfers)issues.push(['bad','Незавершённые переводы',data.quality.brokenTransfers+' операций без получателя','cash']);
     if(data.quality.uncertain)issues.push(['warn','Расходы требуют оценки',data.quality.uncertain+' складских позиций','materials:movement']);
-    if(data.quality.unverified)issues.push(['warn','Кошельки не настроены',data.quality.unverified+' кошельков без сверки','settings']);
+    if(data.quality.unverified)issues.push(['bad','Кошельки не классифицированы',data.quality.unverified+' кошельков не включены в остаток','settings']);
+    if(data.quality.unreconciled)issues.push([data.quality.mismatched?'bad':'warn','Денежные остатки не подтверждены',data.quality.unreconciled+' кошельков без успешной банковской сверки','settings']);
     const loss=data.projects.filter(item=>item.result<0&&item.realized>0);if(loss.length)issues.push(['bad','Убыточные проекты',loss.length+' проектов с отрицательным фактом','deals']);
     document.getElementById('dashboardAttentionCount').textContent=issues.length?issues.length:'0';
     target.innerHTML=issues.length?'<div class="dashboard-attention-list">'+issues.slice(0,6).map(item=>'<button type="button" data-dashboard-route="'+item[3]+'" class="dashboard-attention '+item[0]+'"><i></i><span><strong>'+esc(item[1])+'</strong><small>'+esc(item[2])+'</small></span><b>›</b></button>').join('')+'</div>':'<div class="dashboard-all-good"><span>✓</span><strong>Критичных вопросов нет</strong><small>Данные заполнены, ближайшие обязательства покрыты.</small></div>';

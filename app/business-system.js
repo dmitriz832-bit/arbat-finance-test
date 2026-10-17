@@ -186,6 +186,14 @@
   }
   enhanceLabor();
 
+  function enhanceWalletEditor(){
+    const table=document.getElementById('walletsTable'),form=document.getElementById('walletEditForm');if(!table||!form||form.dataset.reconciliationEnhanced)return;form.dataset.reconciliationEnhanced='1';let walletId='';
+    const selectFromRow=event=>{const row=event.target.closest?.('#walletsTable tbody tr');if(!row)return;const rows=[...table.querySelectorAll('tbody tr')],wallet=(db.wallets||[])[rows.indexOf(row)];if(!wallet)return;walletId=wallet.id;queueMicrotask(()=>{form.elements.openingBalanceDate.value=wallet.openingBalanceDate||'';form.elements.bankStatementDate.value=wallet.bankStatementDate||'';form.elements.bankStatementBalance.value=wallet.bankStatementBalance??''})};
+    document.addEventListener('click',selectFromRow);document.addEventListener('keydown',event=>{if(event.key==='Enter')selectFromRow(event)});
+    form.onsubmit=event=>{event.preventDefault();const wallet=(db.wallets||[]).find(item=>item.id===walletId);if(!wallet)return alert('Не выбран кошелёк');const values=Object.fromEntries(new FormData(form)),opening=Number(String(values.openingBalance||'').replace(',','.')),statementRaw=String(values.bankStatementBalance||'').trim().replace(',','.');if(!values.name.trim())return alert('Укажите название');if(!Number.isFinite(opening))return alert('Некорректный остаток');if(values.openingBalanceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(values.openingBalanceDate))return alert('Некорректная дата начального остатка');if(values.bankStatementDate&&!statementRaw)return alert('Для сверки укажите остаток по выписке');if(statementRaw&&!values.bankStatementDate)return alert('Для сверки укажите дату выписки');if(statementRaw&&!Number.isFinite(Number(statementRaw)))return alert('Некорректный остаток по выписке');if(values.bankStatementDate&&values.openingBalanceDate&&values.bankStatementDate<values.openingBalanceDate)return alert('Дата выписки не может быть раньше даты начального остатка');if(values.org!==wallet.org&&(db.cash||[]).some(item=>item.walletId===wallet.id||item.toWalletId===wallet.id))return alert('Нельзя менять организацию кошелька со связанными операциями');Object.assign(wallet,{name:values.name.trim(),org:values.org,kind:values.kind,openingBalance:opening,openingBalanceDate:values.openingBalanceDate||'',bankStatementDate:values.bankStatementDate||'',bankStatementBalance:statementRaw===''?'':Number(statementRaw),verified:!!values.org});document.getElementById('walletModal').classList.remove('open');walletId='';save()};
+  }
+  enhanceWalletEditor();
+
   const personForm=document.getElementById('personForm');if(personForm&&!personForm.elements.annualLeaveDays){const submit=personForm.querySelector('button');submit.insertAdjacentHTML('beforebegin','<label>Дата приёма<input type="date" name="hireDate"></label><label>Отпуск в год, дней<input type="number" min="0" step="1" name="annualLeaveDays" placeholder="Например, 28"></label>')}
   function renderEnhancedLabor(){
     if(typeof db==='undefined')return;const labor=document.getElementById('laborTable'),people=document.getElementById('personTable'),money=value=>Number(value||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
@@ -202,6 +210,6 @@
     try{return run()}finally{window.ArbatFinanceCore=core}
   }
   const originalReportData=window.reportData;if(typeof originalReportData==='function')window.reportData=function(){const result=originalReportData.apply(this,arguments);if(result?.kind!=='cash')result.hints='Начисления и страховые взносы работодателя рассчитаны единым финансовым модулем. НДФЛ является удержанием и не увеличивает расходы. Связанные с актами начисления не повторяют стоимость работ. Результат управленческий и не заменяет бухгалтерский расчёт.';return result};
-  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceTables();return result};
+  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceWalletEditor();enhanceTables();return result};
   renderEnhancedLabor();
 })();
