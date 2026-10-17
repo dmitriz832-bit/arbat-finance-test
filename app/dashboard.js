@@ -117,9 +117,16 @@
     target.innerHTML='<div class="dashboard-wallet-layout"><div class="dashboard-donut" style="background:conic-gradient('+(stops.length?stops.join(','):'#e8eef3 0deg 360deg')+')"><div class="dashboard-donut-center"><strong>'+rows.length+'</strong><small>кошельков</small></div></div><div class="dashboard-wallet-legend">'+rows.slice(0,7).map((item,index)=>'<div class="dashboard-wallet-item"><i style="background:'+COLORS[index%COLORS.length]+'"></i><span title="'+esc(item.name)+'">'+esc(item.name)+'</span><strong class="'+(item.balance<0?'dashboard-negative':'')+'">'+esc(compact(item.balance))+'</strong></div>').join('')+'</div></div>';
   }
   function projects(data){
-    const target=document.getElementById('dashboardProjects');if(!target)return;document.getElementById('dashboardProjectCount').textContent=data.projects.length;
+    const target=document.getElementById('dashboardProjects');if(!target)return;
+    const count=document.getElementById('dashboardProjectCount');if(count)count.textContent=data.projects.length;
     if(!data.projects.length){target.innerHTML='<div class="dashboard-empty">Создайте первую сделку — портфель появится здесь.</div>';return}
-    target.innerHTML='<div class="dashboard-project-table"><div class="dashboard-project-row head"><span>Проект</span><span>Договор</span><span>Выполнено</span><span>Результат</span></div>'+data.projects.slice(0,6).map(item=>'<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span class="project-progress"><b>'+rub(item.realized)+'</b><i><em style="width:'+item.progress+'%"></em></i></span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong></div>').join('')+'</div>';
+    const deals=db.deals||[];
+    const rows=[...data.projects].sort((a,b)=>(a.result<0?0:1)-(b.result<0?0:1)||b.remaining-a.remaining).slice(0,6);
+    target.innerHTML='<div class="dashboard-project-table executive-project-table"><div class="dashboard-project-row head"><span>Проект</span><span>Договор</span><span>План затрат</span><span>Факт</span><span>Остаток</span><span>Реализация</span><span>Прибыль</span><span>Маржа</span><span>Статус</span></div>'+rows.map(item=>{
+      const deal=deals.find(d=>projectKey(d)===item.key),plan=Number(deal?.directCostPlan??deal?.plannedDirectCosts??deal?.planCosts??NaN);
+      const known=Number.isFinite(plan),left=plan-item.cost,margin=item.revenue?item.result/item.revenue*100:NaN;
+      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan):'—')+'</span><span>'+rub(item.cost)+'</span><span class="'+(known&&left<0?'dashboard-negative':'dashboard-positive')+'">'+(known?rub(left):'—')+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><span>'+percent(margin)+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+(item.result<0?'Риск':'В работе')+'</span></div>'
+    }).join('')+'</div>';
   }
   function calendar(data){
     const target=document.getElementById('dashboardCalendar');if(!target)return;const rows=data.payments30.slice(0,6);
