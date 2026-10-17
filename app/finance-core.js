@@ -33,10 +33,14 @@
     const gross=revenue-direct,ebitda=gross-production-commercial-administrative;
     return {revenue,direct,gross,production,commercial,administrative,ebitda,belowIncome,belowExpenses,result:ebitda+belowIncome-belowExpenses};
   }
-  function projectPayroll(labor,projectKey){
-    let total=0n,unresolved=[];
+  function projectPayroll(labor,projectKey,approvedActs=[]){
+    let total=0n,unresolved=[],conflicts=[];
+    const actIds=new Set(approvedActs.filter(a=>a.status==='approved').map(a=>String(a.id||a._id||'')).filter(Boolean));
+    const batchIds=new Set(approvedActs.filter(a=>a.status==='approved').map(a=>String(a.batchId||'')).filter(Boolean));
     for(const item of labor||[]){
       const amount=cents(item.amount??item.salary??0)+cents(item.employerContributions||0);
+      const linkedAct=String(item.workActId||item.actId||''),linkedBatch=String(item.batchId||'');
+      if((linkedAct&&actIds.has(linkedAct))||(linkedBatch&&batchIds.has(linkedBatch))){conflicts.push(item);continue}
       if(item.projectKey===projectKey){total+=amount;continue}
       if(Array.isArray(item.shares)&&item.shares.length){
         const matched=item.shares.filter(share=>share.projectKey===projectKey);
@@ -45,7 +49,7 @@
       }
       if(item.deal&&!item.projectKey)unresolved.push(item);
     }
-    return {total,unresolved};
+    return {total,unresolved,conflicts};
   }
   function projectExpenseTotal(expenses,acts){
     const external=sum((expenses||[]).map(x=>x.amount||0));
