@@ -224,3 +224,24 @@ body.ab-ready.ui-modern:not(.ab-profile-only) .arbat-col-resizer,
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table tbody tr [colspan]:before,
  #ab-profile-window :is(.scroll,.whtable,.ab-scroll) table tbody tr [colspan]:before{display:none!important}
 }
+
+/* Deal materials: one accurate 8-column responsive grid, no detached header/data. */
+#dealMaterialsList,#dealMaterialsList table,#dealMaterialsList :is(th,td),
+#dealMaterialsPanel,#dealMaterialsPanel table{box-sizing:border-box}
+#dealMaterialsList table,#dealMaterialsPanel table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;border-collapse:collapse!important}
+#dealMaterialsList colgroup,#dealMaterialsPanel colgroup{display:none!important}
+#dealMaterialsList tr,#dealMaterialsPanel tr{display:table-row!important}
+#dealMaterialsList th,#dealMaterialsList td,#dealMaterialsPanel th,#dealMaterialsPanel td{display:table-cell!important;white-space:normal!important;overflow-wrap:anywhere!important;vertical-align:middle!important;padding:9px 6px!important}
+#dealMaterialsList :is(th,td):first-child,#dealMaterialsPanel :is(th,td):first-child{width:30%!important;text-align:left}
+#dealMaterialsList :is(th,td):nth-child(2),#dealMaterialsPanel :is(th,td):nth-child(2){width:7%!important}
+#dealMaterialsList :is(th,td):nth-child(n+3),#dealMaterialsPanel :is(th,td):nth-child(n+3){width:10.5%!important}
+#dealMaterialsList :is(th,td):before,#dealMaterialsPanel :is(th,td):before{content:none!important}
+@media(max-width:900px){
+ #dealMaterialsList table tbody tr,#dealMaterialsPanel table tbody tr{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #dealMaterialsList table tbody td,#dealMaterialsPanel table tbody td{display:block!important;width:auto!important;text-align:left!important}
+ #dealMaterialsList table tbody td:first-child,#dealMaterialsPanel table tbody td:first-child{grid-column:1/-1;width:100%!important}
+ #dealMaterialsList table tbody td:before,#dealMaterialsPanel table tbody td:before{display:block!important;content:attr(data-column-label)!important;font-size:10px;color:#70869e}
+}
+/* Vertical wheel chaining between tables and the document. */
+body.ab-ready :is(.modal,.whmodal,.ui-sheet,.ab-scroll,.scroll,.whtable){overscroll-behavior-y:auto!important}
+body.ab-ready :is(.modal,.whmodal,.ui-sheet) :is(.scroll,.whtable,.ab-scroll){max-height:none!important;overflow-y:visible!important}
