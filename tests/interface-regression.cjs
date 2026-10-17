@@ -33,17 +33,19 @@ test('every legacy navigation key has a matching section',()=>{
 test('owner dashboard contains distinct decision views and uses real business collections',()=>{
   for(const id of ['dashboardKpis','dashboardCashFlow','dashboardAttention','dashboardFinancial','dashboardSpending','dashboardProjects','dashboardSales','dashboardWarehouse','dashboardEvents'])assert.match(dashboard,new RegExp(id));
   for(const collection of ['db.cash','db.wallets','db.deals','db.realizations','db.expenses'])assert.match(dashboard,new RegExp(collection.replace('.','\\.')));
-  assert.match(dashboard,/Сводка собственника/);
+  assert.match(dashboard,/Финансовое состояние бизнеса/);
   assert.match(dashboard,/Проекты под контролем/);
   assert.doesNotMatch(dashboard,/Math\.random\(\).*chart|fake|mock/i);
 });
 
-test('column resizing uses a fixed table width and only writes the selected col',()=>{
+test('column resizing persists every independent width and rechecks visible views',()=>{
   assert.match(business,/table\.dataset\.independentColumns/);
   assert.match(business,/syncTableWidth\(table,group\)/);
   assert.match(business,/group\.children\[index\]\.style\.width/);
   assert.match(business,/group\.children\.length!==headers\.length/);
-  assert.doesNotMatch(business,/forEach\([^)]*=>[^;]*style\.width=width/);
+  assert.match(business,/preferences\.columns\[key\]=\[\.\.\.group\.children\]/);
+  assert.match(business,/ResizeObserver\(enhanceTables\)/);
+  assert.match(business,/available<160/);
 });
 
 test('first login requires an invite or recovery session before password update',()=>{
@@ -51,7 +53,10 @@ test('first login requires an invite or recovery session before password update'
   assert.match(auth,/call\('\/auth\/v1\/user',\{password:passwordField\.value\},true,'PUT'\)/);
   assert.match(auth,/passwordField\.value!==passwordConfirm\.value/);
   assert.match(auth,/\/auth\/v1\/recover/);
+  assert.match(auth,/\/functions\/v1\/staff-onboarding/);
+  assert.match(auth,/showFirstLogin/);
+  assert.match(auth,/Отправить ссылку для первого входа/);
   assert.match(auth,/Забыли пароль\?/);
-  assert.match(auth,/if\(!session&&authMode!=='setup'\)showLogin\(\)/);
+  assert.match(auth,/if\(!session&&authMode!=='setup'\)\{showLogin\(\)/);
   assert.doesNotMatch(auth,/service_role|sb_secret_/);
 });

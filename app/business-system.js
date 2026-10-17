@@ -64,18 +64,19 @@
     table.style.setProperty('--arbat-table-width',Math.ceil(width)+'px');
   }
   function enhanceTable(table){
-    if(!table.tHead?.rows[0]||!table.getClientRects().length)return;const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
+    if(!table.tHead?.rows[0])return;const host=table.closest('.scroll,.whtable,.ab-scroll,#ab-profile-window')||table.parentElement,available=Math.max(0,(host?.clientWidth||0)-2);
+    if(!table.getClientRects().length||available<160){delete table.dataset.independentColumns;return}
+    const key=tableKey(table),saved=preferences.columns?.[key]||[],headers=[...table.tHead.rows[0].cells];
     let group=table.querySelector(':scope > colgroup');if(!group){group=document.createElement('colgroup');for(let i=0;i<table.tHead.rows[0].cells.length;i++)group.append(document.createElement('col'));table.prepend(group)}
     if(group.children.length!==headers.length){group.replaceChildren(...headers.map(()=>document.createElement('col')));delete table.dataset.independentColumns}
     if(!table.dataset.independentColumns){
-      const host=table.closest('.scroll,.whtable,#ab-profile-window')||table.parentElement,available=Math.max(0,(host?.clientWidth||0)-2);
       const widths=headers.map((_,index)=>Number(saved[index])||naturalColumnWidth(table,index)),total=widths.reduce((sum,width)=>sum+width,0);
-      if(total<available&&widths.length){const extra=(available-total)/widths.length;widths.forEach((width,index)=>widths[index]=Math.round(width+extra))}
+      if(total<available&&widths.length){const flexible=widths.map((_,index)=>index).filter(index=>!Number(saved[index])),targets=flexible.length?flexible:[widths.length-1],extra=(available-total)/targets.length;targets.forEach(index=>widths[index]=Math.round(widths[index]+extra))}
       [...group.children].forEach((col,index)=>col.style.width=widths[index]+'px');table.dataset.independentColumns='1';table.classList.add('arbat-resizable');syncTableWidth(table,group);
     }
     headers.forEach((th,index)=>{
       if(th.querySelector(':scope > .arbat-col-resizer'))return;const handle=document.createElement('span');handle.className='arbat-col-resizer';handle.title='Потяните для изменения ширины. Двойное нажатие — сбросить.';th.append(handle);
-      handle.addEventListener('pointerdown',event=>{event.preventDefault();handle.setPointerCapture(event.pointerId);const startX=event.clientX,startWidth=parseFloat(group.children[index].style.width)||th.getBoundingClientRect().width,col=group.children[index];const move=e=>{const width=Math.max(72,Math.round(startWidth+e.clientX-startX));col.style.width=width+'px';preferences.columns[key]||=[];preferences.columns[key][index]=width;syncTableWidth(table,group)};const up=()=>{handle.removeEventListener('pointermove',move);savePreferences()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up,{once:true});handle.addEventListener('pointercancel',up,{once:true})});
+      handle.addEventListener('pointerdown',event=>{event.preventDefault();handle.setPointerCapture(event.pointerId);const startX=event.clientX,startWidth=parseFloat(group.children[index].style.width)||th.getBoundingClientRect().width,col=group.children[index];const move=e=>{const width=Math.max(72,Math.round(startWidth+e.clientX-startX));col.style.width=width+'px';syncTableWidth(table,group)};const up=()=>{handle.removeEventListener('pointermove',move);preferences.columns[key]=[...group.children].map(col=>Math.round(parseFloat(col.style.width)||0));savePreferences()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up,{once:true});handle.addEventListener('pointercancel',up,{once:true})});
       handle.addEventListener('dblclick',()=>{const width=naturalColumnWidth(table,index);group.children[index].style.width=width+'px';if(preferences.columns[key])delete preferences.columns[key][index];syncTableWidth(table,group);savePreferences()});
     });
   }
@@ -83,11 +84,13 @@
   // Shift+wheel always scrolls horizontally; plain wheel uses horizontal scrolling
   // only when the table cannot scroll vertically. Touch/trackpad native gestures remain intact.
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,.ab-scroll table,#ab-profile-window table').forEach(table=>{const container=table.closest('.scroll,.whtable,.ab-scroll');if(container&&container.scrollLeft!==0)container.scrollLeft=0;
+      enhanceTable(table);
       const heads=[...(table.tHead?.rows[0]?.cells||[])].map(c=>c.textContent.replace(/Потяните.*$/,'').trim());
       for(const row of table.tBodies||[])for(const tr of row.rows)[...tr.cells].forEach((cell,i)=>{const label=heads[i]||'Данные';if(cell.dataset.columnLabel!==label)cell.dataset.columnLabel=label});
     })})}
   new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   window.addEventListener('resize',enhanceTables,{passive:true});
+  if('ResizeObserver'in window)new ResizeObserver(enhanceTables).observe(document.querySelector('main'));
   document.addEventListener('transitionend',event=>{if(event.propertyName==='grid-template-columns'||event.propertyName==='width')enhanceTables()});
   document.addEventListener('click',event=>{if(event.target.closest('[data-route],.arbat-nav-sub,.side-nav button'))requestAnimationFrame(enhanceTables)},true);
   enhanceTables();

@@ -41,6 +41,7 @@
         <input id="ab-password-confirm" name="password_confirm" type="password" minlength="8" autocomplete="new-password" placeholder="Повторите новый пароль" hidden>
         <button type="submit" id="ab-submit">Войти</button>
         <button type="button" id="ab-password-link" class="ab-secondary">Забыли пароль?</button>
+        <button type="button" id="ab-login-instead" class="ab-secondary" hidden>У меня уже есть пароль</button>
         <p id="ab-auth-help" class="ab-auth-help" hidden></p>
       </form>
     </div>`;
@@ -55,11 +56,12 @@
   const confirmLabel=document.getElementById('ab-confirm-label');
   const submitButton=document.getElementById('ab-submit');
   const passwordLink=document.getElementById('ab-password-link');
+  const loginInstead=document.getElementById('ab-login-instead');
   const authHelp=document.getElementById('ab-auth-help');
-  let authMode='login';
+  let authMode='login',statusRequest=0;
   try{emailField.value=localStorage.getItem(LAST_EMAIL)||''}catch(e){}
   const showLogin=()=>{
-    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Доступ выдаёт администратор. При первом входе откройте письмо-приглашение. Если забыли пароль, запросите ссылку для восстановления.';
+    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.hidden=false;passwordField.required=true;passwordField.autocomplete='current-password';passwordField.placeholder='Пароль';submitButton.hidden=false;submitButton.disabled=false;submitButton.textContent='Войти';passwordLink.hidden=false;passwordLink.disabled=false;loginInstead.hidden=true;authHelp.hidden=false;authHelp.textContent='Доступ выдаёт администратор. Если забыли пароль, запросите ссылку для восстановления.';
     f.hidden=false;
     gate.classList.remove('ab-checking');
     requestAnimationFrame(()=>{(emailField.value?f.elements.password:emailField).focus({preventScroll:true})});
@@ -67,8 +69,13 @@
   const showPasswordSetup=(kind='invite')=>{
     authMode='setup';f.hidden=false;gate.classList.remove('ab-checking');emailLabel.hidden=true;emailField.hidden=true;emailField.required=false;
     passwordField.value='';passwordField.autocomplete='new-password';passwordField.placeholder='Не менее 8 символов';confirmLabel.hidden=false;passwordConfirm.hidden=false;passwordConfirm.required=true;passwordConfirm.value='';
-    submitButton.textContent='Сохранить пароль';passwordLink.hidden=true;authHelp.hidden=false;authHelp.textContent='После сохранения этого пароля последующие входы будут выполняться через обычную форму.';
+    submitButton.textContent='Сохранить пароль';submitButton.hidden=false;submitButton.disabled=false;passwordLink.hidden=true;loginInstead.hidden=true;authHelp.hidden=false;authHelp.textContent='После сохранения этого пароля последующие входы будут выполняться через обычную форму.';
     message.textContent=kind==='recovery'?'Установите новый пароль':'Завершите первый вход';requestAnimationFrame(()=>passwordField.focus({preventScroll:true}));
+  };
+  const showFirstLogin=()=>{
+    authMode='first-login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;passwordField.hidden=true;passwordField.required=false;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;
+    submitButton.hidden=false;submitButton.disabled=false;submitButton.textContent='Отправить ссылку для первого входа';passwordLink.hidden=true;loginInstead.hidden=false;authHelp.hidden=false;
+    message.textContent='Первый вход сотрудника';authHelp.textContent='Подтвердите свою почту по персональной ссылке. После перехода система откроет два поля для создания пароля.';
   };
   if(session){
     f.hidden=true;
@@ -82,6 +89,20 @@
     const x=await r.json().catch(()=>({}));
     if(!r.ok)throw Error(x.msg||x.error_description||x.message||x.error||'HTTP '+r.status);
     return x;
+  }
+  async function onboarding(action='status'){
+    const email=emailField.value.trim().toLowerCase();
+    const r=await fetch(U+'/functions/v1/staff-onboarding',{method:'POST',headers:{apikey:K,'Content-Type':'application/json'},body:JSON.stringify({email,action})});
+    const x=await r.json().catch(()=>({}));
+    if(!r.ok)throw Error(x.message||'Не удалось проверить учётную запись');
+    return x;
+  }
+  async function detectFirstLogin(){
+    const email=emailField.value.trim().toLowerCase();
+    if(!email||!emailField.validity.valid||authMode==='setup')return;
+    const request=++statusRequest;
+    try{const result=await onboarding();if(request===statusRequest&&result.mode==='first_login')showFirstLogin()}
+    catch(error){console.warn('First-login status is unavailable',error)}
   }
   function save(s){session=s;localStorage.setItem(S,JSON.stringify(s))}
   window.abGetToken=async()=>{
@@ -124,6 +145,15 @@
       catch(error){submitButton.disabled=false;window.abMessage('Не удалось сохранить пароль: '+error.message)}
       return;
     }
+    if(authMode==='first-login'){
+      submitButton.disabled=true;
+      try{
+        await onboarding('send');submitButton.hidden=true;loginInstead.hidden=false;authHelp.hidden=false;
+        authHelp.textContent='Письмо отправлено. Откройте персональную ссылку — на открывшейся странице появятся два поля нового пароля.';
+        window.abMessage('Проверьте почту для завершения первого входа');
+      }catch(error){submitButton.disabled=false;window.abMessage('Не удалось отправить ссылку: '+error.message)}
+      return;
+    }
     const email=emailField.value.trim().toLowerCase();
     try{
       window.abMessage('Проверка пароля…');
@@ -132,10 +162,15 @@
       await enter();
     }catch(error){
       showLogin();
+      try{const status=await onboarding();if(status.mode==='first_login'){showFirstLogin();return}}catch(e){}
       passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Проверьте почту и пароль или запросите ссылку для первого входа / восстановления доступа.';
       window.abMessage(error.message==='Invalid login credentials'?'Почта или пароль не подошли':'Не удалось войти: '+error.message);
     }
   };
+
+  emailField.addEventListener('change',detectFirstLogin);
+  emailField.addEventListener('blur',detectFirstLogin);
+  loginInstead.onclick=()=>{showLogin();message.textContent='Войдите в рабочую систему';requestAnimationFrame(()=>passwordField.focus({preventScroll:true}))};
 
   const RECOVERY_COOLDOWN='arbat-recovery-cooldown-v1';
   passwordLink.onclick=async()=>{
@@ -152,7 +187,7 @@
     history.replaceState(null,'',location.pathname);
     if(['invite','recovery'].includes(hash.get('type')))showPasswordSetup(hash.get('type'));
   }
-  if(!session&&authMode!=='setup')showLogin();
+  if(!session&&authMode!=='setup'){showLogin();if(emailField.value)requestAnimationFrame(detectFirstLogin)}
   if(session&&authMode!=='setup')enter().catch(()=>{
     showLogin();
     window.abMessage('Сессия завершена. Войдите снова.');

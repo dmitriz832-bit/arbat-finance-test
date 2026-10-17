@@ -1,3 +1,5 @@
+@import url('./responsive-system.css?v=1');
+
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table{width:max-content;min-width:100%;table-layout:auto}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) :is(th,td){white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) td .cell-text,.cell-text{display:inline-block!important;max-width:none!important;white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important;overflow:visible!important;text-overflow:clip!important}
