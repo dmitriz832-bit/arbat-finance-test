@@ -1,0 +1,41 @@
+/* ARBAT FINANCE · Corporate HVAC · 2026 */
+:root{color-scheme:light!important;--hv-bg:#f3f6fb;--hv-panel:#fff;--hv-panel2:#f8fafd;--hv-stroke:#dce5ef;--hv-blue:#156ab7;--hv-text:#1c3047;--hv-muted:#637990;--hv-good:#168269;--hv-danger:#bf4555}
+body.ab-ready:not(.ab-profile-only){background:#f3f6fb!important;color:#1c3047!important;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important}
+body.ab-ready:not(.ab-profile-only) header{background:#fff!important;border-bottom:1px solid #dce5ef!important;color:#183550!important;box-shadow:0 1px 5px #1436550b!important}
+body.ab-ready:not(.ab-profile-only) header b,body.ab-ready:not(.ab-profile-only) h1,body.ab-ready:not(.ab-profile-only) h2,body.ab-ready:not(.ab-profile-only) h3{color:#1b344f!important}
+body.ab-ready:not(.ab-profile-only) header small{color:#68819b!important}
+body.ab-ready:not(.ab-profile-only) .layout{background:#f3f6fb!important}
+body.ab-ready:not(.ab-profile-only) .sidebar{background:#ffffff!important;border-right:1px solid #dce5ef!important;color:#314b65!important}
+body.ab-ready:not(.ab-profile-only) .content{background:#f3f6fb!important}
+body.ab-ready:not(.ab-profile-only) .card,body.ab-ready:not(.ab-profile-only) .metric,body.ab-ready:not(.ab-profile-only) .stat-card,body.ab-ready:not(.ab-profile-only) .hv-workspace-header,body.ab-ready:not(.ab-profile-only) .hv-hero,body.ab-ready:not(.ab-profile-only) .hv-summary-card{background:#fff!important;color:#1c3047!important;border:1px solid #e0e7ef!important;border-radius:12px!important;box-shadow:0 3px 12px #263f5710!important}
+body.ab-ready:not(.ab-profile-only) .card p,body.ab-ready:not(.ab-profile-only) .muted,body.ab-ready:not(.ab-profile-only) .small,body.ab-ready:not(.ab-profile-only) .hv-workspace-header p{color:#6c7f92!important}
+body.ab-ready:not(.ab-profile-only) input,body.ab-ready:not(.ab-profile-only) select,body.ab-ready:not(.ab-profile-only) textarea,body.ab-ready:not(.ab-profile-only) button{background:#fff!important;color:#253f57!important;border:1px solid #cad7e4!important;border-radius:8px!important}
+body.ab-ready:not(.ab-profile-only) input::placeholder,body.ab-ready:not(.ab-profile-only) textarea::placeholder{color:#93a2b2!important}
+body.ab-ready:not(.ab-profile-only) button:hover{background:#edf5fc!important;border-color:#6fadd7!important}
+body.ab-ready:not(.ab-profile-only) button:focus-visible,body.ab-ready:not(.ab-profile-only) input:focus-visible,body.ab-ready:not(.ab-profile-only) select:focus-visible{outline:2px solid #3995d2!important;outline-offset:1px}
+body.ab-ready:not(.ab-profile-only) button.primary,body.ab-ready:not(.ab-profile-only) .primary,body.ab-ready:not(.ab-profile-only) .hv-primary{background:#176eb5!important;color:#fff!important;border-color:#176eb5!important;box-shadow:none!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button{background:transparent!important;border:1px solid transparent!important;color:#3b526b!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button.active,body.ab-ready:not(.ab-profile-only) .side-nav button.active-parent{background:#e8f3fd!important;color:#125f9c!important;border-color:#cee4f5!important;box-shadow:inset 3px 0 #176eb5!important}
+body.ab-ready:not(.ab-profile-only) .side-nav button:hover{background:#f0f5fb!important;color:#125f9c!important}
+body.ab-ready:not(.ab-profile-only) .sidebar .sicon,body.ab-ready:not(.ab-profile-only) .arbat-chevron{color:#426581!important}
+body.ab-ready:not(.ab-profile-only) .fields label{color:#40556c!important}
+body.ab-ready:not(.ab-profile-only) table{background:#fff!important;color:#293f56!important}
+body.ab-ready:not(.ab-profile-only) th{background:#f3f7fb!important;color:#577087!important;border-bottom:1px solid #dfe7f0!important}
+body.ab-ready:not(.ab-profile-only) td{border-bottom:1px solid #e8edf3!important}
+body.ab-ready:not(.ab-profile-only) tbody tr:hover{background:#f5f9fe!important}
+body.ab-ready:not(.ab-profile-only) .modal{background:#fff!important;color:#263c52!important;border:1px solid #d8e3ee!important;box-shadow:0 22px 65px #12283e25!important}
+body.ab-ready:not(.ab-profile-only) .modal-backdrop{background:#23395080!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window{background:#fff!important;color:#263c52!important;border:1px solid #dce5ed!important;box-shadow:0 20px 70px #15294335!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window .ab-note{color:#6a8096!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window td,body.ab-ready:not(.ab-profile-only) #ab-profile-window th{border-bottom-color:#e1eaf1!important}
+body.ab-ready:not(.ab-profile-only) #ab-profile-window #ab-logout{background:#fff5f5!important;color:#a53643!important;border-color:#ebc7cc!important}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-header{padding:20px 24px!important}
+body.ab-ready:not(.ab-profile-only) .hv-eyebrow{color:#176eb5!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card{border-color:#dce5ef!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card.hv-expanded>h2{border-bottom-color:#e1e9f1!important}
+body.ab-ready:not(.ab-profile-only) .hv-form-toggle{background:#eef6fd!important;color:#1764a2!important;border-color:#c9dfef!important}
+body.ab-ready:not(.ab-profile-only) .hv-workspace-actions .hv-selected{box-shadow:0 0 0 2px #77b6de50!important}
+body.ab-ready:not(.ab-profile-only) .hv-jumps button{background:#f2f7fc!important;border-color:#d8e7f4!important;color:#275574!important}
+body.ab-ready:not(.ab-profile-only) .ok{color:#137f65!important}body.ab-ready:not(.ab-profile-only) .danger{color:#b94355!important}
+body.ab-ready:not(.ab-profile-only) .banner{display:none!important}
+@media(max-width:700px){body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 10px!important}body.ab-ready:not(.ab-profile-only) .card{padding:13px!important}body.ab-ready:not(.ab-profile-only) .fields{grid-template-columns:minmax(0,1fr)!important}body.ab-ready:not(.ab-profile-only) .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}}
