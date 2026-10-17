@@ -121,11 +121,12 @@
     const count=document.getElementById('dashboardProjectCount');if(count)count.textContent=data.projects.length;
     if(!data.projects.length){target.innerHTML='<div class="dashboard-empty">Создайте первую сделку — портфель появится здесь.</div>';return}
     const deals=db.deals||[];
+    const projectLabels={planned:'Планируется',active:'В работе',paused:'Приостановлен',completed:'Завершён'};
     const rows=[...data.projects].sort((a,b)=>(a.result<0?0:1)-(b.result<0?0:1)||b.remaining-a.remaining).slice(0,6);
     target.innerHTML='<div class="dashboard-project-table executive-project-table"><div class="dashboard-project-row head"><span>Проект</span><span>Договор</span><span>План затрат</span><span>Факт</span><span>Остаток</span><span>Реализация</span><span>Прибыль</span><span>Маржа</span><span>Статус</span></div>'+rows.map(item=>{
       const deal=deals.find(d=>projectKey(d)===item.key),plan=Number(deal?.directCostPlan??deal?.plannedDirectCosts??deal?.planCosts??NaN);
       const known=Number.isFinite(plan),left=plan-item.cost,margin=item.revenue?item.result/item.revenue*100:NaN;
-      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan):'—')+'</span><span>'+rub(item.cost)+'</span><span class="'+(known&&left<0?'dashboard-negative':'dashboard-positive')+'">'+(known?rub(left):'—')+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><span>'+percent(margin)+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+(item.result<0?'Риск':'В работе')+'</span></div>'
+      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><strong>'+esc(item.name)+'</strong><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan):'—')+'</span><span>'+rub(item.cost)+'</span><span class="'+(known&&left<0?'dashboard-negative':'dashboard-positive')+'">'+(known?rub(left):'—')+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><span>'+percent(margin)+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+esc(projectLabels[deal?.projectStatus]||'Не указан')+'</span></div>'
     }).join('')+'</div>';
   }
   function calendar(data){
@@ -146,7 +147,8 @@
     const total=sum(spends),top=[...groups].sort((a,b)=>b[1]-a[1]).slice(0,6),spend=document.getElementById('dashboardSpending');
     if(spend)spend.innerHTML=total?'<div class="executive-spend"><div class="executive-donut" style="--p:'+Math.round(top[0]?.[1]/total*100||0)+'%"><strong>'+rub(total)+'</strong><small>Расходы месяца</small></div><div class="executive-spend-list">'+top.map(([name,value],i)=>'<div><i style="background:'+COLORS[i%COLORS.length]+'"></i><span title="'+esc(name)+'">'+esc(name)+'</span><strong>'+rub(value)+'</strong><small>'+percent(value/total*100)+'</small></div>').join('')+'</div></div>':'<div class="dashboard-empty">Нет расходов за текущий месяц.</div>';
     const sales=document.getElementById('dashboardSales'),stages=new Map();
-    for(const d of (db.deals||[]).filter(x=>matchesOrg(x,data.org))){const label=String(d.status||d.dealStatus||'Без статуса');const v=stages.get(label)||{count:0,total:0};v.count++;v.total+=money(d.contractTotal??d.revenue);stages.set(label,v)}
+    const stageLabels={new:'Новая',negotiations:'Переговоры',proposal:'Коммерческое предложение',contract:'Договор',realization:'Реализация',completed:'Завершена',cancelled:'Отменена'};
+    for(const d of (db.deals||[]).filter(x=>matchesOrg(x,data.org))){const label=stageLabels[d.dealStage]||'Этап не указан';const v=stages.get(label)||{count:0,total:0};v.count++;v.total+=money(d.contractTotal??d.revenue);stages.set(label,v)}
     const sorted=[...stages].sort((a,b)=>b[1].total-a[1].total),max=Math.max(1,...sorted.map(x=>x[1].total));
     if(sales)sales.innerHTML=sorted.length?'<div class="executive-sales">'+sorted.slice(0,6).map(([name,v])=>'<div><span>'+esc(name)+'</span><strong>'+v.count+'</strong><i><b style="width:'+Math.max(2,v.total/max*100)+'%"></b></i><em>'+rub(v.total)+'</em></div>').join('')+'</div>':'<div class="dashboard-empty">Пока нет сделок.</div>';
     const wh=document.getElementById('dashboardWarehouse');
