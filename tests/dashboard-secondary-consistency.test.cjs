@@ -1,8 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const dashboard=fs.readFileSync(path.join(__dirname,'../app/dashboard.js'),'utf8');
 test('executive financial and direction snapshot follows owner period selection',()=>{
- assert.match(dashboard,/financial=core\.ownerPeriodSnapshot\(db,bounds,org\)/);
- assert.match(dashboard,/selected=core\.ownerPeriodSnapshot\(db,bounds,org\)/);
+ assert.match(dashboard,/financial=core\.ownerPeriodSnapshot\(\{\.\.\.db,wipAccounting:true\},bounds,org\)/);
+ assert.match(dashboard,/selected=core\.ownerPeriodSnapshot\(\{\.\.\.db,wipAccounting:true\},bounds,org\)/);
  assert.match(dashboard,/ownerPeriodFrom/);
  assert.match(dashboard,/ownerPeriodTo/);
 });
