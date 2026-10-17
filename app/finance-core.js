@@ -351,21 +351,32 @@
         const t=get(String(entry.personId));t.gross+=p.gross;t.ndfl+=p.tax;t.contributions+=p.contributions;t.expense+=p.expense;t.other+=p.deductions;t.payable+=p.payable;
       }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
     }
-    for(const payment of payments.filter(x=>x.type==='out'&&x.personId)){
+    for(const payment of payments.filter(x=>x.type==='out'&&(x.personId||Array.isArray(x.payrollAllocations))&&x.payrollPayment!==false)){
       const amount=cents(payment.amount||0);
       if(amount<0n){issues.push({code:'payroll-invalid-payment',source:payment});continue}
-      const allocations=Array.isArray(payment.allocations)?payment.allocations:null;
+      const allocations=Array.isArray(payment.payrollAllocations)?payment.payrollAllocations:null;
+      // Project-based cash allocations have a different meaning and must never settle salary.
+      // Explicit payroll allocation takes precedence over legacy single-beneficiary payout.
       let allocated=0n;
-      if(allocations){for(const part of allocations){
-        const value=cents(part.amount||0);
-        if(value<0n){issues.push({code:'payroll-invalid-allocation',source:payment});continue}
-        allocated+=value;
-        if(part.personId)get(String(part.personId)).paid+=value;
-        else issues.push({code:'payroll-allocation-missing-person',source:payment});
-      }}
-      else {allocated=amount;get(String(payment.personId)).paid+=amount}
+      if(allocations){
+        const parts=[];let invalid=false;
+        for(const part of allocations){
+          let value;
+          try{value=cents(part.amount||0)}catch(_){invalid=true;break}
+          if(value<0n||!part.personId){invalid=true;break}
+          allocated+=value;parts.push({personId:String(part.personId),amount:value});
+        }
+        if(invalid||allocated>amount){
+          issues.push({code:invalid?'payroll-invalid-allocation':'payroll-overallocated-payment',source:payment,amount:allocated-amount});
+          unallocatedPayments.push({source:payment,amount});
+          continue;
+        }
+        for(const part of parts)get(part.personId).paid+=part.amount;
+      }else if(payment.personId){
+        allocated=amount;get(String(payment.personId)).paid+=amount;
+      }
       const remainder=amount-allocated;
-      if(remainder!==0n){unallocatedPayments.push({source:payment,amount:remainder});issues.push({code:remainder>0n?'payroll-unallocated-payment':'payroll-overallocated-payment',source:payment,amount:remainder})}
+      if(remainder!==0n){unallocatedPayments.push({source:payment,amount:remainder});issues.push({code:'payroll-unallocated-payment',source:payment,amount:remainder})}
     }
     const people=[...totals.values()].map(x=>({...x,payable:x.payable-x.paid}));
     for(const p of people)if(p.payable<0n)issues.push({code:'payroll-overpayment',personId:p.personId,amount:-p.payable});
