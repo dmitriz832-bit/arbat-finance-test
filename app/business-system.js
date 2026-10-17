@@ -82,7 +82,10 @@
   // Desktop wheel: over a wide table, scroll its own horizontal viewport.
   // Shift+wheel always scrolls horizontally; plain wheel uses horizontal scrolling
   // only when the table cannot scroll vertically. Touch/trackpad native gestures remain intact.
-  let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}
+  let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,.ab-scroll table,#ab-profile-window table').forEach(table=>{
+      const heads=[...(table.tHead?.rows[0]?.cells||[])].map(c=>c.textContent.replace(/Потяните.*$/,'').trim());
+      for(const row of table.tBodies||[])for(const tr of row.rows)[...tr.cells].forEach((cell,i)=>{const label=heads[i]||'Данные';if(cell.dataset.columnLabel!==label)cell.dataset.columnLabel=label});
+    })})}
   new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   window.addEventListener('resize',enhanceTables,{passive:true});
   document.addEventListener('transitionend',event=>{if(event.propertyName==='grid-template-columns'||event.propertyName==='width')enhanceTables()});
