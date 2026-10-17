@@ -283,3 +283,23 @@ body.ab-ready :is(.modal,.whmodal,.ui-sheet) :is(.scroll,.whtable,.ab-scroll){
  #ab-profile-window .ab-scroll table>tbody>tr>td:last-child{grid-column:1/-1;display:flex!important;gap:7px!important}
  #ab-profile-window .ab-scroll table>tbody>tr>td:last-child:before{flex-basis:100%}
 }
+
+/* Interactive text inside data grids: retain click handlers, remove fake button chrome. */
+body.ab-ready :is(.scroll,.whtable,.ab-scroll,#ab-profile-window) :is(button.ab-person-link,button[data-person],button.ui-text-link,button[data-open-row],button[data-open-document],button[data-open-item]),
+body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like{
+ appearance:none!important;-webkit-appearance:none!important;background:transparent!important;
+ border:0!important;box-shadow:none!important;outline-offset:3px!important;
+ padding:0!important;margin:0!important;border-radius:0!important;min-height:0!important;
+ color:inherit!important;font:inherit!important;font-weight:500!important;
+ line-height:inherit!important;text-align:left!important;white-space:normal!important;
+ overflow-wrap:anywhere!important;cursor:pointer!important;max-width:100%!important;
+ text-decoration:none!important;
+}
+body.ab-ready :is(.scroll,.whtable,.ab-scroll,#ab-profile-window) :is(button.ab-person-link,button[data-person],button.ui-text-link,button[data-open-row],button[data-open-document],button[data-open-item]):hover,
+body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like:hover{
+ color:#0967bd!important;text-decoration:underline!important;background:transparent!important;
+}
+body.ab-ready :is(.scroll,.whtable,.ab-scroll,#ab-profile-window) :is(button.ab-person-link,button[data-person],button.ui-text-link,button[data-open-row],button[data-open-document],button[data-open-item]):focus-visible,
+body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like:focus-visible{
+ outline:2px solid #1677df!important;
+}
