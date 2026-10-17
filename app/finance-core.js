@@ -59,6 +59,20 @@
     }
     return {total,unresolved,conflicts,possibleOverlaps};
   }
+  function warehouseCostAudit(expenses,moves,fifo){
+    const issues=[];
+    const linked=(expenses||[]).filter(x=>x.warehouseMoveId);
+    const byMove=new Map();
+    for(const e of linked){const key=String(e.warehouseMoveId);byMove.set(key,[...(byMove.get(key)||[]),e])}
+    for(const move of (moves||[]).filter(x=>x.kind==='consume'&&x.projectIssueId)){
+      const rows=byMove.get(String(move.id))||[];
+      const valued=fifo?.byMove?.[move.id];
+      if(rows.length!==1){issues.push({moveId:move.id,reason:rows.length?'duplicate-expense':'missing-expense'});continue}
+      if(!valued||valued.invalid||valued.amount==null){issues.push({moveId:move.id,reason:'unverified-fifo'});continue}
+      if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
+    }
+    return issues;
+  }
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
     const netOf=x=>{const rate=x.vatRate==null?(x.org==='АРБАТ.ГК'?22:0):Number(x.vatRate);if(!Number.isInteger(rate)||rate<0)throw new RangeError('Invalid VAT rate');const divisor=BigInt(100+rate);return (cents(x.amount||0)*100n+divisor/2n)/divisor};
@@ -118,5 +132,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit});
 });
