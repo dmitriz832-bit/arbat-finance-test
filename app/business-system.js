@@ -82,27 +82,6 @@
   // Desktop wheel: over a wide table, scroll its own horizontal viewport.
   // Shift+wheel always scrolls horizontally; plain wheel uses horizontal scrolling
   // only when the table cannot scroll vertically. Touch/trackpad native gestures remain intact.
-  document.addEventListener('wheel',event=>{
-    if(event.ctrlKey||event.metaKey||event.defaultPrevented)return;
-    const target=event.target instanceof Element?event.target:null;
-    const host=target?.closest('.scroll,.whtable,.ab-scroll');
-    if(!host||!host.querySelector('table')||!host.getClientRects().length)return;
-    const horizontalRoom=host.scrollWidth-host.clientWidth;
-    if(horizontalRoom<2)return;
-    const pixels=event.deltaMode===1?event.deltaY*16:event.deltaMode===2?event.deltaY*host.clientHeight:event.deltaY;
-    if(event.shiftKey){
-      const delta=event.deltaX||pixels;
-      const next=Math.max(0,Math.min(horizontalRoom,host.scrollLeft+delta));
-      if(Math.abs(next-host.scrollLeft)>0.5){host.scrollLeft=next;event.preventDefault()}
-      return;
-    }
-    // Standard mouse wheel moves wide tables horizontally under the pointer;
-    // when reaching the edge, let the wheel continue scrolling the page.
-    if(Math.abs(event.deltaX)>Math.abs(event.deltaY))return;
-    if(host.scrollHeight>host.clientHeight+3)return;
-    const next=Math.max(0,Math.min(horizontalRoom,host.scrollLeft+pixels));
-    if(Math.abs(next-host.scrollLeft)>.5){host.scrollLeft=next;event.preventDefault()}
-  },{passive:false});
   let tableFrame=0;function enhanceTables(){if(tableFrame)return;tableFrame=requestAnimationFrame(()=>{tableFrame=0;document.querySelectorAll('.scroll table,.whtable table,#ab-profile-window table').forEach(enhanceTable)})}
   new MutationObserver(enhanceTables).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   window.addEventListener('resize',enhanceTables,{passive:true});
