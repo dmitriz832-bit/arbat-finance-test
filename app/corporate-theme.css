@@ -39,3 +39,46 @@ body.ab-ready:not(.ab-profile-only) .hv-jumps button{background:#f2f7fc!importan
 body.ab-ready:not(.ab-profile-only) .ok{color:#137f65!important}body.ab-ready:not(.ab-profile-only) .danger{color:#b94355!important}
 body.ab-ready:not(.ab-profile-only) .banner{display:none!important}
 @media(max-width:700px){body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 10px!important}body.ab-ready:not(.ab-profile-only) .card{padding:13px!important}body.ab-ready:not(.ab-profile-only) .fields{grid-template-columns:minmax(0,1fr)!important}body.ab-ready:not(.ab-profile-only) .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}}
+
+/* Corporate content hierarchy and dense operational workspace */
+body.ab-ready:not(.ab-profile-only) .content .wrap{max-width:1740px;margin:auto;padding:25px clamp(16px,2.1vw,36px)}
+body.ab-ready:not(.ab-profile-only) .content h1#title{font-weight:750;letter-spacing:-.035em;font-size:clamp(24px,2vw,32px);margin-bottom:19px}
+body.ab-ready:not(.ab-profile-only) .card{padding:20px 22px!important;margin-bottom:16px!important}
+body.ab-ready:not(.ab-profile-only) .card h2{font-size:17px;font-weight:720;letter-spacing:-.01em;margin-top:0;margin-bottom:17px}
+body.ab-ready:not(.ab-profile-only) .stat{font-variant-numeric:tabular-nums;letter-spacing:-.025em;font-size:clamp(22px,2vw,30px)}
+body.ab-ready:not(.ab-profile-only) .cards{gap:14px}
+body.ab-ready:not(.ab-profile-only) .hv-hero{background:#fff!important;border:1px solid #dce5ef!important;padding:23px 26px!important;box-shadow:0 4px 18px #1939570b!important}
+body.ab-ready:not(.ab-profile-only) .hv-hero-copy h2{font-size:clamp(21px,2.2vw,30px)!important}
+body.ab-ready:not(.ab-profile-only) .hv-hero-visual{opacity:.42!important;filter:saturate(.75)}
+body.ab-ready:not(.ab-profile-only) .hv-actionbar{background:#fff!important;border:1px solid #dce5ef!important;border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+body.ab-ready:not(.ab-profile-only) .hv-action-label{color:#607b96!important;font-size:13px;font-weight:700;margin-right:auto}
+body.ab-ready:not(.ab-profile-only) .hv-action{padding:9px 13px;font-weight:650}
+body.ab-ready:not(.ab-profile-only) .hv-create-card{border:1px solid #dce5ef!important}
+body.ab-ready:not(.ab-profile-only) .hv-create-card.hv-expanded{border-color:#8dbada!important;box-shadow:0 0 0 2px #a9cfe620!important}
+body.ab-ready:not(.ab-profile-only) .fields{gap:15px 14px}
+body.ab-ready:not(.ab-profile-only) .fields label{font-size:13px;font-weight:600;gap:7px!important}
+body.ab-ready:not(.ab-profile-only) input,body.ab-ready:not(.ab-profile-only) select,body.ab-ready:not(.ab-profile-only) textarea{min-height:40px}
+body.ab-ready:not(.ab-profile-only) textarea{resize:vertical;line-height:1.5}
+body.ab-ready:not(.ab-profile-only) table{border-collapse:separate!important;border-spacing:0;min-width:610px}
+body.ab-ready:not(.ab-profile-only) th{font-weight:700;font-size:12px;white-space:nowrap;position:sticky;top:0;z-index:1}
+body.ab-ready:not(.ab-profile-only) td{font-size:13px;line-height:1.4}
+body.ab-ready:not(.ab-profile-only) th,body.ab-ready:not(.ab-profile-only) td{padding:11px 13px!important}
+body.ab-ready:not(.ab-profile-only) .scroll{max-width:100%;border:1px solid #e6edf4;border-radius:9px}
+body.ab-ready:not(.ab-profile-only) .scroll:empty{border:0}
+body.ab-ready:not(.ab-profile-only) .modal{width:min(860px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto}
+body.ab-ready:not(.ab-profile-only) .modal-backdrop{padding:12px!important}
+body.ab-ready:not(.ab-profile-only) .side-nav{overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+body.ab-ready:not(.ab-profile-only) .arbat-menu-caption{color:#8699aa!important;font-size:10px!important;letter-spacing:.12em!important;margin-top:10px}
+body.ab-ready:not(.ab-profile-only) .sidebar .side-bottom{border-top:1px solid #e4ebf2;padding-top:12px}
+@media(max-width:700px){
+body.ab-ready:not(.ab-profile-only) .content .wrap{padding:12px 10px!important}
+body.ab-ready:not(.ab-profile-only) .card{padding:14px!important;margin-bottom:11px!important}
+body.ab-ready:not(.ab-profile-only) .cards{gap:9px!important}
+body.ab-ready:not(.ab-profile-only) .hv-hero{padding:14px!important}
+body.ab-ready:not(.ab-profile-only) .hv-actionbar{padding:10px}
+body.ab-ready:not(.ab-profile-only) .hv-action-label{width:100%}
+body.ab-ready:not(.ab-profile-only) .hv-action{flex:1 1 auto}
+body.ab-ready:not(.ab-profile-only) .scroll{overflow-x:auto;overscroll-behavior-x:contain}
+body.ab-ready:not(.ab-profile-only) .modal{width:100%;padding:16px!important}
+body.ab-ready:not(.ab-profile-only) .modal button{white-space:normal}
+}
