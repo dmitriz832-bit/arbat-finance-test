@@ -74,6 +74,7 @@ test('offline full application reconciles report, dashboard and project at deskt
     form.elements.date.value=new Date().toISOString().slice(0,10);
     form.elements.projectKey.value=key;
     form.elements.category.value='Оборудование';
+    form.elements.note.value='AUDIT-VAT-EXPENSE';
     form.elements.amount.value='24400';
     form.elements.vatRate.value='22';
     form.elements.vatDeductible.value='true';
