@@ -29,3 +29,26 @@ test('form-serialized VAT deductibility is respected',()=>{
  assert.equal(f.rubles(f.documentPnlAmount(deductible,true)),'1000.00');
  assert.equal(f.rubles(f.documentPnlAmount(nonDeductible,true)),'1220.00');
 });
+
+test('historical and explicit VAT documents reconcile side by side without mutation',()=>{
+ const deal={org:'АРБАТ.ГК',order1c:'history-1',dir:'Ventilation'},key=f.dealKey(deal);
+ const legacySale={projectKey:key,org:deal.org,date:'2026-10-01',amount:'12200'};
+ const explicitSale={projectKey:key,org:deal.org,date:'2026-10-02',amount:'10600',amountGross:'10600',vatRate:'5',vatAmount:'504.76',amountNet:'10095.24',vatRateSource:'document-explicit'};
+ const legacyExpense={projectKey:key,org:deal.org,date:'2026-10-01',amount:'1000'};
+ const deductibleExpense={projectKey:key,org:deal.org,date:'2026-10-02',amountGross:'1220',vatRate:'22',vatDeductible:'true',amountNet:'1000',vatAmount:'220'};
+ const state={deals:[deal],realizations:[legacySale,explicitSale],expenses:[legacyExpense,deductibleExpense]};
+ const before=JSON.stringify(state);
+ const project=f.projectSnapshot(state,deal,key),pnl=f.preliminaryPeriod(state,'2026-10',deal.org),direction=f.directionSnapshot(state,'Ventilation','2026-10',deal.org);
+ assert.equal(f.rubles(project.revenue),'20095.24');
+ assert.equal(f.rubles(project.cost),'2000.00');
+ assert.equal(f.rubles(project.result),'18095.24');
+ assert.equal(project.result,pnl.result);assert.equal(project.result,direction.result);
+ assert.equal(JSON.stringify(state),before,'financial reports must not rewrite historical VAT or amounts');
+ assert.equal(f.rubles(f.documentPnlAmount(legacySale)),'10000.00');
+ assert.equal(f.rubles(f.documentPnlAmount(explicitSale)),'10095.24');
+});
+test('explicit document VAT stays fixed when organization changes',()=>{
+ const row={org:'АРБАТ.ГК',amountGross:'10500',vatRate:'5',vatAmount:'500',amountNet:'10000'};
+ assert.equal(f.rubles(f.documentPnlAmount(row)),'10000.00');
+ assert.equal(f.documentPnlAmount({...row,org:'АИР-КЛИМАТ'}),f.documentPnlAmount(row));
+});
