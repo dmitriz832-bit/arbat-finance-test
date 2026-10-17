@@ -40,7 +40,7 @@
         <label for="ab-password-confirm" id="ab-confirm-label" hidden>Повторите пароль</label>
         <input id="ab-password-confirm" name="password_confirm" type="password" minlength="8" autocomplete="new-password" placeholder="Повторите новый пароль" hidden>
         <button type="submit" id="ab-submit">Войти</button>
-        <button type="button" id="ab-password-link" class="ab-secondary" hidden>Получить ссылку для установки пароля</button>
+        <button type="button" id="ab-password-link" class="ab-secondary">Первый вход / восстановить пароль</button>
         <p id="ab-auth-help" class="ab-auth-help" hidden></p>
       </form>
     </div>`;
@@ -59,7 +59,7 @@
   let authMode='login';
   try{emailField.value=localStorage.getItem(LAST_EMAIL)||''}catch(e){}
   const showLogin=()=>{
-    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';
+    authMode='login';emailLabel.hidden=false;emailField.hidden=false;emailField.required=true;confirmLabel.hidden=true;passwordConfirm.hidden=true;passwordConfirm.required=false;passwordField.autocomplete='current-password';submitButton.textContent='Войти';passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Впервые в системе? Укажите рабочую почту и запросите персональную ссылку для создания пароля. Доступ предварительно выдаёт администратор.';
     f.hidden=false;
     gate.classList.remove('ab-checking');
     requestAnimationFrame(()=>{(emailField.value?f.elements.password:emailField).focus({preventScroll:true})});
@@ -132,7 +132,7 @@
       await enter();
     }catch(error){
       showLogin();
-      passwordLink.hidden=false;authHelp.hidden=false;authHelp.textContent='Если доступ выдан недавно или пароль ещё не создавался, запросите персональную ссылку на указанную почту.';
+      passwordLink.hidden=false;passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Проверьте почту и пароль или запросите ссылку для первого входа / восстановления доступа.';
       window.abMessage(error.message==='Invalid login credentials'?'Почта или пароль не подошли':'Не удалось войти: '+error.message);
     }
   };
@@ -140,7 +140,7 @@
   passwordLink.onclick=async()=>{
     const email=emailField.value.trim().toLowerCase();if(!email){window.abMessage('Сначала укажите электронную почту');emailField.focus();return}
     passwordLink.disabled=true;
-    try{await call('/auth/v1/recover',{email,redirect_to:location.origin+location.pathname},false);passwordLink.hidden=true;authHelp.hidden=false;authHelp.textContent='Проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
+    try{await call('/auth/v1/recover',{email,redirect_to:location.origin+location.pathname},false);passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Ссылка для установки пароля отправлена')}
     catch(error){window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
   };
 
@@ -150,6 +150,7 @@
     history.replaceState(null,'',location.pathname);
     if(['invite','recovery'].includes(hash.get('type')))showPasswordSetup(hash.get('type'));
   }
+  if(!session&&authMode!=='setup')showLogin();
   if(session&&authMode!=='setup')enter().catch(()=>{
     showLogin();
     window.abMessage('Сессия завершена. Войдите снова.');
