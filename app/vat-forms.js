@@ -41,4 +41,31 @@
   form.addEventListener('submit',event=>{if(!refresh()){event.preventDefault();event.stopImmediatePropagation();select.reportValidity()}},true);
 
  }
+} // Generic record editor clones the fields; re-evaluate VAT from edited values,
+ // rather than reusing stale hidden totals from the original form.
+ const editor=document.getElementById('genericEditForm');
+ if(editor){
+  editor.addEventListener('submit',event=>{
+   const rate=editor.elements.namedItem('vatRate');
+   const grossField=editor.elements.namedItem('amount');
+   const net=editor.elements.namedItem('amountNet');
+   const tax=editor.elements.namedItem('vatAmount');
+   const gross=editor.elements.namedItem('amountGross');
+   if(!rate||!grossField||!net||!tax||!gross)return;
+   if(!rate.value){
+    event.preventDefault();event.stopImmediatePropagation();rate.reportValidity();return;
+   }
+   const deductible=editor.elements.namedItem('vatDeductible');
+   if(deductible&&!deductible.value){
+    event.preventDefault();event.stopImmediatePropagation();deductible.reportValidity();return;
+   }
+   try{
+    const result=core.documentVat(grossField.value,rate.value,deductible?.value==='true');
+    gross.value=core.rubles(result.amountGross);
+    tax.value=core.rubles(result.vatAmount);
+    net.value=core.rubles(result.amountNet);
+    const source=editor.elements.namedItem('vatRateSource');if(source)source.value='document-explicit';
+   }catch(error){event.preventDefault();event.stopImmediatePropagation();alert('НДС: '+error.message)}
+  },true);
+ }
 })();
