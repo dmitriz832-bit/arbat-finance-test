@@ -33,7 +33,7 @@ test('every legacy navigation key has a matching section',()=>{
 test('owner dashboard contains distinct decision views and uses real business collections',()=>{
   for(const id of ['dashboardKpis','dashboardCashFlow','dashboardAttention','dashboardDirections','dashboardWallets','dashboardProjects','dashboardCalendar'])assert.match(dashboard,new RegExp(id));
   for(const collection of ['db.cash','db.wallets','db.deals','db.realizations','db.expenses'])assert.match(dashboard,new RegExp(collection.replace('.','\\.')));
-  assert.match(dashboard,/Картина для собственника/);
+  assert.match(dashboard,/Финансовое состояние бизнеса/);
   assert.match(dashboard,/Платёжный горизонт/);
   assert.doesNotMatch(dashboard,/Math\.random\(\).*chart|fake|mock/i);
 });
@@ -51,5 +51,7 @@ test('first login requires an invite or recovery session before password update'
   assert.match(auth,/call\('\/auth\/v1\/user',\{password:passwordField\.value\},true,'PUT'\)/);
   assert.match(auth,/passwordField\.value!==passwordConfirm\.value/);
   assert.match(auth,/\/auth\/v1\/recover/);
+  assert.match(auth,/Первый вход \/ восстановить пароль/);
+  assert.match(auth,/if\(!session&&authMode!=='setup'\)showLogin\(\)/);
   assert.doesNotMatch(auth,/service_role|sb_secret_/);
 });
