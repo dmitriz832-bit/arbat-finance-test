@@ -10,3 +10,6 @@ test('document expense cannot be counted again on payment',()=>{const recognized
 test('project operating result sample',()=>{const cost=f.sum(['20000','5000','8000','10000','3000']);assert.equal(f.rubles(cost),'46000.00');assert.equal(f.rubles(f.cents('60000')-cost),'14000.00')});
 test('invalid payroll deductions rejected',()=>assert.throws(()=>f.payroll({gross:'100',ndfl:'101'}),RangeError));
 test('negative distribution reconciles',()=>{const parts=f.allocate('-1.00',[1,1,1]);assert.equal(parts.reduce((a,b)=>a+b),f.cents('-1.00'))});
+
+test('wallet: incoming, outgoing and internal transfer',()=>{const movements=[{type:'in',walletId:'a',amount:'100.10'},{type:'out',walletId:'a',amount:'20.20'},{type:'transfer',walletId:'a',toWalletId:'b',amount:'30.30'}];assert.equal(f.rubles(f.walletBalance('10.00',movements,'a')),'59.60');assert.equal(f.rubles(f.walletBalance('0',movements,'b')),'30.30');const consolidated=f.walletBalance('10',movements,'a')+f.walletBalance('0',movements,'b');assert.equal(f.rubles(consolidated),'89.90')});
+test('wallet: fractional money stays exact',()=>{const entries=[{type:'in',walletId:'x',amount:'0.10'},{type:'in',walletId:'x',amount:'0.20'}];assert.equal(f.rubles(f.walletBalance('0',entries,'x')),'0.30')});
