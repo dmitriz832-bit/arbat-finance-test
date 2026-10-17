@@ -73,3 +73,10 @@ test('salary form has one authoritative field for each payroll value',()=>{
   assert.doesNotMatch(business,/createContextualFragment\([^\n]+name="(?:ndfl|employerContributions|article)"/);
   assert.equal([...business.matchAll(/name="accrualType"/g)].length,1,'Accrual type enhancement must be injected once');
 });
+
+test('employee leave workspace uses the authoritative leave ledger',()=>{
+  assert.match(business,/document\.getElementById\('leaveForm'\)\?\.closest\('\.card'\)/);
+  assert.match(business,/employee-leave-card/);
+  assert.doesNotMatch(business,/employeeEventForm|employeeEventsTable|Math\.max\(0,total-used\)/);
+  assert.match(html,/ArbatFinanceCore\.leaveSnapshot\(p,db\.leaveEvents\|\|\[\],todayLeave\)/);
+});
