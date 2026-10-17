@@ -105,7 +105,26 @@
         group.includes('общепроизвод')?'production':
         group.includes('администр')?'administrative':
         item.projectKey||item.dir?'direct':'administrative';
-      push(item,'general-expense',documentPnlAmount(item,true),item.projectKey||'',category);
+      const amount=documentPnlAmount(item,true),allocations=Array.isArray(item.pnlAllocations)?item.pnlAllocations:[],rule=String(item.pnlAllocationRule||article?.allocationRule||'none');
+      if(rule==='proportional'&&allocations.length){
+        const targets=allocations.map(a=>({projectKey:String(a.projectKey||''),dir:String(a.dir||''),org:String(a.org||item.org||'')}));
+        if(targets.some(a=>!a.projectKey&&!a.dir)||targets.some(a=>a.org!==String(item.org||''))){
+          issues.push({code:'invalid-pnl-allocation-target',source:item});
+          push(item,'general-expense',amount,item.projectKey||'',category);
+        }else{
+          try{
+            const weights=allocations.map(a=>Number(a.weight));
+            const parts=allocate(rubles(amount),weights);
+            for(let i=0;i<parts.length;i++)push({...item,dir:targets[i].dir,org:targets[i].org},'general-expense',parts[i],targets[i].projectKey,category);
+          }catch(_){
+            issues.push({code:'invalid-pnl-allocation-weights',source:item});
+            push(item,'general-expense',amount,item.projectKey||'',category);
+          }
+        }
+      }else{
+        if(rule==='proportional')issues.push({code:'missing-pnl-allocation',source:item});
+        push(item,'general-expense',amount,item.projectKey||'',category);
+      }
     }
     for(const item of data.labor||[]){
       const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
