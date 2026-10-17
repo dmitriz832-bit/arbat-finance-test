@@ -101,11 +101,7 @@
   function reportRow(values){const amounts=values.map(cents);return {months:amounts,total:amounts.reduce((a,b)=>a+b,0n)}}
   function preliminaryPeriod(data,period,org=''){
     const ok=x=>(!org||x.org===org)&&String(x.date||x.dt||'').slice(0,7)===period;
-    const amounts=(data.realizations||[]).filter(ok).map(x=>{
-      const gross=cents(x.amount||0);
-      const divisor=x.vatRate==null?(x.org==='АРБАТ.ГК'?122n:100n):(100n+BigInt(Number(x.vatRate)));
-      return rubles((gross*100n+divisor/2n)/divisor);
-    });
+    const amounts=(data.realizations||[]).filter(ok).map(x=>rubles(netAmount(x.amount,x.org,x.vatRate)));
     const direct=(data.expenses||[]).filter(ok).map(x=>x.amount||0);
     const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles((cents(x.rate||0)*cents(x.qty||0)+50n)/100n));
     const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
