@@ -371,16 +371,26 @@
       let amount;
       try{amount=cents(movement.amount||0)}catch(_){issues.push({code:'invalid-receipt',source:movement});continue}
       const allocations=Array.isArray(movement.projectAllocations)?movement.projectAllocations:null;
+      if(amount<0n){issues.push({code:'negative-receipt',source:movement});continue}
       if(allocations){
-        let assigned=0n;
+        let assigned=0n,invalid=false;
+        const pending=[];
         for(const a of allocations){
           const project=projects.get(String(a.projectKey||''));
-          const portion=cents(a.amount||0);
-          if(portion<0n||!project){issues.push({code:'invalid-receipt-allocation',source:movement});continue}
-          project.received+=portion;assigned+=portion;
+          let portion;
+          try{portion=cents(a.amount)}catch(_){invalid=true;continue}
+          if(portion<=0n||!project||org&&project.org!==org){invalid=true;continue}
+          pending.push({project,portion});
+          assigned+=portion;
         }
-        if(assigned>amount)issues.push({code:'overallocated-receipt',source:movement});
-        else unallocated+=amount-assigned;
+        if(invalid||assigned>amount){
+          issues.push({code:assigned>amount?'overallocated-receipt':'invalid-receipt-allocation',source:movement});
+          // Never credit a partially invalid or overallocated receipt to projects.
+          unallocated+=amount;
+          continue;
+        }
+        for(const {project,portion} of pending)project.received+=portion;
+        unallocated+=amount-assigned;
       }else if(movement.projectKey&&projects.has(String(movement.projectKey))){
         projects.get(String(movement.projectKey)).received+=amount;
       }else{
