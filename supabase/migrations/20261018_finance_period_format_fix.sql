@@ -4,7 +4,7 @@ create or replace function public.set_finance_period_status(p_period text,p_stat
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare actor_email text;
 begin
- if p_period !~ '^\\d{4}-(0[1-9]|1[0-2])$' or p_status not in ('open','closed') then raise exception 'Invalid period or status';end if;
+ if p_period !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' or p_status not in ('open','closed') then raise exception 'Invalid period or status';end if;
  if not exists(select 1 from public.staff_access where user_id=auth.uid() and enabled and role='admin') then raise exception 'Administrator only';end if;
  if p_status='open' and (p_reason is null or length(trim(p_reason))<10) then raise exception 'Reopening requires a reason (10+ characters)';end if;
  select email into actor_email from auth.users where id=auth.uid();
