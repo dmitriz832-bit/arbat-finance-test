@@ -103,3 +103,9 @@
 @media(max-width:1450px){#overview .dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-finance-panel,#overview .dashboard-flow-panel,#overview .dashboard-spend-panel,#overview .dashboard-project-panel,#overview .dashboard-sales-panel,#overview .dashboard-warehouse-panel,#overview .dashboard-events-panel{grid-column:auto}#overview .dashboard-attention-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:750px){#overview .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-attention-list{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-kpi>strong{white-space:normal!important}#overview .dashboard-project-panel{overflow-x:auto}#overview .dashboard-project-table{min-width:550px}.executive-spend{flex-wrap:wrap}}
 @media(max-width:375px){#overview .dashboard-kpis{grid-template-columns:minmax(0,1fr)!important}}
+
+#overview .executive-project-table{overflow-x:auto;max-width:100%}
+#overview .executive-project-table .dashboard-project-row{display:grid!important;grid-template-columns:minmax(160px,1.6fr) repeat(7,minmax(80px,1fr)) minmax(75px,.8fr)!important;gap:8px!important;min-width:950px;padding:9px 8px!important;font-size:10px}
+#overview .executive-project-table .dashboard-project-row.head{background:#f3f7fc!important;color:#657e97!important}
+.executive-project-status{border-radius:7px;padding:4px 7px;text-align:center;background:#e9f2ff;color:#1670c0;font-size:10px;font-weight:750}
+.executive-project-status.risk{background:#fff0f0;color:#d13d46}
