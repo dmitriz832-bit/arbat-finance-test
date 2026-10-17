@@ -1,0 +1,43 @@
+name: Production Pages smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  pages-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Confirm site and runtime files are deployed
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://dmitriz832-bit.github.io/arbat-finance-test/app"
+          for file in index.html finance-core.js vat-forms.js dashboard.js sync.js auth.js; do
+            url="$base/$file"
+            echo "Checking $url"
+            body="$(mktemp)"
+            success=0
+            for attempt in $(seq 1 15); do
+              status="$(curl -LsS --connect-timeout 10 --max-time 25 -o "$body" -w '%{http_code}' "$url" || true)"
+              if [[ "$status" == 200 ]] && [[ -s "$body" ]]; then
+                success=1
+                break
+              fi
+              echo "Attempt $attempt: HTTP $status; retrying in 20 s"
+              sleep 20
+            done
+            if [[ "$success" != 1 ]]; then echo "::error::$file unavailable or empty"; exit 1; fi
+            if [[ "$file" == "index.html" ]]; then
+              grep -q 'vat-forms.js' "$body" || { echo "::error::Production HTML missing VAT script"; exit 1; }
+              grep -q 'finance-core.js' "$body" || { echo "::error::Production HTML missing finance core"; exit 1; }
+            fi
+            if [[ "$file" == "vat-forms.js" ]]; then
+              grep -q 'vatDeductible' "$body" || { echo "::error::VAT forms not deployed"; exit 1; }
+            fi
+            if [[ "$file" == "finance-core.js" ]]; then
+              grep -q 'documentPnlAmount' "$body" || { echo "::error::Financial core not deployed"; exit 1; }
+            fi
+            rm -f "$body"
+          done
+          echo "Pages asset smoke passed. This does not validate authenticated Supabase sessions."
