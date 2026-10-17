@@ -16,4 +16,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --check app/finance-core.js
-      - run: node --test tests/finance-core.test.cjs
+      - run: node --test tests/finance-core.test.cjs tests/finance-integration.test.cjs
