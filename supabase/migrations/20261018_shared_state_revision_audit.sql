@@ -5,10 +5,10 @@ begin
  if new.payload is not distinct from old.payload then return new; end if;
  select coalesce(array_agg(key order by key),array[]::text[]) into changed_sections
  from (
-  select coalesce(before.key,after.key) as key
-  from jsonb_each(coalesce(old.payload,'{}'::jsonb)) before
-  full join jsonb_each(coalesce(new.payload,'{}'::jsonb)) after using(key)
-  where before.value is distinct from after.value
+  select coalesce(old_section.key,new_section.key) as key
+  from jsonb_each(coalesce(old.payload,'{}'::jsonb)) old_section
+  full join jsonb_each(coalesce(new.payload,'{}'::jsonb)) new_section using(key)
+  where old_section.value is distinct from new_section.value
  ) diff;
  insert into public.staff_activity(user_id,email,event,details)
  values(new.updated_by,(select u.email from auth.users u where u.id=new.updated_by),
