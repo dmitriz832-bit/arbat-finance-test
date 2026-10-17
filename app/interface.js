@@ -81,5 +81,22 @@
  const articleDescription=$('articleDescription');if(articleDescription){const update=()=>{articleDescription.hidden=['Выберите статью','Описание статьи появится после выбора'].includes(articleDescription.textContent.trim())};new MutationObserver(update).observe(articleDescription,{childList:true});update();}
  const crewNote=$('psReplenishment')?.querySelector('p');if(crewNote)crewNote.textContent='Материалы, которые остаются у бригады между объектами. Расход по проекту возникает после фактического списания.';
  const peopleNote=$('personForm')?.closest('.card')?.querySelector('p');if(peopleNote&&peopleNote.textContent.includes('Демо'))peopleNote.textContent='Единый справочник сотрудников и исполнителей для начислений и состава бригад.';
+ const layout=$('layout'),sidebar=$('sidebar'),sideToggle=$('toggleSide'),headerInner=header.querySelector(':scope > div');
+ const navToggle=document.createElement('button');navToggle.id='ui-nav-toggle';navToggle.type='button';navToggle.setAttribute('aria-controls','sidebar');navToggle.setAttribute('aria-label','Открыть меню');navToggle.innerHTML='<span aria-hidden="true">☰</span><span>Меню</span>';headerInner.append(navToggle);
+ const navBackdrop=document.createElement('button');navBackdrop.id='ui-nav-backdrop';navBackdrop.type='button';navBackdrop.tabIndex=-1;navBackdrop.setAttribute('aria-label','Закрыть меню');document.body.append(navBackdrop);
+ const compactNav=()=>matchMedia('(max-width:1100px)').matches;
+ function setNav(open,focus=true){
+  if(!compactNav())open=false;
+  layout.classList.toggle('mobile-open',open);document.body.classList.toggle('ui-nav-open',open);navToggle.setAttribute('aria-expanded',String(open));navToggle.setAttribute('aria-label',open?'Закрыть меню':'Открыть меню');
+  sidebar.setAttribute('aria-hidden',String(compactNav()&&!open));
+  if(open&&focus)requestAnimationFrame(()=>sideToggle.focus({preventScroll:true}));else if(!open&&focus&&compactNav())navToggle.focus({preventScroll:true});
+ }
+ navToggle.onclick=()=>setNav(!layout.classList.contains('mobile-open'));
+ navBackdrop.onclick=()=>setNav(false);
+ sideToggle.addEventListener('click',e=>{if(!compactNav())return;e.preventDefault();e.stopImmediatePropagation();setNav(!layout.classList.contains('mobile-open'));},true);
+ $('tabs').addEventListener('click',e=>{const target=e.target.closest('[data-route]');if(!target||!compactNav())return;const hasChildren=Boolean(target.closest('.arbat-nav-group')?.querySelector('.arbat-nav-children'));if(target.classList.contains('arbat-nav-sub')||!hasChildren)setTimeout(()=>setNav(false,false));});
+ addEventListener('resize',()=>setNav(layout.classList.contains('mobile-open'),false));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('ui-nav-open')){e.preventDefault();setNav(false)}});
+ setNav(false,false);
  document.addEventListener('click',e=>{const b=e.target.closest?.('#ab-profile-tabs .ab-tab');if(b)for(const tab of b.parentElement.children)tab.setAttribute('aria-selected',String(tab===b));});
 })();
