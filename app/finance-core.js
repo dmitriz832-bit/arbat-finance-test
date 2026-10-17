@@ -335,6 +335,31 @@
     }
     return {opening:initial,received,spent,balance:initial+received-spent};
   }
+  function walletConsolidation(wallets,entries){
+    const groups={'АИР-КЛИМАТ':0n,'АРБАТ.ГК':0n,'Общий':0n},rows=[],issues=[],seen=new Set();
+    for(const wallet of wallets||[]){
+      if(!wallet.verified)continue;
+      const id=String(wallet.id||'');
+      if(!id||seen.has(id)){issues.push({code:'duplicate-or-missing-wallet-id',walletId:id});continue}
+      seen.add(id);
+      const org=String(wallet.org||'');
+      if(!Object.prototype.hasOwnProperty.call(groups,org)){
+        issues.push({code:'unclassified-wallet-organization',walletId:id,org});continue;
+      }
+      const snapshot=walletSnapshot(wallet.openingBalance||0,entries,id);
+      rows.push({walletId:id,name:wallet.name||id,org,...snapshot});
+      groups[org]+=snapshot.balance;
+    }
+    for(const entry of entries||[]){
+      if(entry.type==='transfer'&&(!entry.toWalletId||!entry.walletId||entry.toWalletId===entry.walletId)){
+        issues.push({code:'invalid-wallet-transfer',source:entry});
+      }else if(entry.type==='transfer'&&(!seen.has(String(entry.walletId))||!seen.has(String(entry.toWalletId)))){
+        issues.push({code:'transfer-with-unverified-wallet',source:entry});
+      }
+    }
+    const total=groups['АИР-КЛИМАТ']+groups['АРБАТ.ГК']+groups['Общий'];
+    return {rows,byOrg:groups,total,issues};
+  }
   function walletBalance(opening,entries,walletId){return walletSnapshot(opening,entries,walletId).balance}
   function payroll({gross,ndfl='0',other='0',contributions='0',paid='0'}){
     const g=cents(gross),tax=cents(ndfl),ded=cents(other),ins=cents(contributions),payment=cents(paid);
@@ -386,5 +411,5 @@
     const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
     return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
