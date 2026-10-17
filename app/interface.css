@@ -28,6 +28,8 @@ body.ab-ready.ui-modern:not(.ab-profile-only) button{min-height:40px;padding:9px
 body.ab-ready.ui-modern:not(.ab-profile-only) button.primary,body.ab-ready.ui-modern:not(.ab-profile-only) .primary{background:var(--ui-blue)!important;border-color:var(--ui-blue)!important;color:#fff!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) button.danger{color:#c53340!important;background:#fff5f5!important;border-color:#f0cdd1!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) input,body.ab-ready.ui-modern:not(.ab-profile-only) select,body.ab-ready.ui-modern:not(.ab-profile-only) textarea{box-sizing:border-box!important;width:100%;min-width:0!important;max-width:100%!important;min-height:44px;padding:10px 12px!important;border:1px solid #d5dfeb!important;background:#f8faff!important;border-radius:10px!important;font:inherit;line-height:1.4;color:var(--ui-ink)!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) input[type=date]{inline-size:100%!important;min-inline-size:0!important;max-inline-size:100%!important;-webkit-appearance:none;appearance:none}
+body.ab-ready.ui-modern:not(.ab-profile-only) input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
 body.ab-ready.ui-modern:not(.ab-profile-only) select{padding-right:27px!important;text-overflow:ellipsis}
 body.ab-ready.ui-modern:not(.ab-profile-only) textarea{min-height:100px;resize:vertical;overflow-wrap:anywhere}
 body.ab-ready.ui-modern:not(.ab-profile-only) input[type=checkbox],body.ab-ready.ui-modern:not(.ab-profile-only) input[type=radio]{width:18px!important;height:18px!important;min-height:18px!important;flex:0 0 18px;padding:0!important;accent-color:var(--ui-blue)}
@@ -89,6 +91,9 @@ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header [data-sheet-cance
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-body{overflow:auto;min-height:0;max-height:100%;padding:24px;overscroll-behavior:contain}
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-content{display:block!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content>*{min-width:0!important;max-width:100%!important;inline-size:auto}
+body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content>label{width:100%!important;min-width:0!important;max-width:100%!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content :is(input,select,textarea){inline-size:100%!important;min-inline-size:0!important;max-inline-size:100%!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-discard{padding:16px 24px;background:#fff5f2;border-top:1px solid #f0d8d2;flex:0 0 auto}
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-discard[hidden]{display:none!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-discard p{margin:0 0 12px;color:#7a453b!important}
@@ -114,7 +119,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-head,.modal-actions,.cw
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-toolbar-actions button{flex:1 1 auto}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-overlay{padding:12px 0 0;align-items:flex-end}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet{width:100%;max-height:calc(100dvh - 12px);border-radius:22px 22px 0 0;padding-bottom:env(safe-area-inset-bottom)}
- body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header{grid-template-columns:80px minmax(0,1fr) 94px;gap:6px;padding:13px 14px!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header{grid-template-columns:70px minmax(0,1fr) 110px;gap:6px;padding:13px 14px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header h2{font-size:16px}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header button{font-size:13px;padding:8px 10px}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-body{padding:20px 16px}
@@ -124,6 +129,12 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-head,.modal-actions,.cw
 }
 
 #ui-nav-toggle,#ui-nav-backdrop{display:none}
+.metric-ok,.metric-danger,.metric-warning,.metric-neutral,.ui-value-positive,.ui-value-negative,.ui-value-intermediate,.ui-value-neutral{background:transparent!important;background-image:none!important;border-radius:0!important;box-shadow:none!important}
+.metric-ok,.ui-value-positive{color:#147a4b!important}
+.metric-danger,.ui-value-negative{color:#c23b4a!important}
+.metric-warning,.ui-value-intermediate{color:#ad6800!important}
+.metric-neutral,.ui-value-neutral{color:#607286!important}
+td.ui-value-positive,td.ui-value-negative,td.ui-value-intermediate,td.ui-value-neutral{font-weight:680}
 @media(max-width:1100px){
  body.ab-ready.ui-modern:not(.ab-profile-only)>header>div{position:relative;padding-right:112px}
  body.ab-ready.ui-modern:not(.ab-profile-only) #ui-nav-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 13px;background:#edf5ff!important;border-color:#cfe0f2!important;color:#125f9c!important;white-space:nowrap}
@@ -162,5 +173,10 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-head,.modal-actions,.cw
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-page-heading #title{font-size:23px}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-page-heading>label{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px}
  body.ab-ready.ui-modern:not(.ab-profile-only) #orgFilter{width:100%;min-width:0}
- body.ab-ready.ui-modern:not(.ab-profile-only) .ui-segments button{flex:0 0 auto}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-segments{flex-wrap:wrap;overflow:visible}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-segments button{flex:1 1 120px;white-space:normal}
+}
+@media(max-width:900px){
+ body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content{grid-template-columns:minmax(0,1fr)!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet{width:min(680px,100%)}
 }
