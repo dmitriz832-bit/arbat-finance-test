@@ -21,3 +21,8 @@ test('shared project profit reconciles to the kopeck',()=>{assert.equal(f.rubles
 test('shared P&L breakdown reconciles gross and EBITDA exactly',()=>{const x=f.pnl({revenue:['60000'],direct:['10000','2000','3000'],production:['4000'],commercial:['1000'],administrative:['12000']});assert.equal(f.rubles(x.gross),'45000.00');assert.equal(f.rubles(x.ebitda),'28000.00');assert.equal(x.gross-x.production-x.commercial-x.administrative,x.result)});
 
 test('dashboard operating aggregation equals shared P&L engine',()=>{const data={revenue:['60000'],direct:['10000','2000','3000'],administrative:['4000','13000']};assert.equal(f.rubles(f.pnl(data).result),'28000.00');assert.equal(f.pnl(data).result,f.projectResult('60000',['10000','2000','3000','4000','13000']))});
+
+test('period totals exclude other months and advances',()=>{
+const data={realizations:[{date:'2026-10-02',amount:'60000',org:'АИР-КЛИМАТ'},{date:'2026-09-02',amount:'20000',org:'АИР-КЛИМАТ'}],expenses:[{date:'2026-10-04',amount:'10000',org:'АИР-КЛИМАТ'}],workActs:[{date:'2026-10-05',status:'approved',qty:'1',rate:'2000',org:'АИР-КЛИМАТ'}],costs:[{date:'2026-10-05',dir:'Service',amount:'3000',org:'АИР-КЛИМАТ'},{date:'2026-10-05',amount:'4000',org:'АИР-КЛИМАТ'}],labor:[{date:'2026-10-05',expenseType:'administrative',amount:'13000',org:'АИР-КЛИМАТ'}],cash:[{date:'2026-10-04',type:'in',amount:'500000',org:'АИР-КЛИМАТ'}]};
+assert.equal(f.rubles(f.preliminaryPeriod(data,'2026-10','АИР-КЛИМАТ').result),'28000.00');
+assert.equal(f.rubles(f.preliminaryPeriod(data,'2026-09','АИР-КЛИМАТ').result),'20000.00')});
