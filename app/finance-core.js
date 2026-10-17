@@ -125,6 +125,15 @@
     for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
     return issues;
   }
+  // Explicit per-document VAT, calculated entirely in integer kopecks.
+  function documentVat(gross,vatRate,vatDeductible=false){
+    const rate=Number(vatRate);
+    if(![0,5,7,10,20,22].includes(rate))throw new RangeError('Unsupported document VAT rate');
+    const amountGross=cents(gross),abs=amountGross<0n?-amountGross:amountGross;
+    const divisor=BigInt(100+rate),tax=(abs*BigInt(rate)+divisor/2n)/divisor;
+    const vatAmount=amountGross<0n?-tax:tax;
+    return {vatRate:rate,amountGross,vatAmount,amountNet:amountGross-vatAmount,vatDeductible:Boolean(vatDeductible)};
+  }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function projectSnapshot(data,deal,projectKey){
     const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
@@ -197,5 +206,5 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,cashFlow,walletSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot});
 });
