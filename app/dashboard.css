@@ -109,3 +109,23 @@
 #overview .executive-project-table .dashboard-project-row.head{background:#f3f7fc!important;color:#657e97!important}
 .executive-project-status{border-radius:7px;padding:4px 7px;text-align:center;background:#e9f2ff;color:#1670c0;font-size:10px;font-weight:750}
 .executive-project-status.risk{background:#fff0f0;color:#d13d46}
+
+/* Vertical scrolling only for the owner page. */
+#overview .dashboard-visuals,#overview .dashboard-layout,#overview .dashboard-panel{min-width:0!important;max-width:100%!important;overflow-x:clip!important}
+#overview .executive-project-table{overflow-x:hidden!important}
+#overview .executive-project-table .dashboard-project-row{min-width:0!important;width:100%!important;grid-template-columns:minmax(0,1.6fr) repeat(7,minmax(0,1fr)) minmax(0,.85fr)!important;gap:4px!important;font-size:clamp(9px,.65vw,11px)!important}
+#overview .executive-project-table .dashboard-project-row>*{min-width:0!important;overflow-wrap:anywhere!important;white-space:normal!important}
+@media(max-width:1100px){
+ #overview .executive-project-table .dashboard-project-row.head{display:none!important}
+ #overview .executive-project-table .dashboard-project-row:not(.head){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;padding:12px!important;border:1px solid #e3eaf2;border-radius:10px;margin-bottom:10px}
+ #overview .executive-project-table .dashboard-project-row:not(.head)>*:first-child{grid-column:1/-1}
+ #overview .dashboard-spend-panel,#overview .dashboard-finance-panel,#overview .dashboard-flow-panel{min-width:0}
+}
+@media(max-width:650px){
+ #overview .dashboard-visuals{width:100%!important}
+ #overview .executive-project-table .dashboard-project-row:not(.head){grid-template-columns:minmax(0,1fr)!important}
+ #overview .executive-project-table .dashboard-project-row:not(.head)>*{grid-column:auto!important}
+ #overview .executive-project-table .dashboard-project-row:not(.head)>*:first-child{font-weight:700}
+ #overview .dashboard-legend{flex-wrap:wrap}
+ #overview .dashboard-chart svg{max-width:100%;height:auto}
+}
