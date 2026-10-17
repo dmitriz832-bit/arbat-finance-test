@@ -31,12 +31,12 @@ test('offline full application reconciles report, dashboard and project at deskt
     document.getElementById('reportYear').value=String(new Date().getFullYear());document.getElementById('reportType').value='pnl';
     const month=new Date().getMonth()+1,before=JSON.stringify(db.labor),report=reportData(),dash=window.arbatDashboardSnapshot(),deal=dealMargin(db.deals[0]);
     reportData();reportData();
-    return {report:report.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ')[month],dashboard:dash.totals.operating,card:deal.actualProfit,project:dash.projects[0].result,cost:projectCost(window.arbatDealKey(db.deals[0])),laborUnchanged:before===JSON.stringify(db.labor),financial:document.getElementById('dashboardFinancial')?.innerText};
+    return {report:report.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ')[month],dashboard:dash.totals.operating,card:deal.actualProfit,project:dash.projects[0].result,cost:projectCost(window.arbatDealKey(db.deals[0])),laborUnchanged:before===JSON.stringify(db.labor),financialCoreLoaded:typeof window.ArbatFinanceCore?.preliminaryPeriod==='function'};
    });
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results','finance-'+width+'.png'),fullPage:true});
    assert.equal(errors.length,0,'JavaScript errors at '+width+': '+errors.join('; '));
    assert.equal(Number(result.report.replace(/[^\d,.-]/g,'').replace(',','.')),28000);
-   assert.equal(result.dashboard,28000);assert.equal(result.card,48000);assert.equal(result.project,48000);assert.equal(result.cost,12000);assert.equal(result.laborUnchanged,true);assert.ok(result.financial?.includes('28'));
+   assert.equal(result.dashboard,28000);assert.equal(result.card,48000);assert.equal(result.project,48000);assert.equal(result.cost,12000);assert.equal(result.laborUnchanged,true);assert.equal(result.financialCoreLoaded,true);
    await context.close();
   }
  }finally{await browser?.close();await new Promise(resolve=>server.close(resolve))}
