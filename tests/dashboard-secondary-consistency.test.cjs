@@ -18,6 +18,12 @@ test('executive cash KPI never calls an unreconciled balance confirmed',()=>{
  assert.match(dashboard,/Денежные остатки не подтверждены/);
  assert.match(dashboard,/label='Деньги не сверены'/);
 });
+test('executive result discloses legacy documents without explicit VAT',()=>{
+ assert.match(dashboard,/core\.vatControlRegister\(wipData,\{projectKey:key\}\)/);
+ assert.match(dashboard,/vatUnconfirmed:vatControl\.count/);
+ assert.match(dashboard,/НДС документов не подтверждён/);
+ assert.match(dashboard,/label='НДС требует сверки'/);
+});
 test('negative net cash flow is plotted below zero baseline',()=>{
  assert.match(dashboard,/netY=zero-net\/maximum\*half/);
  assert.doesNotMatch(dashboard,/Math\.max\(0,net\)/);
