@@ -403,7 +403,7 @@
     }
     const rows=[...projects.values()].map(p=>({...p,receivable:p.revenue>p.received?p.revenue-p.received:0n,advance:p.received>p.revenue?p.received-p.revenue:0n}));
     const total=name=>rows.reduce((v,p)=>v+p[name],0n);
-    const payrollState=payrollReconciliation({accruals:(data.labor||[]).filter(x=>!org||x.org===org),payments:(data.cash||[]).filter(x=>!org||x.org===org)});
+    const payrollState=payrollReconciliation({accruals:(data.labor||[]).filter(x=>!org||x.org===org),payments:(data.cash||[]).filter(x=>!org||x.org===org),settlements:data.crewSettlements||[],workActs:(data.workActs||[]).filter(x=>!org||x.org===org)});
     return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.people.reduce((v,p)=>v+(p.payable>0n?p.payable:0n),0n),issues:[...issues,...payrollState.issues]};
   }
   function ownerWarehouseSnapshot(warehouse,fifo,org=''){
@@ -515,20 +515,47 @@
     if([g,tax,ded,ins,payment].some(x=>x<0n)||tax+ded>g)throw new RangeError('Invalid payroll deductions');
     return {expense:g+ins,payable:g-tax-ded-payment,gross:g,tax,deductions:ded,contributions:ins,paid:payment};
   }
-  function payrollReconciliation({accruals=[],payments=[]}={}){
-    const totals=new Map(),issues=[],unallocatedPayments=[];
+  function crewPayrollAccruals(workActs=[],labor=[]){
+    const rows=[],issues=[],linkedActIds=new Set();
+    for(const entry of labor||[])for(const act of linkedWork(entry,workActs||[]))linkedActIds.add(String(act.id||act._id||''));
+    for(const act of workActs||[]){
+      if(act.status!=='approved')continue;
+      const actId=String(act.id||act._id||'');
+      if(linkedActIds.has(actId)){
+        issues.push({code:'crew-payroll-linked-labor-overlap',source:act});
+        continue;
+      }
+      const personIds=[...new Set((act.memberIds||[]).filter(Boolean).map(String))].sort();
+      if(!personIds.length){issues.push({code:'crew-payroll-missing-members',source:act});continue}
+      let amount;
+      try{amount=workAmount(act)}catch(e){issues.push({code:'crew-payroll-invalid-work-act',source:act,reason:e.message});continue}
+      if(amount<0n){issues.push({code:'crew-payroll-invalid-work-act',source:act,reason:'Negative work amount'});continue}
+      const shares=allocate(rubles(amount),personIds.map(()=>1));
+      personIds.forEach((personId,index)=>rows.push({personId,gross:rubles(shares[index]),sourceActId:actId,projectKey:act.projectKey||'',org:act.org||''}));
+    }
+    return {rows,issues};
+  }
+  function payrollReconciliation({accruals=[],payments=[],settlements=[],workActs=[]}={}){
+    const totals=new Map(),issues=[],unallocatedPayments=[],settledByCash=new Map();
+    for(const link of settlements||[]){
+      const cashId=String(link.cashId||''),personId=String(link.personId||'');let amount;
+      try{amount=cents(link.amount||0)}catch(_){issues.push({code:'payroll-invalid-settlement',source:link});continue}
+      if(!cashId||!personId||amount<=0n){issues.push({code:'payroll-invalid-settlement',source:link});continue}
+      settledByCash.set(cashId,[...(settledByCash.get(cashId)||[]),{personId,amount:rubles(amount)}]);
+    }
+    const crew=crewPayrollAccruals(workActs,accruals);issues.push(...crew.issues);
     const get=id=>{if(!totals.has(id))totals.set(id,{personId:id,gross:0n,ndfl:0n,other:0n,contributions:0n,paid:0n,expense:0n,payable:0n});return totals.get(id)};
-    for(const entry of accruals){
+    for(const entry of [...accruals,...crew.rows]){
       if(!entry.personId){issues.push({code:'payroll-missing-person',source:entry});continue}
       try{
         const p=payroll({gross:entry.gross??entry.amount??0,ndfl:entry.ndfl??0,other:entry.otherDeductions??entry.other??0,contributions:entry.employerContributions??entry.contributions??0});
         const t=get(String(entry.personId));t.gross+=p.gross;t.ndfl+=p.tax;t.contributions+=p.contributions;t.expense+=p.expense;t.other+=p.deductions;t.payable+=p.payable;
       }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
     }
-    for(const payment of payments.filter(x=>x.type==='out'&&(x.personId||Array.isArray(x.payrollAllocations))&&x.payrollPayment!==false)){
+    for(const payment of payments.filter(x=>x.type==='out'&&(x.personId||Array.isArray(x.payrollAllocations)||settledByCash.has(String(x._id||x.id||'')))&&x.payrollPayment!==false)){
       const amount=cents(payment.amount||0);
       if(amount<0n){issues.push({code:'payroll-invalid-payment',source:payment});continue}
-      const allocations=Array.isArray(payment.payrollAllocations)?payment.payrollAllocations:null;
+      const allocations=Array.isArray(payment.payrollAllocations)?payment.payrollAllocations:(settledByCash.get(String(payment._id||payment.id||''))||null);
       // Project-based cash allocations have a different meaning and must never settle salary.
       // Explicit payroll allocation takes precedence over legacy single-beneficiary payout.
       let allocated=0n;
@@ -560,13 +587,13 @@
     const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
     return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
-  function paymentExceptionRegister({cash=[],labor=[],deals=[],people=[],articles=[],expenses=[]}={}){
+  function paymentExceptionRegister({cash=[],labor=[],deals=[],people=[],articles=[],expenses=[],crewSettlements=[],workActs=[]}={}){
     const issues=[],add=(code,source,detail='')=>issues.push({code,source,detail});
     const keySet=new Set(deals.map(dealKey));
     const personSet=new Set(people.map(x=>String(x.id)));
     const articleSet=new Set(articles.map(x=>String(x.id)));
     const seen=new Map();
-    const payrollState=payrollReconciliation({accruals:labor,payments:cash});
+    const payrollState=payrollReconciliation({accruals:labor,payments:cash,settlements:crewSettlements,workActs});
     for(const issue of payrollState.issues){
       if(['payroll-unallocated-payment','payroll-overallocated-payment','payroll-invalid-allocation'].includes(issue.code))add(issue.code,issue.source,issue.amount==null?'':rubles(issue.amount));
     }
@@ -650,5 +677,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
