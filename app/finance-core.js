@@ -322,9 +322,12 @@
     }
     return {income,outgoing,transfers,net:income-outgoing,categories:[...categories.values()]};
   }
-  function walletSnapshot(opening,entries,walletId){
+  function walletSnapshot(opening,entries,walletId,openingBalanceDate='',asOfDate=''){
     const initial=cents(opening||0);let received=0n,spent=0n;
     for(const item of entries||[]){
+      const date=String(item.date||'').slice(0,10);
+      if(openingBalanceDate&&(!date||date<=openingBalanceDate))continue;
+      if(asOfDate&&(!date||date>asOfDate))continue;
       const amount=cents(item.amount||0);
       if(item.type==='in'&&item.walletId===walletId)received+=amount;
       else if(item.type==='out'&&item.walletId===walletId)spent+=amount;
@@ -346,7 +349,7 @@
       if(!Object.prototype.hasOwnProperty.call(groups,org)){
         issues.push({code:'unclassified-wallet-organization',walletId:id,org});continue;
       }
-      const snapshot=walletSnapshot(wallet.openingBalance||0,entries,id);
+      const snapshot=walletSnapshot(wallet.openingBalance||0,entries,id,wallet.openingBalanceDate||'');
       rows.push({walletId:id,name:wallet.name||id,org,...snapshot});
       groups[org]+=snapshot.balance;
     }
@@ -359,6 +362,16 @@
     }
     const total=groups['АИР-КЛИМАТ']+groups['АРБАТ.ГК']+groups['Общий'];
     return {rows,byOrg:groups,total,issues};
+  }
+  function bankReconciliation(wallet,entries){
+    const date=String(wallet.bankStatementDate||'').slice(0,10);
+    if(!date||wallet.bankStatementBalance==null||String(wallet.bankStatementBalance).trim()==='')return {status:'not-configured',difference:null};
+    const openingDate=String(wallet.openingBalanceDate||'').slice(0,10);
+    if(openingDate&&date<openingDate)return {status:'invalid-statement-date',difference:null};
+    const calculated=walletSnapshot(wallet.openingBalance||0,entries,String(wallet.id),openingDate,date).balance;
+    const statement=cents(wallet.bankStatementBalance);
+    const difference=calculated-statement;
+    return {status:difference===0n?'matched':'mismatch',date,calculated,statement,difference};
   }
   function walletBalance(opening,entries,walletId){return walletSnapshot(opening,entries,walletId).balance}
   function payroll({gross,ndfl='0',other='0',contributions='0',paid='0'}){
@@ -411,5 +424,5 @@
     const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
     return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
