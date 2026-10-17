@@ -420,6 +420,16 @@
       else unpriced=true;
       if(qty||reserved){rows.push({placeId,itemId,name:item?.name||itemId,place:place?.name||placeId,qty,reserved,free:Math.max(0,qty-reserved),deficit,value,unpriced:invalid});reservedQty+=reserved;deficitQty+=deficit}
     }
+    // An open issue may reserve stock at a location with no remaining FIFO lots.
+    // Count it as a real shortage rather than silently dropping its reservation.
+    for(const [key,reserved] of reservations){
+      if(reserved<=0||fifo.bins.has(key))continue;
+      const split=key.lastIndexOf('::'),placeId=key.slice(0,split),itemId=key.slice(split+2),place=places.get(placeId);
+      if(org&&place?.org&&place.org!==org)continue;
+      const item=(warehouse.items||[]).find(x=>String(x.id)===itemId);
+      rows.push({placeId,itemId,name:item?.name||itemId,place:place?.name||placeId,qty:0,reserved,free:0,deficit:reserved,value:0n,unpriced:false});
+      reservedQty+=reserved;deficitQty+=reserved;
+    }
     return {rows,totalValue:unpriced?null:totalValue,knownValue:totalValue,reservedQty,deficitQty,issues:unpriced?[...issues,{reason:'Unpriced positive stock'}]:issues};
   }
   function cashFlow(entries,period='',org=''){
