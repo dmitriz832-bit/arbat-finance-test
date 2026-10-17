@@ -46,12 +46,13 @@
     const production=(data.workActs||[]).filter(x=>ok(x)&&x.status==='approved').map(x=>rubles((cents(x.rate||0)*cents(x.qty||0)+50n)/100n));
     const assigned=(data.costs||[]).filter(x=>ok(x)&&x.dir).map(x=>x.amount||0);
     const common=(data.costs||[]).filter(x=>ok(x)&&!x.dir).map(x=>x.amount||0);
-    const labor=(data.labor||[]).filter(ok),commercial=[];
+    const workActTotal=sum(production),generalCostTotal=sum(common),commercial=[];
+    const labor=(data.labor||[]).filter(ok);
     for(const item of labor){
       const type=item.expenseType||'production',amount=item.amount??item.salary??0;
       (type==='administrative'?common:type==='commercial'?commercial:production).push(amount);
     }
-    const result=pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});return {...result,components:{revenue:sum(amounts),projectExpenses:sum(direct),productionLaborAndWorks:sum(production),assignedExpenses:sum(assigned),commonExpenses:sum(common),commercialLabor:sum(commercial)}};
+    const result=pnl({revenue:amounts,direct:[...direct,...production,...assigned],administrative:common,commercial});return {...result,components:{revenue:sum(amounts),projectExpenses:sum(direct),productionLaborAndWorks:sum(production),assignedExpenses:sum(assigned),commonExpenses:sum(common),commercialLabor:sum(commercial),workActTotal,productionLabor:sum(production)-workActTotal,administrativeLabor:sum(common)-generalCostTotal,generalCostTotal}};
   }
   function walletBalance(opening,entries,walletId){
     let balance=cents(opening||0);
