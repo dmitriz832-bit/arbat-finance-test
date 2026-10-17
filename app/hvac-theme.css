@@ -184,3 +184,6 @@ body.ab-ready:not(.ab-profile-only) #cash>.hv-entry-panel{border-left:3px solid 
 body.ab-ready:not(.ab-profile-only) #cash>.hv-ledger{min-height:360px}
 body.ab-ready:not(.ab-profile-only) #cash>.hv-ledger>.scroll{max-height:65vh;overflow:auto}
 @media(max-width:650px){body.ab-ready:not(.ab-profile-only) .hv-workspace-header{padding:15px}body.ab-ready:not(.ab-profile-only) .hv-workspace-actions{width:100%}body.ab-ready:not(.ab-profile-only) .hv-workspace-actions button{flex:1}}
+
+body.ab-ready:not(.ab-profile-only) section>.hv-collapsed{display:none!important}
+body.ab-ready:not(.ab-profile-only) section>.hv-entry-panel{border-left:3px solid #269fff!important}
