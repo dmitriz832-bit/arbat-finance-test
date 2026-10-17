@@ -49,6 +49,26 @@ test('offline full application reconciles report, dashboard and project at deskt
     return {gross:form.elements.amountGross.value,vat:form.elements.vatAmount.value,net:form.elements.amountNet.value,deductible:form.elements.vatDeductible.value};
    });
    assert.deepEqual(generalVat,{gross:'1220.00',vat:'220.00',net:'1000.00',deductible:'true'});
+   const generalSaved=await page.evaluate(()=>{
+    const form=document.getElementById('costForm');
+    form.elements.date.value=new Date().toISOString().slice(0,10);
+    const first=form.elements.name.options[1];
+    if(!first)return {error:'no P&L articles in fixture'};
+    form.elements.name.value=first.value;
+    form.elements.org.value='АИР-КЛИМАТ';
+    form.elements.amount.value='1220';
+    form.elements.vatRate.value='22';
+    form.elements.vatDeductible.value='true';
+    form.elements.vatRate.dispatchEvent(new Event('change',{bubbles:true}));
+    const before=db.costs.length;form.requestSubmit();
+    const row=db.costs.find(x=>String(x.amountGross)==='1220.00'&&String(x.vatRate)==='22');
+    if(!row)return {error:'not saved',count:db.costs.length-before};
+    const pnlCost=window.ArbatFinanceCore.documentPnlAmount(row,true);
+    const result={count:db.costs.length-before,gross:row.amountGross,tax:row.vatAmount,net:row.amountNet,deductible:row.vatDeductible,pnl:window.ArbatFinanceCore.rubles(pnlCost)};
+    db.costs=db.costs.filter(x=>x._id!==row._id);
+    return result;
+   });
+   assert.deepEqual(generalSaved,{count:1,gross:'1220.00',tax:'220.00',net:'1000.00',deductible:'true',pnl:'1000.00'});
    const savedVat=await page.evaluate(()=>{
     const form=document.getElementById('realizationForm');
     form.elements.date.value=new Date().toISOString().slice(0,10);
