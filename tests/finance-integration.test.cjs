@@ -19,7 +19,7 @@ test('deal margin and dashboard use the exact same project snapshot',()=>{
 });
 test('monthly P&L and dashboard derive from the same period engine',()=>{
  assert.match(html,/const monthlyFinancials=monthNumbers\(m=>window\.ArbatFinanceCore\.preliminaryPeriod\(/);
- assert.match(dashboard,/core\.preliminaryPeriod\(/);
+ assert.match(dashboard,/core\.ownerPeriodSnapshot\(/);
 });
 test('wallet balances use core and preserve internal transfers',()=>{
  assert.match(dashboard,/core\.walletBalance\(/);
