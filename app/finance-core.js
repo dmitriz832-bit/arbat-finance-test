@@ -340,6 +340,46 @@
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
     return {bounds,revenue,grossProfit,ebitda,result,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:ledger.issues.filter(x=>x.source&&ok(x.source)),rows};
   }
+  function ownerDebtSnapshot(data,org=''){
+    const projects=new Map(),issues=[];
+    for(const deal of data.deals||[]){
+      if(org&&deal.org!==org)continue;
+      const key=dealKey(deal);
+      projects.set(key,{key,org:deal.org,revenue:0n,received:0n});
+    }
+    for(const doc of data.realizations||[]){
+      const project=projects.get(String(doc.projectKey||''));
+      if(!project){if(!org||doc.org===org)issues.push({code:'realization-unmatched-project',source:doc});continue}
+      project.revenue+=documentPnlAmount(doc);
+    }
+    let unallocated=0n;
+    for(const movement of data.cash||[]){
+      if(movement.type!=='in'||org&&movement.org!==org)continue;
+      let amount;
+      try{amount=cents(movement.amount||0)}catch(_){issues.push({code:'invalid-receipt',source:movement});continue}
+      const allocations=Array.isArray(movement.projectAllocations)?movement.projectAllocations:null;
+      if(allocations){
+        let assigned=0n;
+        for(const a of allocations){
+          const project=projects.get(String(a.projectKey||''));
+          const portion=cents(a.amount||0);
+          if(portion<0n||!project){issues.push({code:'invalid-receipt-allocation',source:movement});continue}
+          project.received+=portion;assigned+=portion;
+        }
+        if(assigned>amount)issues.push({code:'overallocated-receipt',source:movement});
+        else unallocated+=amount-assigned;
+      }else if(movement.projectKey&&projects.has(String(movement.projectKey))){
+        projects.get(String(movement.projectKey)).received+=amount;
+      }else{
+        unallocated+=amount;
+        issues.push({code:'unallocated-receipt',source:movement});
+      }
+    }
+    const rows=[...projects.values()].map(p=>({...p,receivable:p.revenue>p.received?p.revenue-p.received:0n,advance:p.received>p.revenue?p.received-p.revenue:0n}));
+    const total=name=>rows.reduce((v,p)=>v+p[name],0n);
+    const payrollState=payrollReconciliation({accruals:(data.labor||[]).filter(x=>!org||x.org===org),payments:(data.cash||[]).filter(x=>!org||x.org===org)});
+    return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.people.reduce((v,p)=>v+(p.payable>0n?p.payable:0n),0n),issues:[...issues,...payrollState.issues]};
+  }
   function cashFlow(entries,period='',org=''){
     const categories=new Map();let income=0n,outgoing=0n,transfers=0n;
     for(const item of entries||[]){
@@ -545,5 +585,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
