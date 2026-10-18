@@ -122,4 +122,37 @@
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('ui-nav-open')){e.preventDefault();setNav(false)}});
  setNav(false,false);
  document.addEventListener('click',e=>{const b=e.target.closest?.('#ab-profile-tabs .ab-tab');if(b)for(const tab of b.parentElement.children)tab.setAttribute('aria-selected',String(tab===b));});
+ /* Mobile data cards need explicit labels: generated tables are annotated after every render. */
+ let tableFrame=0;
+ const annotateTables=()=>{
+  tableFrame=0;
+  for(const table of document.querySelectorAll('main table,#ab-profile-window table,.modal table,.whmodal table')){
+   const headers=[...(table.tHead?.rows?.[0]?.cells||[])].map(cell=>cell.textContent.trim().replace(/\s+/g,' '));
+   if(!headers.length)continue;
+   const keepWide=Boolean(table.closest('#reportTable,#bankImportPreview'));
+   table.classList.toggle('ui-data-cards',!keepWide);
+   table.classList.toggle('ui-wide-table',keepWide);
+   for(const body of table.tBodies)for(const row of body.rows)for(const [index,cell] of [...row.cells].entries()){
+    const span=Math.max(1,Number(cell.colSpan)||1),label=headers.slice(index,index+span).filter(Boolean).join(' / ');
+    if(label)cell.dataset.columnLabel=label;
+   }
+  }
+ };
+ const scheduleTableLabels=()=>{if(!tableFrame)tableFrame=requestAnimationFrame(annotateTables)};
+ new MutationObserver(scheduleTableLabels).observe(document.querySelector('main'),{childList:true,subtree:true});
+ scheduleTableLabels();
+
+ /* iPhone tab bar: four frequent workflows plus the complete navigation drawer. */
+ const mobileTabs=document.createElement('nav');mobileTabs.className='ui-mobile-tabs';mobileTabs.setAttribute('aria-label','Основная навигация');
+ const mobileItems=[
+  ['overview','Главная','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'],
+  ['deals','Сделки','<rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>'],
+  ['cash','Деньги','<path d="M12 2v20m5-16c-1.5-1.4-4-2-6-2-3 0-5 1.3-5 3.5 0 5.5 12 1 12 7 0 2.4-2.6 4-6 4-2.7 0-5-1-6.5-2.5"/>'],
+  ['work','Работы','<path d="M4 8h16M4 16h16M8 4v16m8-16v16"/>'],
+  ['menu','Ещё','<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>']
+ ];
+ for(const [route,label,icon] of mobileItems){const b=document.createElement('button');b.type='button';b.dataset.mobileRoute=route;b.setAttribute('aria-label',label);b.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+icon+'</svg><span>'+label+'</span>';b.onclick=()=>route==='menu'?setNav(true):window.arbatNavigate?.(route);mobileTabs.append(b)}
+ document.body.append(mobileTabs);
+ const syncMobileTabs=()=>{let route='overview';try{route=sessionStorage.getItem('arbat-last-route')||route}catch{}for(const b of mobileTabs.children){const active=b.dataset.mobileRoute===route||(b.dataset.mobileRoute==='deals'&&route==='realizations');b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')}};
+ new MutationObserver(syncMobileTabs).observe(title,{childList:true});mobileTabs.addEventListener('click',()=>requestAnimationFrame(syncMobileTabs));syncMobileTabs();
 })();
