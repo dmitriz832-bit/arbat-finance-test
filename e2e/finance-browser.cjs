@@ -21,7 +21,7 @@ test('offline full application reconciles report, dashboard and project at deskt
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;
  try{
   browser=await chromium.launch({headless:true});const origin='http://127.0.0.1:'+server.address().port;
-  for(const width of [1440,1024,390]){
+  for(const width of [1440,1024,834,430,390]){
    const context=await browser.newContext({viewport:{width,height:1000}}),errors=[];
    await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(['/app/auth.js','/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* isolated offline test: no auth or remote state writes */'});return route.continue()});
    await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],folders:[],places:[],moves:[],plans:[],projectIssues:[],imports:[]}))},fixture());
@@ -133,6 +133,44 @@ test('offline full application reconciles report, dashboard and project at deskt
     reportData();reportData();
     return {report:report.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ')[month],dashboard:dash.totals.operating,card:deal.actualProfit,project:dash.projects[0].result,cost:projectCost(window.arbatDealKey(db.deals[0])),laborUnchanged:before===JSON.stringify(db.labor),financialCoreLoaded:typeof window.ArbatFinanceCore?.preliminaryPeriod==='function'};
    });
+   await page.waitForTimeout(50);
+   const responsive=await page.evaluate(()=>{
+    const root=document.documentElement,mobile=document.querySelector('.ui-mobile-tabs'),navToggle=document.getElementById('ui-nav-toggle');
+    const visible=element=>Boolean(element&&element.getClientRects().length&&getComputedStyle(element).visibility!=='hidden');
+    const rect=element=>element?.getBoundingClientRect();
+    const labelled=[...document.querySelectorAll('#dealsTable tbody td')].filter(cell=>cell.dataset.columnLabel?.trim()).length;
+    const fontSizes=[...document.querySelectorAll('input,select,textarea')].filter(visible).map(element=>parseFloat(getComputedStyle(element).fontSize));
+    return {
+     overflow:root.scrollWidth-root.clientWidth,
+     mobileVisible:visible(mobile),mobileHeight:rect(mobile)?.height||0,
+     mobileButtons:[...(mobile?.querySelectorAll('button')||[])].map(button=>({width:rect(button).width,height:rect(button).height})),
+     navToggleVisible:visible(navToggle),navToggleSize:rect(navToggle)?.height||0,
+     labelled,minFont:fontSizes.length?Math.min(...fontSizes):0,
+     bodyPaddingBottom:parseFloat(getComputedStyle(document.querySelector('.content .wrap')).paddingBottom)
+    };
+   });
+   assert.ok(responsive.overflow<=1,'page must not horizontally overflow at '+width+'px: '+responsive.overflow+'px');
+   assert.ok(responsive.labelled>0,'responsive table cells must retain column labels at '+width+'px');
+   if(width<=650){
+    assert.equal(responsive.mobileVisible,true,'iPhone tab bar is visible at '+width+'px');
+    assert.ok(responsive.mobileHeight>=58,'iPhone tab bar reserves a usable safe-area height');
+    assert.ok(responsive.mobileButtons.every(button=>button.height>=44&&button.width>=44),'every iPhone tab is at least 44x44 CSS px');
+    assert.ok(responsive.minFont>=16,'iPhone form controls use 16px text to prevent focus zoom');
+    assert.ok(responsive.bodyPaddingBottom>=92,'content is not hidden behind the iPhone tab bar');
+    await page.locator('[data-mobile-route="deals"]').click();
+    await page.waitForFunction(()=>document.getElementById('title').textContent.includes('Сделки'));
+    assert.equal(await page.locator('[data-mobile-route="deals"]').getAttribute('aria-current'),'page');
+    await page.locator('[data-mobile-route="overview"]').click();
+   }else{
+    assert.equal(responsive.mobileVisible,false,'mobile tab bar remains hidden above phone widths');
+    if(width<=1100){
+     assert.equal(responsive.navToggleVisible,true,'iPad menu control is visible at '+width+'px');
+     assert.ok(responsive.navToggleSize>=44,'iPad menu control is at least 44px high');
+     await page.locator('#ui-nav-toggle').click();
+     assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'false');
+     await page.locator('#ui-nav-backdrop').click({position:{x:5,y:5}});
+    }
+   }
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results','finance-'+width+'.png'),fullPage:true});
    assert.equal(errors.length,0,'JavaScript errors at '+width+': '+errors.join('; '));
    assert.equal(Number(result.report.replace(/[^\d,.-]/g,'').replace(',','.')),32800);
