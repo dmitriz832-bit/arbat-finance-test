@@ -129,6 +129,9 @@
   for(const table of document.querySelectorAll('main table,#ab-profile-window table,.modal table,.whmodal table')){
    const headers=[...(table.tHead?.rows?.[0]?.cells||[])].map(cell=>cell.textContent.trim().replace(/\s+/g,' '));
    if(!headers.length)continue;
+   const keepWide=Boolean(table.closest('#reportTable,#bankImportPreview'));
+   table.classList.toggle('ui-data-cards',!keepWide);
+   table.classList.toggle('ui-wide-table',keepWide);
    for(const body of table.tBodies)for(const row of body.rows)for(const [index,cell] of [...row.cells].entries()){
     const span=Math.max(1,Number(cell.colSpan)||1),label=headers.slice(index,index+span).filter(Boolean).join(' / ');
     if(label)cell.dataset.columnLabel=label;
