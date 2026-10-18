@@ -1,6 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const ui=fs.readFileSync(path.join(__dirname,'../app/interface.js'),'utf8');
 const dashboard=fs.readFileSync(path.join(__dirname,'../app/dashboard.js'),'utf8');
+const html=fs.readFileSync(path.join(__dirname,'../app/index.html'),'utf8');
 
 test('settings tabs are bound to semantic controls instead of card positions',()=>{
  const expected=[
@@ -15,5 +16,11 @@ test('settings tabs are bound to semantic controls instead of card positions',()
 test('tax cards use visible dashboard containers rather than globally hidden page sections',()=>{
  assert.match(dashboard,/dashboard-tax-company/);
  assert.doesNotMatch(dashboard,/dashboard-tax-grid"><section>/);
+});
+
+test('updated UI assets have cache-busting versions and fresh finance core loads before dashboard',()=>{
+ for(const asset of ['dashboard.css?v=6','interface.js?v=9','dashboard.js?v=15','auth.js?v=8'])assert.ok(html.includes(asset),asset);
+ const freshCore=html.lastIndexOf('finance-core.js?v=6'),dashboardScript=html.indexOf('dashboard.js?v=15');
+ assert.ok(freshCore>=0&&freshCore<dashboardScript);
 });
 
