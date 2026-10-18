@@ -61,6 +61,8 @@
 #overview .dashboard-finance-panel{grid-column:1}
 #overview .dashboard-flow-panel{grid-column:2}
 #overview .dashboard-spend-panel{grid-column:3}
+#overview .dashboard-wallet-panel{grid-column:1}
+#overview .dashboard-tax-panel{grid-column:span 2}
 #overview .dashboard-project-panel{grid-column:span 2}
 #overview .dashboard-sales-panel{grid-column:3}
 #overview .dashboard-warehouse-panel{grid-column:span 2}
@@ -79,6 +81,8 @@
 .executive-finance-row small{font-size:10px;text-align:right;color:#7890a8}
 .executive-finance-row strong.dashboard-negative{color:#d33c45}
 .executive-note{font-size:10px;color:#8395aa;margin-top:11px;line-height:1.5}
+.dashboard-wallet-balances{display:grid;gap:0}.dashboard-wallet-balance{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:58px;padding:10px 4px;border-bottom:1px solid #e8eef5}.dashboard-wallet-balance:last-child{border-bottom:0}.dashboard-wallet-balance>span{display:grid;min-width:0;gap:4px}.dashboard-wallet-balance>span strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#173a5b;font-size:12px}.dashboard-wallet-balance>span small{color:#7890a8;font-size:9px;line-height:1.35}.dashboard-wallet-balance>b{white-space:nowrap;color:#147a4b;font-size:14px;font-variant-numeric:tabular-nums}
+.dashboard-tax-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.dashboard-tax-grid>section{min-width:0;padding:13px;border:1px solid #e0e9f1;border-radius:10px;background:#f9fbfd}.dashboard-tax-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.dashboard-tax-title span{color:#173a5b;font-size:12px;font-weight:800}.dashboard-tax-title small{color:#64819a;font-size:9px;text-align:right}.dashboard-tax-due{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:14px 0;padding:12px;border-radius:9px;background:#edf5ff}.dashboard-tax-due small{color:#617c95;font-size:9px}.dashboard-tax-due strong{white-space:nowrap;color:#174c79;font-size:18px;font-variant-numeric:tabular-nums}.dashboard-tax-grid dl{margin:0}.dashboard-tax-grid dl>div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #e8eef4;font-size:10px}.dashboard-tax-grid dt{color:#75899c}.dashboard-tax-grid dd{margin:0;color:#26445f;font-weight:700;text-align:right}.dashboard-tax-grid p{margin:10px 0 0;color:#7c8fa1;font-size:9px;line-height:1.45}
 .executive-spend{display:flex;gap:15px;align-items:center;min-height:180px}
 .executive-donut{flex:0 0 143px;width:143px;height:143px;border-radius:50%;background:conic-gradient(#3285eb 0 var(--p),#41b7db var(--p) 63%,#22bba6 63% 77%,#ffb93e 77% 89%,#aaa5f0 89%);position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .executive-donut:before{content:"";position:absolute;inset:26px;background:white;border-radius:50%}
@@ -100,8 +104,8 @@
 .executive-warehouse>div:last-child{border:0}.executive-warehouse small{display:block;color:#7892ac;font-size:10px}
 .executive-warehouse strong{display:block;color:#153657;font-size:19px;margin-top:5px}
 #overview .dashboard-project-row{grid-template-columns:minmax(160px,1.5fr) repeat(3,minmax(105px,1fr))!important}
-@media(max-width:1450px){#overview .dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-finance-panel,#overview .dashboard-flow-panel,#overview .dashboard-spend-panel,#overview .dashboard-project-panel,#overview .dashboard-sales-panel,#overview .dashboard-warehouse-panel,#overview .dashboard-events-panel{grid-column:auto}#overview .dashboard-attention-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-@media(max-width:750px){#overview .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-attention-list{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-kpi>strong{white-space:normal!important}#overview .dashboard-project-panel{overflow-x:auto}#overview .dashboard-project-table{min-width:550px}.executive-spend{flex-wrap:wrap}}
+@media(max-width:1450px){#overview .dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-finance-panel,#overview .dashboard-flow-panel,#overview .dashboard-spend-panel,#overview .dashboard-wallet-panel,#overview .dashboard-tax-panel,#overview .dashboard-project-panel,#overview .dashboard-sales-panel,#overview .dashboard-warehouse-panel,#overview .dashboard-events-panel{grid-column:auto}#overview .dashboard-attention-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:750px){#overview .dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#overview .dashboard-layout{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-attention-list{grid-template-columns:minmax(0,1fr)!important}#overview .dashboard-kpi>strong{white-space:normal!important}#overview .dashboard-project-panel{overflow-x:auto}#overview .dashboard-project-table{min-width:550px}.executive-spend{flex-wrap:wrap}.dashboard-tax-grid{grid-template-columns:minmax(0,1fr)}.dashboard-wallet-balance{align-items:flex-start}.dashboard-wallet-balance>b{font-size:13px}}
 @media(max-width:375px){#overview .dashboard-kpis{grid-template-columns:minmax(0,1fr)!important}}
 
 #overview .executive-project-table{overflow-x:auto;max-width:100%}
