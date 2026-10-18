@@ -147,6 +147,8 @@ test('offline full application reconciles report, dashboard and project at deskt
      mobileButtons:[...(mobile?.querySelectorAll('button')||[])].map(button=>({width:rect(button).width,height:rect(button).height})),
      navToggleVisible:visible(navToggle),navToggleSize:rect(navToggle)?.height||0,
      labelled,minFont:fontSizes.length?Math.min(...fontSizes):0,
+     dealTableDisplay:getComputedStyle(document.querySelector('#dealsTable table')).display,
+     dealRowDisplay:getComputedStyle(document.querySelector('#dealsTable tbody tr')).display,
      bodyPaddingBottom:parseFloat(getComputedStyle(document.querySelector('.content .wrap')).paddingBottom)
     };
    });
@@ -158,6 +160,8 @@ test('offline full application reconciles report, dashboard and project at deskt
     assert.ok(responsive.mobileButtons.every(button=>button.height>=44&&button.width>=44),'every iPhone tab is at least 44x44 CSS px');
     assert.ok(responsive.minFont>=16,'iPhone form controls use 16px text to prevent focus zoom');
     assert.ok(responsive.bodyPaddingBottom>=92,'content is not hidden behind the iPhone tab bar');
+    assert.equal(responsive.dealTableDisplay,'block','operational table becomes a readable card list on iPhone');
+    assert.equal(responsive.dealRowDisplay,'block','each operational row becomes a separate iPhone card');
     await page.locator('[data-mobile-route="deals"]').click();
     await page.waitForFunction(()=>document.getElementById('title').textContent.includes('Сделки'));
     assert.equal(await page.locator('[data-mobile-route="deals"]').getAttribute('aria-current'),'page');
@@ -169,7 +173,8 @@ test('offline full application reconciles report, dashboard and project at deskt
      assert.ok(responsive.navToggleSize>=44,'iPad menu control is at least 44px high');
      await page.locator('#ui-nav-toggle').click();
      assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'false');
-     await page.locator('#ui-nav-backdrop').click({position:{x:5,y:5}});
+     await page.keyboard.press('Escape');
+     assert.equal(await page.locator('#sidebar').getAttribute('aria-hidden'),'true');
     }
    }
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results','finance-'+width+'.png'),fullPage:true});
