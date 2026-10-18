@@ -285,17 +285,18 @@
     const projects=[],issues=[];
     let deferredChange=0n,recognizedCost=0n,accruedCost=0n;
     if(!period)return {projects,issues:[{code:'wip-period-required'}],deferredChange,recognizedCost,accruedCost};
+    const ledgerRows=expenseLedger(data).rows;
     for(const deal of data.deals||[]){
       if(org&&deal.org!==org)continue;
       const projectKey=dealKey(deal);
+      const dateRelevant=(data.realizations||[]).some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period)
+        ||ledgerRows.some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period);
+      if(!dateRelevant)continue;
       const wip=projectWipSnapshot(data,deal,projectKey,period);
       if(wip.status!=='calculated'){
         issues.push({code:'wip-unverified-project',projectKey,details:wip.issues});
         continue;
       }
-      const dateRelevant=(data.realizations||[]).some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period)
-        ||expenseLedger(data).rows.some(x=>x.projectKey===projectKey&&String(x.date||'').slice(0,7)<=period);
-      if(!dateRelevant)continue;
       const currentAccrued=wip.accruedCost-(projectWipSnapshot(data,deal,projectKey,
         String(Number(period.slice(0,4))-(period.endsWith('-01')?1:0))+'-'+(period.endsWith('-01')?'12':String(Number(period.slice(5))-1).padStart(2,'0'))
       ).accruedCost||0n);
