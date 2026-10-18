@@ -86,6 +86,25 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-actions,.cw-actions,.whbuttonrow)>button{width:100%}
  body.ab-ready.ui-modern:not(.ab-profile-only) .dashboard-wallet-layout{grid-template-columns:minmax(0,1fr)!important;justify-items:center}
  body.ab-ready.ui-modern:not(.ab-profile-only) .dashboard-wallet-legend{width:100%}
+
+ /* Operational lists become native-feeling grouped cards; matrix reports keep horizontal scrolling. */
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll):has(>table.ui-data-cards){overflow:visible!important;border:0!important;background:transparent!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;border:0!important;background:transparent!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>colgroup,body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>thead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;width:100%!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr{display:block!important;width:100%!important;padding:5px 14px!important;border:1px solid var(--ios-separator)!important;border-radius:14px!important;background:var(--ios-surface)!important;box-shadow:0 1px 3px rgba(20,35,55,.04)!important;overflow:hidden!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr:active{background:#f2f2f7!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr:empty{display:none!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td{display:grid!important;grid-template-columns:minmax(104px,40%) minmax(0,1fr)!important;align-items:center!important;gap:12px!important;width:100%!important;max-width:none!important;min-height:42px!important;padding:9px 0!important;border:0!important;border-bottom:1px solid var(--ios-separator)!important;background:transparent!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;text-align:right!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td:last-child{border-bottom:0!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td::before{content:attr(data-column-label);display:block;color:var(--ios-secondary);font-size:12px;font-weight:600;line-height:1.25;text-align:left;white-space:normal}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td:empty::after{content:'—';color:var(--ios-secondary)}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td :is(.cell-text,.metric,.metric-caption){max-width:100%!important;white-space:normal!important;text-align:right!important;overflow-wrap:anywhere!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td :is(button,input,select){justify-self:end;max-width:100%!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table{width:max-content!important;min-width:100%!important;max-width:none!important;table-layout:auto!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table :is(th,td){min-width:112px!important;white-space:nowrap!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table :is(th,td):first-child{position:sticky!important;left:0!important;z-index:4;background:#fff!important;min-width:190px!important;white-space:normal!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table th:first-child{z-index:6;background:#f7f8fa!important}
 }
 @media(max-width:374px){body.ab-ready.ui-modern:not(.ab-profile-only) .content .wrap{padding-inline:9px!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-page-heading #title{font-size:23px!important}body.ab-ready.ui-modern:not(.ab-profile-only) :is(.card,.dashboard-panel){padding:14px!important;border-radius:14px!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button{font-size:9px!important}}
 @media(hover:hover) and (pointer:fine){body.ab-ready.ui-modern:not(.ab-profile-only) button:hover{filter:brightness(.985)}}
