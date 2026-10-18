@@ -178,7 +178,7 @@
     const email=emailField.value.trim().toLowerCase();if(!email){window.abMessage('Сначала укажите электронную почту');emailField.focus();return}
     passwordLink.disabled=true;
     try{await onboarding('recover');passwordLink.disabled=false;authHelp.hidden=false;authHelp.textContent='Если администратор выдал доступ, проверьте почту и откройте ссылку на этом устройстве. Она приведёт к форме создания нового пароля.';window.abMessage('Если почта зарегистрирована, вы получите ссылку для установки пароля')}
-    catch(error){if(/rate limit|429/i.test(error.message)){localStorage.setItem(RECOVERY_COOLDOWN,String(Date.now()+30*60*1000));window.abMessage('Supabase ограничил отправку писем. Повторите попытку позднее или обратитесь к администратору.')}else window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
+    catch(error){if(/rate limit|429/i.test(error.message)){localStorage.setItem(RECOVERY_COOLDOWN,String(Date.now()+30*60*1000));window.abMessage('Сервис авторизации временно ограничил отправку писем. Повторите попытку позднее или обратитесь к администратору.')}else window.abMessage('Не удалось отправить ссылку: '+error.message);passwordLink.disabled=false}
   };
 
   const hash=new URLSearchParams(location.hash.slice(1));
