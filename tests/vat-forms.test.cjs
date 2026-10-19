@@ -8,7 +8,7 @@ test('VAT fields are present on contract and realization forms and prevent impli
  assert.ok(form.includes("core.documentVat(amount,rate,deductible?.value==='true')"));
  for(const field of ['amountGross','vatAmount','amountNet','vatRateSource'])assert.ok(form.includes(field));
  assert.ok(html.includes('vat-forms.js'));
- assert.ok(html.indexOf('vat-forms.js')<html.indexOf('sync.js?v=2'));
+ assert.ok(html.indexOf('vat-forms.js')<html.search(/sync\.js\?v=\d+/));
 });
 
 test('generic journal editor recalculates VAT instead of keeping stale totals',()=>{
