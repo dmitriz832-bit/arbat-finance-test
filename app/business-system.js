@@ -218,4 +218,5 @@
   const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceWalletEditor();syncPayrollPaymentFields();enhanceTables();return result};
   document.getElementById('cashForm')?.addEventListener('change',event=>{if(event.target?.name==='partyRef'||event.target?.name==='type')syncPayrollPaymentFields()});
   renderEnhancedLabor();
+  syncPayrollPaymentFields();
 })();
