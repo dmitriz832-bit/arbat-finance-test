@@ -1,46 +1,27 @@
 (()=>{
   'use strict';
   const normalize=value=>String(value||'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е').trim();
-
+  let opened=null;
+  function close(combo){if(!combo)return;combo.classList.remove('open');combo.input.setAttribute('aria-expanded','false');if(opened===combo)opened=null}
+  function optionsFor(select){return [...select.options].map((option,index)=>({option,index,label:option.textContent.trim(),group:option.parentElement?.tagName==='OPTGROUP'?option.parentElement.label:''}))}
+  function draw(combo,term=''){const query=normalize(term),rows=optionsFor(combo.select).filter(row=>!query||normalize(row.label+' '+row.group).includes(query));combo.list.replaceChildren();let group='';for(const row of rows){if(row.group&&row.group!==group){const title=document.createElement('div');title.className='combobox-group';title.textContent=row.group;combo.list.append(title);group=row.group}const item=document.createElement('button');item.type='button';item.className='combobox-option';item.dataset.index=String(row.index);item.setAttribute('role','option');item.setAttribute('aria-selected',String(row.option.selected));item.textContent=row.label||'—';item.disabled=row.option.disabled;item.addEventListener('mousedown',event=>event.preventDefault());item.addEventListener('click',()=>choose(combo,row.index));combo.list.append(item)}if(!rows.length){const empty=document.createElement('div');empty.className='combobox-empty';empty.textContent='Ничего не найдено';combo.list.append(empty)}}
+  const selectedLabel=select=>select.selectedOptions[0]?.textContent.trim()||'';
+  function choose(combo,index){const option=combo.select.options[index];if(!option||option.disabled)return;combo.select.value=option.value;combo.input.value=option.value?option.textContent.trim():'';combo.select.dispatchEvent(new Event('change',{bubbles:true}));close(combo);combo.input.focus()}
+  function open(combo){if(opened&&opened!==combo)close(opened);opened=combo;combo.classList.add('open');combo.input.setAttribute('aria-expanded','true');draw(combo,combo.input.dataset.searching==='1'?combo.input.value:'')}
   function enhanceSelect(select){
-    if(select.multiple||select.dataset.searchableSelect==='1'||select.closest('.searchable-select'))return;
-    select.dataset.searchableSelect='1';
-    const box=document.createElement('div');box.className='searchable-select';
-    const search=document.createElement('input');search.type='search';search.className='searchable-select-input';search.autocomplete='off';search.placeholder='Введите для поиска…';search.setAttribute('aria-label','Поиск по списку');
-    select.before(box);box.append(search,select);
-    const filter=()=>{const term=normalize(search.value);let visible=0;for(const option of select.options){const show=!term||normalize(option.textContent).includes(term)||option.selected;option.hidden=!show;if(show&&option.value)visible++;}box.dataset.matches=String(visible);};
-    search.addEventListener('input',filter);
-    search.addEventListener('keydown',event=>{if(event.key==='ArrowDown'||event.key==='Enter'){event.preventDefault();select.focus();if(event.key==='Enter'&&select.showPicker)try{select.showPicker()}catch{}}});
-    select.addEventListener('change',()=>{search.value='';filter()});
-    new MutationObserver(filter).observe(select,{childList:true,subtree:true,characterData:true});filter();
+    if(select.multiple||select.dataset.searchableSelect==='2'||select.closest('.smart-combobox'))return;select.dataset.searchableSelect='2';
+    const combo=document.createElement('div');combo.className='smart-combobox';const input=document.createElement('input');input.type='text';input.className='smart-combobox-input';input.autocomplete='off';input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-expanded','false');input.placeholder=select.options[0]?.textContent.trim()||'Выберите значение';const list=document.createElement('div');list.className='smart-combobox-list';list.setAttribute('role','listbox');select.before(combo);combo.append(input,list,select);Object.assign(combo,{input,list,select});
+    const sync=()=>{if(document.activeElement!==input||input.dataset.searching!=='1')input.value=selectedLabel(select);draw(combo,input.dataset.searching==='1'?input.value:'')};
+    input.addEventListener('pointerdown',()=>{input.dataset.searching='0';input.value=selectedLabel(select);open(combo);queueMicrotask(()=>input.select())});
+    input.addEventListener('focus',()=>{if(!combo.classList.contains('open')){input.dataset.searching='0';open(combo);queueMicrotask(()=>input.select())}});
+    input.addEventListener('input',()=>{input.dataset.searching='1';open(combo);draw(combo,input.value)});
+    input.addEventListener('keydown',event=>{const enabled=[...list.querySelectorAll('.combobox-option:not(:disabled)')],current=enabled.indexOf(document.activeElement);if(event.key==='Escape'){event.preventDefault();input.value=selectedLabel(select);close(combo)}else if(event.key==='Enter'){const first=enabled[0];if(combo.classList.contains('open')&&first){event.preventDefault();first.click()}}else if(event.key==='ArrowDown'){event.preventDefault();open(combo);(enabled[Math.max(0,current+1)]||enabled[0])?.focus()}else if(event.key==='ArrowUp'){event.preventDefault();open(combo);(enabled[current>0?current-1:enabled.length-1])?.focus()}});
+    input.addEventListener('blur',()=>setTimeout(()=>{if(!combo.contains(document.activeElement)){input.value=selectedLabel(select);input.dataset.searching='0';close(combo)}},0));
+    select.addEventListener('change',sync);select.addEventListener('invalid',event=>{event.preventDefault();input.focus();open(combo)});new MutationObserver(sync).observe(select,{childList:true,subtree:true,characterData:true});sync();
   }
-  const enhanceAll=root=>{if(root.matches?.('select'))enhanceSelect(root);root.querySelectorAll?.('select').forEach(enhanceSelect)};
-  enhanceAll(document);
-  new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)enhanceAll(node)}))).observe(document.body,{childList:true,subtree:true});
-
-  const dealModal=document.getElementById('dealModal');
-  if(dealModal){
-    const actions=dealModal.querySelector('#editDealForm .modal-actions');
-    const create=document.createElement('button');create.type='button';create.id='createRealizationFromDeal';create.className='deal-realization-action';create.textContent='+ Создать реализацию';
-    actions?.prepend(create);
-    create.addEventListener('click',()=>{
-      const deal=(db.deals||[]).find(row=>row._id===modalDealId);if(!deal)return alert('Сначала откройте сохранённую сделку');
-      document.getElementById('closeDealModal')?.click();
-      document.querySelector('[data-tab="realizations"]')?.click();
-      requestAnimationFrame(()=>{
-        const trigger=[...document.querySelectorAll('#realizations .ui-toolbar-actions button')].find(button=>/реализац/i.test(button.textContent));trigger?.click();
-        requestAnimationFrame(()=>{const project=document.getElementById('realProject');project.value=window.arbatDealKey(deal);project.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#realizationForm input[name="date"]')?.focus();});
-      });
-    });
-  }
-
-  function markDocumentAreas(){
-    document.querySelectorAll('.modal form,.ui-sheet-content,.whmodal form').forEach(form=>form.classList.add('document-form'));
-    document.querySelectorAll('.card').forEach(card=>{if(card.querySelector('table,.scroll,.whtable'))card.classList.add('document-register')});
-    const cash=document.getElementById('cashArticle'),cost=document.getElementById('costPnlArticle'),labor=document.getElementById('laborPnlArticle');
-    if(cash)cash.closest('label').dataset.catalog='Статьи ДДС: показываются все статьи выбранного типа операции';
-    if(cost)cost.closest('label').dataset.catalog='Полный справочник статей ОПиУ';
-    if(labor)labor.closest('label').dataset.catalog='Все расходные статьи ОПиУ';
-  }
-  markDocumentAreas();new MutationObserver(markDocumentAreas).observe(document.body,{childList:true,subtree:true});
+  const enhanceAll=root=>{if(root.matches?.('select'))enhanceSelect(root);root.querySelectorAll?.('select').forEach(enhanceSelect)};enhanceAll(document);new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)enhanceAll(node)}))).observe(document.body,{childList:true,subtree:true});document.addEventListener('pointerdown',event=>{if(opened&&!opened.contains(event.target))close(opened)},true);
+  const formGroups={cashForm:[['Документ',['date','org','type','walletId','toWalletId']],['Участники и аналитика',['partyRef','articleId','projectKey']],['Сумма и основание',['amount','note']]],dealForm:[['Основные данные',['name','order1c','customerSearch','org','dir']],['Условия договора',['contractTotal','cost','dealStage','projectStatus','taxMode']]],realizationForm:[['Основание реализации',['projectKey','date','document']],['Сумма документа',['amount','vatRate','vatDeductible']]],expenseForm:[['Документ расхода',['projectKey','date','category','note']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],costForm:[['Классификация',['date','name','org','dir','allocationPercentages']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],laborForm:[['Кому и за что',['date','personId','org','projectKey','pnlArticleId']],['Расчёт начисления',['ndfl','otherDeductions','employerContributions','amount']]],editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','cost','dealStage','projectStatus','taxMode']]]};
+  function organizeForm(form){if(!form||form.dataset.documentOrganized==='1')return;const spec=formGroups[form.id];if(!spec)return;form.dataset.documentOrganized='1';form.classList.add('document-form');for(const [title,names] of spec){const section=document.createElement('fieldset');section.className='document-section';const legend=document.createElement('legend');legend.textContent=title;section.append(legend);for(const name of names){const field=form.elements.namedItem(name),label=field?.closest('label');if(label&&label.parentElement===form)section.append(label)}if(section.children.length>1)form.insertBefore(section,form.firstElementChild)}}
+  Object.keys(formGroups).forEach(id=>organizeForm(document.getElementById(id)));new MutationObserver(()=>Object.keys(formGroups).forEach(id=>organizeForm(document.getElementById(id)))).observe(document.body,{childList:true,subtree:true});document.querySelectorAll('.card').forEach(card=>{if(card.querySelector('table,.scroll,.whtable'))card.classList.add('document-register')});
+  const dealModal=document.getElementById('dealModal');if(dealModal){const actions=dealModal.querySelector('#editDealForm .modal-actions'),button=document.createElement('button');button.type='button';button.id='createRealizationFromDeal';button.className='deal-realization-action';button.textContent='+ Создать реализацию';actions?.prepend(button);button.addEventListener('click',()=>{const deal=(db.deals||[]).find(row=>row._id===modalDealId);if(!deal)return alert('Сначала откройте сохранённую сделку');const key=window.arbatDealKey(deal);document.getElementById('closeDealModal')?.click();window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'realizationForm',values:{projectKey:key}}}))})}
 })();
