@@ -147,7 +147,7 @@
   }
  };
  const scheduleTableLabels=()=>{if(!tableFrame)tableFrame=requestAnimationFrame(annotateTables)};
- new MutationObserver(scheduleTableLabels).observe(document.querySelector('main'),{childList:true,subtree:true});
+ const tableObserver=new MutationObserver(scheduleTableLabels);tableObserver.observe(document.querySelector('main'),{childList:true,subtree:true});tableObserver.observe(sheetBody,{childList:true,subtree:true});
  scheduleTableLabels();
 
  /* iPhone tab bar: four frequent workflows plus the complete navigation drawer. */
