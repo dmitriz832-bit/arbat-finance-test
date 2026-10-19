@@ -4,7 +4,7 @@
   const K=['arbat-finance-demo-live','arbat-warehouse-v1'];
   const T=['finance_state','warehouse_state'];
   const B='arbat-cloud-revision-v1';
-  let rev={},active=false,busy=false,halt=false,pending={};
+  let rev={},active=false,busy=false,halt=false,pending={},conflictRetries=0,lastCloudCheck=0;
   const previous=[null,null];
   const financialDocuments=['deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
   function attributeDocuments(payload,prior){
@@ -64,17 +64,37 @@
     rev=Object.fromEntries(T.map((table,i)=>[table,rows[i].revision]));
     put(B,rev);
     window.dispatchEvent(new CustomEvent('arbat:cloud-update',{detail:{finance:rows[0].payload,warehouse:rows[1].payload,revisions:{...rev}}}));
+    lastCloudCheck=Date.now();
+  }
+
+  function mergeShared(base,remote,local){
+    if(!base||!remote||!local||typeof base!=='object'||typeof remote!=='object'||typeof local!=='object')return local;
+    const merged={...remote};
+    for(const key of new Set([...Object.keys(base),...Object.keys(local)])){
+      const before=base[key],mine=local[key],theirs=remote[key];
+      if(Array.isArray(mine)&&Array.isArray(theirs)){
+        const identity=row=>String(row?._id||row?.id||'');
+        if(!mine.every(row=>identity(row))||!theirs.every(row=>identity(row))){if(JSON.stringify(mine)!==JSON.stringify(before))merged[key]=mine;continue}
+        const result=new Map(theirs.map(row=>[identity(row),row])),baseMap=new Map((Array.isArray(before)?before:[]).map(row=>[identity(row),row]));
+        for(const [id,row] of new Map(mine.map(row=>[identity(row),row]))){const old=baseMap.get(id);if(!old||JSON.stringify(row)!==JSON.stringify(old))result.set(id,row)}
+        for(const [id,row] of baseMap)if(!mine.some(candidate=>identity(candidate)===id)&&JSON.stringify(result.get(id))===JSON.stringify(row))result.delete(id);
+        merged[key]=[...result.values()];
+      }else if(JSON.stringify(mine)!==JSON.stringify(before))merged[key]=mine;
+    }
+    return merged;
   }
 
   async function flush(){
     if(!active||busy||halt)return;
     busy=true;
+    let failed=null;
     try{
       for(let i=0;i<K.length;i++){
         const key=K[i];
         if(!(key in pending))continue;
         const value=pending[key];
         delete pending[key];
+        failed={i,key,value};
         const next=await api('rpc/update_shared_state',{
           p_store:i===0?'finance':'warehouse',
           p_payload:JSON.parse(value),
@@ -83,8 +103,14 @@
         previous[i]=JSON.parse(value);
         rev[T[i]]=next;
         put(B,rev);
+        failed=null;conflictRetries=0;
       }
-    }catch(error){fail(error)}finally{
+    }catch(error){
+      if(failed&&conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
+        try{const fresh=await fetchAll(),local=JSON.parse(failed.value),merged=mergeShared(previous[failed.i],fresh[failed.i].payload,local);applyRemote(fresh);pending[failed.key]=JSON.stringify(merged);conflictRetries++;window.abMessage('Изменения коллеги объединены с вашими. Сохраняем общую версию…');}
+        catch(recoveryError){fail(recoveryError)}
+      }else fail(error)
+    }finally{
       busy=false;
       if(active&&Object.keys(pending).length)flush();
     }
@@ -125,13 +151,16 @@
     rev=saved;
     for(let i=0;i<rows.length;i++)previous[i]=rows[i].payload;
     active=true;
-    setInterval(async()=>{
+    const refresh=async()=>{
       if(!active||busy||Object.keys(pending).length)return;
       try{
         const fresh=await fetchAll();
-        if(T.some((table,i)=>Number(fresh[i].revision)!==Number(rev[table])))applyRemote(fresh);
+        if(T.some((table,i)=>Number(fresh[i].revision)!==Number(rev[table])))applyRemote(fresh);else lastCloudCheck=Date.now();
       }catch(error){fail(error)}
-    },4500);
+    };
+    setInterval(refresh,4500);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastCloudCheck>1500)refresh()});
+    window.addEventListener('focus',()=>{if(Date.now()-lastCloudCheck>1500)refresh()});
     return true;
   };
 })();
