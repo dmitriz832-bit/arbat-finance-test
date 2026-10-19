@@ -16,6 +16,16 @@ test('quarter tax snapshot separates AIR USN 15% and ARBAT VAT 22%',()=>{
  assert.equal(x.bounds.from,'2026-10-01');assert.equal(x.bounds.to,'2026-12-31');
  assert.equal(f.rubles(x.air.income),'100000.00');assert.equal(f.rubles(x.air.expenses),'40000.00');assert.equal(f.rubles(x.air.accrued),'9000.00');
  assert.equal(f.rubles(x.arbat.outputVat),'22000.00');assert.equal(f.rubles(x.arbat.inputVat),'4400.00');assert.equal(f.rubles(x.arbat.payable),'17600.00');
+ assert.equal(f.rubles(x.arbat.profitRevenue),'100000.00');assert.equal(f.rubles(x.arbat.profitExpenses),'32200.00');assert.equal(f.rubles(x.arbat.profitBase),'67800.00');assert.equal(f.rubles(x.arbat.profitTax),'16950.00');
+});
+
+test('ARBAT profit tax includes payroll and employer contributions at the 2026 general rate',()=>{
+ const x=f.quarterTaxSnapshot({
+  realizations:[{org:'АРБАТ.ГК',date:'2026-10-10',amountGross:'122000',vatRate:22}],
+  labor:[{org:'АРБАТ.ГК',date:'2026-10-31',amount:'30000',employerContributions:'9000'}]
+ },'2026-10-18');
+ assert.equal(x.arbat.profitTaxRate,25);
+ assert.equal(f.rubles(x.arbat.profitRevenue),'100000.00');assert.equal(f.rubles(x.arbat.profitExpenses),'39000.00');assert.equal(f.rubles(x.arbat.profitTax),'15250.00');
 });
 
 test('unconfirmed VAT and unclassified USN expenses stay visible instead of becoming deductions',()=>{
