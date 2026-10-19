@@ -233,7 +233,18 @@
       input.push(documentVat(item.amountGross??item.amount??0,item.vatRate,true).vatAmount);
     }
     const outputVat=output.reduce((total,value)=>total+value,0n),inputVat=input.reduce((total,value)=>total+value,0n),difference=outputVat-inputVat;
-    return {bounds,air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,unclassified:usnUnclassified},arbat:{outputVat,inputVat,payable:difference>0n?difference:0n,recoverable:difference<0n?-difference:0n,unconfirmed:unconfirmed.length},issues:unconfirmed};
+    const arbatRevenue=(data.realizations||[]).filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxable!==false).reduce((total,item)=>total+documentPnlAmount(item),0n);
+    const deductibleDocument=(item,kind)=>{
+      if(item.org!=='АРБАТ.ГК'||!inRange(item)||item.profitTaxDeductible===false)return 0n;
+      try{return documentPnlAmount(item,true)}catch(_){unconfirmed.push({kind,source:item});return 0n}
+    };
+    const arbatProjectExpenses=(data.expenses||[]).reduce((total,item)=>total+deductibleDocument(item,'profit-project-expense'),0n);
+    const arbatGeneralExpenses=(data.costs||[]).reduce((total,item)=>total+deductibleDocument(item,'profit-general-expense'),0n);
+    const arbatPayroll=(data.labor||[]).filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxDeductible!==false).reduce((total,item)=>total+cents(item.amount||0)+cents(item.employerContributions||0),0n);
+    const profitExpenses=arbatProjectExpenses+arbatGeneralExpenses+arbatPayroll;
+    const profitBase=arbatRevenue>profitExpenses?arbatRevenue-profitExpenses:0n;
+    const profitTax=(profitBase*25n+50n)/100n;
+    return {bounds,air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,unclassified:usnUnclassified},arbat:{outputVat,inputVat,payable:difference>0n?difference:0n,recoverable:difference<0n?-difference:0n,unconfirmed:unconfirmed.length,profitRevenue:arbatRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25},issues:unconfirmed};
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function wipCheckPending(data,deal,key){return (data.expenses||[]).some(x=>x.projectKey===key&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId&&!data.fifo);}
