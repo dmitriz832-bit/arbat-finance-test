@@ -68,6 +68,15 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
     assert.ok(metrics.x>=0&&metrics.right<=width+2,'workspace escapes mobile viewport: '+JSON.stringify(metrics));
     assert.ok(metrics.wrapWidth<=metrics.contentWidth+2,'workspace wrapper overflows: '+JSON.stringify(metrics));
    }
+   const usability=await page.evaluate(()=>{
+    const content=document.querySelector('#layout>.content');
+    const fields=[...content.querySelectorAll('input:not([type=hidden]),select,textarea')].filter(el=>getComputedStyle(el).display!=='none');
+    const cards=[...content.querySelectorAll('.card')];
+    const scrolls=[...content.querySelectorAll('.scroll')];
+    return {fieldCount:fields.length,cardCount:cards.length,scrollCount:scrolls.length,overflowingScrolls:scrolls.filter(el=>el.scrollWidth>el.clientWidth+2).length};
+   });
+   assert.ok(usability.cardCount>0,'missing application cards at '+width);
+   assert.ok(usability.fieldCount>0,'missing application form fields at '+width);
    assert.deepEqual(browserErrors,[], 'Uncaught page errors at '+width);
    await context.close();
   }
