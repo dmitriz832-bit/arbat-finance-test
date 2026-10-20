@@ -252,3 +252,35 @@ table tbody tr:hover{background:#f7faff}
  #layout>.content{min-width:0;max-width:100%;overflow-x:clip}
 }
 @media(max-width:390px){#layout{grid-template-columns:48px minmax(0,1fr)!important}}
+
+/* Consistent production-ready dense workspace across all modules. */
+#layout>.content{background:#f5f7fa}
+#layout>.content>.wrap{width:100%;margin:0 auto}
+#layout>.content section.active{min-width:0}
+#layout>.content section.active>.card{min-width:0}
+#layout>.content .card h2{line-height:1.35}
+#layout>.content .card .fields{min-width:0}
+#layout>.content .card .fields>label{min-width:0;overflow-wrap:anywhere}
+#layout>.content .card input,#layout>.content .card select,#layout>.content .card textarea{min-width:0;max-width:100%}
+#layout>.content .card .scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#layout>.content .card table{width:100%;font-variant-numeric:tabular-nums}
+#layout>.content .card table td,#layout>.content .card table th{vertical-align:middle}
+#layout>.content .card table tbody tr:nth-child(even){background:#fbfcfe}
+#layout>.content .card table tbody tr:hover{background:#eef5ff}
+#layout>.content .card table button{min-height:34px}
+#layout>.content .card .muted{line-height:1.5}
+@media(min-width:701px) and (max-width:1100px){
+ #layout>.content>.wrap{padding:16px}
+ #layout>.content .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #layout>.content .card{padding:15px}
+}
+@media(max-width:700px){
+ #layout>.content>.wrap{padding:12px}
+ #layout>.content .card{margin-bottom:12px;padding:14px}
+ #layout>.content .fields{grid-template-columns:minmax(0,1fr)}
+ #layout>.content .card table{min-width:560px}
+ #layout>.content .card .scroll{position:relative}
+ #layout>.content .card button{min-height:42px}
+ #layout>.content .card h2{font-size:17px}
+ #layout>.content .card .muted{font-size:13px}
+}
