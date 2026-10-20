@@ -331,7 +331,7 @@ document.getElementById('bankCsvFile').onchange=async e=>{
  bankImportRows=[];document.getElementById('bankImportCommit').style.display='none';let file=e.target.files[0];if(!file)return;
  try{
   let textFile=new TextDecoder('windows-1251').decode(await file.arrayBuffer());let lines=textFile.replace(/\r/g,'').split('\n').filter(x=>x.trim()),header=lines[0].split('\t');if(!header.includes('date_oper')||!header.includes('plat_inn')||!header.includes('d_c'))throw Error('Не распознана структура выписки Альфа-Банка');
-  let items=lines.slice(1).map(line=>Object.fromEntries(line.split('\t').map((v,i)=>[header[i],v]))).filter(x=>x.d_c==='D'||x.d_c==='C');
+  let items=lines.slice(1).map(line=>Object.fromEntries(line.split('\t').map((v,i)=>[header[i],v]))).filter(x=>x.d_c==='D'||x.d_c==='C');if(!items.length)throw Error('В выписке нет операций. Банк выгрузил только заголовки; выберите период, в котором были движения по счёту, и скачайте файл заново.');
   let account=items[0]?.Rch||'',wallets=db.wallets.filter(w=>w.verified),owner=wallets.find(w=>w.account===account)||wallets.find(w=>w.name.trim().endsWith(account.slice(-4)));if(!owner)throw Error('Не найден настроенный кошелёк для счёта •'+account.slice(-4)+'. Сначала настройте кошелёк в разделе «Настройки».');
   for(let t of items){
    let incoming=t.d_c==='C',from=t.plat_acc||'',to=t.pol_acc||'',oppInn=(incoming?t.plat_inn:t.Pol_inn||'').trim(),oppName=(incoming?t.plat_name:t.pol_name||'').trim(),amount=parseMoney(t.sum_rur),date=bankNormDate(t.date_oper),otherAccount=incoming?from:to;
