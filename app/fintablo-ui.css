@@ -225,3 +225,6 @@ table tbody tr:hover{background:#f7faff}
 @media(max-width:390px){
  .layout.mobile-open,.layout.mobile-open.collapsed{grid-template-columns:48px minmax(0,1fr)}
 }
+
+/* Keep sidebar opaque for readable desktop and mobile navigation. */
+.layout>.sidebar{background:#fff!important;backdrop-filter:none}
