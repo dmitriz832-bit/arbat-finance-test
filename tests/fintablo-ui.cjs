@@ -8,9 +8,9 @@ const html=fs.readFileSync(path.join(root,'app/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'app/fintablo-ui.css'),'utf8');
 
 test('dashboard loads the standalone visual layer after existing CSS',()=>{
-  assert.match(html,/<link rel="stylesheet" href="\.\/fintablo-ui\.css">/);
+  assert.match(html,/<link rel="stylesheet" href="\.\/fintablo-ui\.css(?:\?v=\d+)?">/);
   const mainStyle=html.indexOf('</style>');
-  const theme=html.indexOf('href="./fintablo-ui.css"');
+  const theme=html.indexOf('href="./fintablo-ui.css');
   assert.ok(mainStyle>=0&&theme>mainStyle);
 });
 test('existing dashboard data hooks are retained',()=>{
