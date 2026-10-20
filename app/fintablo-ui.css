@@ -1,0 +1,294 @@
+/* ARBAT FINANCE | FinTablo-inspired visual design layer
+   Presentation-only. No business logic, data schema or event handlers changed.
+   Kept separate so the redesign can be reverted independently. */
+:root{
+  --ui-bg:#f5f7fa;--ui-surface:#fff;--ui-text:#17233b;
+  --ui-muted:#718096;--ui-line:#e5eaf0;--ui-blue:#2878f0;
+  --ui-blue-soft:#eaf3ff;--ui-radius:12px;
+}
+body{background:var(--ui-bg);color:var(--ui-text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#fff;color:var(--ui-text);border-bottom:1px solid var(--ui-line);box-shadow:0 1px 3px #16233b08}
+header small{color:var(--ui-muted)}
+.layout{grid-template-columns:232px minmax(0,1fr)}
+.layout.collapsed{grid-template-columns:68px minmax(0,1fr)}
+.sidebar{background:#fff;color:#40516a;border-right:1px solid var(--ui-line)}
+.sidebar #toggleSide{background:#f7f9fc;color:#52637a;border:1px solid var(--ui-line);box-shadow:none}
+.side-nav{gap:3px}
+.side-nav button{color:#52627a;font-weight:550;border-radius:9px;min-height:44px;transition:background .12s,color .12s}
+.side-nav button.active,.side-nav button:hover{background:var(--ui-blue-soft);color:#1769dd;box-shadow:none}
+.sidebar-caption{color:#7b8ca0}.side-bottom{border-color:var(--ui-line)}
+.content .wrap{max-width:100%;padding:22px 25px}
+h1,h2,h3{color:var(--ui-text);letter-spacing:-.02em}
+h1{font-size:26px;line-height:1.22}
+p,.muted{color:var(--ui-muted)}
+.card,.modal{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-radius);box-shadow:0 2px 12px #0e284408}
+.card{padding:18px}
+.cards{gap:12px}
+.stat{font-weight:750;letter-spacing:-.025em}
+button,select,input,textarea{font-family:inherit;border-radius:9px}
+button{border-color:#dce4ef;color:#30415c;background:#fff}
+button:hover:not(:disabled){border-color:#a9c9fd}
+button.active,button.primary,.primary{background:var(--ui-blue);color:#fff;border-color:var(--ui-blue)}
+button.active:hover,button.primary:hover{background:#176add;color:#fff}
+input,select,textarea,.purpose-area{background:#fff;border:1px solid #dce4ef;color:var(--ui-text)}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid #89b9ff;outline-offset:2px}
+table{font-size:13px}
+table th{color:#64748b;background:#f8fafd;font-weight:650;font-size:12px;letter-spacing:0;border-color:var(--ui-line)}
+table td,table th{padding:11px 12px;border-color:var(--ui-line)}
+table tbody tr:hover{background:#f7faff}
+.scroll{border-radius:10px;scrollbar-color:#cbd8e8 transparent}
+.metric-ok,.ok{color:#10845b}.metric-danger,.danger{color:#cf3851}
+.modal{border-radius:16px;box-shadow:0 24px 68px #15253d30}
+.banner{background:#fff6df;color:#785c22}
+.fields>label{color:#4c5b70}
+@media(max-width:700px){
+  .layout,.layout.collapsed{grid-template-columns:56px minmax(0,1fr)}
+  .layout.mobile-open{grid-template-columns:210px minmax(0,1fr)}
+  .sidebar{background:#fff}
+  .content .wrap{padding:13px}
+  .card{padding:13px}
+  .cards{gap:9px}
+  h1{font-size:23px}
+  input,select,textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){.side-nav button,.layout{transition:none}}
+
+/* Dashboard composition: existing data widgets, rearranged only through CSS. */
+#overview.active{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:14px;align-items:start}
+#overview>.card,#overview>#kpis{margin:0;min-width:0}
+#overview>.card:first-child,#overview>#kpis,#overview>.card:nth-child(3),#overview>.card:nth-child(4),#overview>.card:nth-child(5),#overview>.card:nth-child(9),#overview>.card:nth-child(10){grid-column:1/-1}
+#overview>.card:first-child{padding:14px 18px}
+#overview>.card:first-child h2{font-size:15px;margin:0 0 12px}
+#overview>.card:first-child .fields{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#overview>.card:first-child .fields>label{font-size:12px;gap:5px}
+#overview>.card:first-child .fields input,#overview>.card:first-child .fields select{height:40px;min-height:40px}
+#overview>#kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+#overview>#kpis>.card{margin:0;padding:16px;min-height:110px}
+#overview>#kpis .stat{font-size:clamp(20px,1.9vw,29px)}
+#overview>.card h2{font-size:17px;line-height:1.35;margin-top:0}
+#overview>.card:nth-child(6),#overview>.card:nth-child(7),#overview>.card:nth-child(8){grid-column:auto}
+#overview>.card:nth-child(8){grid-column:1/-1}
+#overview .scroll{max-height:440px}
+.content>.wrap>label:has(#orgFilter){display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:10px 0 18px;color:#52627a;font-size:13px}
+#orgFilter{min-width:200px;max-width:100%;background:#fff}
+@media(max-width:1350px){
+ #overview>#kpis{grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+ #overview>.card:first-child .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+ #overview.active{grid-template-columns:minmax(0,1fr)}
+ #overview>.card,#overview>.card:nth-child(6),#overview>.card:nth-child(7){grid-column:1/-1}
+}
+@media(max-width:700px){
+ #overview.active{gap:10px}
+ #overview>#kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ #overview>#kpis>.card{padding:12px;min-height:98px}
+ #overview>#kpis .stat{font-size:20px}
+ #overview>.card:first-child .fields{grid-template-columns:1fr 1fr}
+ #overview>.card:first-child{padding:12px}
+}
+@media(max-width:390px){
+ #overview>#kpis{grid-template-columns:1fr}
+ #overview>.card:first-child .fields{grid-template-columns:1fr}
+}
+
+/* Overflow and touch safety for dense financial screens. */
+.content,.content .wrap,#overview,#overview>*{min-width:0}
+#overview>.card .scroll,#overview>.card table{max-width:100%}
+#overview>#kpis>.card{overflow-wrap:anywhere}
+#overview>#kpis .stat{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#overview .card h2{overflow-wrap:break-word}
+#overview input,#overview select{max-width:100%}
+#overview .fields>*{min-width:0}
+#overview table{width:100%}
+#overview .scroll{overflow-x:auto;overscroll-behavior-x:contain}
+#overview .scroll:focus-visible{outline:2px solid #89b9ff;outline-offset:2px}
+@media(max-width:700px){
+ .content .wrap{overflow-x:clip}
+ .content .wrap>h1{overflow-wrap:anywhere}
+ .content>.wrap>label:has(#orgFilter){flex-wrap:wrap}
+ #orgFilter{width:100%;min-width:0}
+ #overview .scroll{max-height:none}
+ #overview>.card .fields{grid-template-columns:minmax(0,1fr)}
+ #overview>.card:first-child .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #overview button,#overview select,#overview input{min-height:44px}
+}
+@media(max-width:420px){
+ #overview>#kpis{grid-template-columns:minmax(0,1fr)}
+ #overview>.card:first-child .fields{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Shared data-entry and journal appearance. Presentation-only changes. */
+.fields label,.report-controls label{color:#52627a;font-size:13px;font-weight:550}
+.fields input,.fields select,.report-controls select,.report-controls input{background:#fff;border:1px solid #dce4ef;box-shadow:0 1px 2px #14253d05}
+.fields input:hover,.fields select:hover{border-color:#a9bdd7}
+.fields input:disabled,.fields select:disabled{background:#f1f4f8;color:#8a97a8;cursor:not-allowed}
+.modal-head{position:sticky;top:-24px;z-index:1;background:#fff;border-bottom:1px solid var(--ui-line);padding:0 0 14px;margin-bottom:14px}
+.modal-actions{position:sticky;bottom:-24px;background:#fff;padding:14px 0 0;border-top:1px solid var(--ui-line);z-index:1}
+.report-toolbar{padding:4px 0 16px;gap:14px}
+.report-controls{gap:10px}
+.report-controls button,.report-controls select{min-height:42px}
+.scroll>table{border-collapse:separate;border-spacing:0;width:100%}
+.scroll>table thead th{position:sticky;top:0;z-index:1;background:#f8fafd;border-bottom:1px solid #dce4ef}
+.scroll>table tbody tr:nth-child(even){background:#fbfcfe}
+.scroll>table tbody tr:hover{background:#edf5ff}
+.scroll>table th:first-child,.scroll>table td:first-child{padding-left:14px}
+.scroll>table th:last-child,.scroll>table td:last-child{padding-right:14px}
+#reportTable,#bankImportPreview{border:1px solid var(--ui-line);border-radius:10px;background:white}
+#bankImportPreview table{border-collapse:separate;border-spacing:0}
+#bankImportPreview tbody tr{border-bottom:2px solid #e5eaf0}
+#bankImportPreview tbody tr:hover{background:#eff6ff}
+#bankImportPreview td{vertical-align:top}
+#bankImportPreview .bank-purpose{line-height:1.45;overflow-wrap:anywhere}
+#bankImportPreview select{min-width:min(240px,100%);max-width:100%}
+#genericFields .purpose-area{border:1px solid #dce4ef;background:#fff;line-height:1.5}
+#reportTable td:first-child,#reportTable th:first-child{z-index:2}
+@media(max-width:700px){
+ .modal{padding:16px;max-height:94dvh}
+ .modal-head{top:-16px}
+ .modal-actions{bottom:-16px;flex-wrap:wrap}
+ .modal-actions button{min-height:44px}
+ .report-controls{width:100%}
+ .report-controls>*{min-width:0;max-width:100%}
+ #bankImportPreview{overflow:auto}
+ #bankImportPreview select{min-height:44px}
+}
+
+/* Deal detail, warehouse workflows and staff accruals: consistent workspace surfaces. */
+#dealModal .modal{width:min(1180px,100%);max-width:1180px}
+#dealModal .modal-head{display:flex;align-items:center;justify-content:space-between}
+#dealModal .deal-plan,#dealModal .deal-history{border-top:1px solid var(--ui-line);padding-top:18px;margin-top:22px}
+#dealModal .deal-plan h3,#dealModal .deal-history h3{font-size:16px;font-weight:700}
+#dealModal .deal-plan-crew{min-width:0;max-width:100%}
+#dealModal .scroll{border:1px solid var(--ui-line);border-radius:10px;background:#fff}
+#dealModal .fields{gap:14px}
+#dealModal .modal-actions{gap:10px}
+#workForm,#crewForm,#costForm,#editDealForm{min-width:0}
+#workForm .fields,#editDealForm .fields{min-width:0}
+#crewMembers{background:#fff;border:1px solid #dce4ef;border-radius:9px;min-height:120px}
+#payrollReconciliationTable{border:1px solid var(--ui-line);border-radius:10px;background:#fff}
+#payrollReconciliationIssues:not(:empty){margin:12px 0;line-height:1.5}
+.batch-project{border:1px solid var(--ui-line);background:#fff;border-radius:12px;box-shadow:0 2px 9px #14253d06}
+.batch-project-head{gap:14px}
+.batch-line{gap:12px}
+.batch-line input,.batch-line select{max-width:100%;min-width:0}
+.batch-project strong{color:var(--ui-text)}
+.deal-history,.deal-plan{min-width:0}
+.deal-history tbody tr:hover,.deal-plan tbody tr:hover{background:#edf5ff}
+@media(max-width:800px){
+ #dealModal .modal{width:100%;padding:16px}
+ #dealModal .deal-plan-crew{width:100%;display:flex;margin:0 0 10px}
+ #dealModal .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .batch-line{grid-template-columns:minmax(0,1fr) 100px}
+}
+@media(max-width:550px){
+ #dealModal .fields{grid-template-columns:minmax(0,1fr)}
+ #dealModal .modal-head{align-items:flex-start}
+ #dealModal .modal-head button{min-height:44px}
+ .batch-project-head{flex-wrap:wrap}
+ .batch-line{grid-template-columns:minmax(0,1fr) 85px}
+ .batch-line>*{min-width:0}
+ #crewMembers{width:100%}
+}
+
+/* Mobile navigation: maximize content width and keep accessible nav controls. */
+@media(max-width:700px){
+ .layout,.layout.collapsed{grid-template-columns:52px minmax(0,1fr)}
+ .sidebar{padding:8px 3px;height:calc(100dvh - 75px);min-height:0;position:sticky;top:0;overflow-y:auto;overflow-x:hidden}
+ .sidecontrols{padding:3px 0;justify-content:center}
+ .sidebar #toggleSide{min-width:42px;min-height:42px;padding:8px}
+ .side-nav{gap:2px;min-height:0;flex:1 0 auto}
+ .side-nav button{min-height:44px;padding:10px 6px;justify-content:center}
+ .side-nav .sicon{width:22px;min-width:22px}
+ .layout.mobile-open{grid-template-columns:minmax(195px,220px) minmax(0,1fr)}
+ .layout.mobile-open .sidebar{padding:8px}
+ .layout.mobile-open .sidecontrols{justify-content:flex-start}
+ .layout.mobile-open .side-nav button{justify-content:flex-start;gap:10px;padding:10px}
+ .layout.mobile-open .sidebar .slabel{white-space:normal;overflow-wrap:anywhere}
+ .content{min-width:0;overflow-x:clip}
+ .content .wrap{min-width:0}
+ .sidebar .side-bottom{padding:8px 0}
+}
+@media(max-width:390px){
+ .layout,.layout.collapsed{grid-template-columns:48px minmax(0,1fr)}
+ .layout.mobile-open{grid-template-columns:190px minmax(0,1fr)}
+ .side-nav .sicon svg{width:18px;height:18px}
+}
+
+/* Expanded phone navigation acts as an overlay rather than shrinking the workspace. */
+@media(max-width:700px){
+ .layout.mobile-open,.layout.mobile-open.collapsed{grid-template-columns:52px minmax(0,1fr)}
+ .layout.mobile-open>.sidebar{position:fixed;left:0;top:0;bottom:0;height:100dvh;width:min(260px,82vw);z-index:150;background:#fff;box-shadow:10px 0 35px #10223b30;border-right:1px solid var(--ui-line);overflow-y:auto}
+ .layout.mobile-open>.content{grid-column:2;min-width:0}
+ .layout.mobile-open .side-nav{width:100%}
+}
+@media(max-width:390px){
+ .layout.mobile-open,.layout.mobile-open.collapsed{grid-template-columns:48px minmax(0,1fr)}
+}
+
+/* Keep sidebar opaque for readable desktop and mobile navigation. */
+.layout>.sidebar{background:#fff!important;backdrop-filter:none}
+
+/* Corporate sidebar styles target the ID; override at the same specificity. */
+#layout > #sidebar{background:#fff!important;background-color:#fff!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+/* Narrow-screen form and data-grid usability. */
+@media(max-width:700px){
+ .content,.content>.wrap,.panel,.card,.modal,.fields,.grid,.table-wrap{min-width:0;max-width:100%}
+ .content input:not([type=checkbox]):not([type=radio]),.content select,.content textarea,.modal input:not([type=checkbox]):not([type=radio]),.modal select,.modal textarea{max-width:100%;min-width:0;font-size:16px}
+ .content table,.modal table{border-collapse:separate;border-spacing:0}
+ .content .scroll,.modal .scroll,.table-wrap,.table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+ .content button,.modal button{touch-action:manipulation}
+ .modal{max-width:calc(100vw - 16px)}
+}
+
+/* Keep navigation reachable on phones regardless of header height. */
+@media(max-width:700px){
+ #layout{position:relative;grid-template-columns:52px minmax(0,1fr)!important;max-width:100%;overflow:visible}
+ #layout>#sidebar{position:sticky;top:0;align-self:start;height:100dvh;max-height:100dvh;z-index:80;overflow-y:auto;overflow-x:hidden}
+ #layout>#sidebar .sidecontrols{position:sticky;top:0;z-index:2;background:#fff;min-height:52px;display:flex;align-items:center;justify-content:center}
+ #layout>#sidebar #toggleSide{display:inline-flex!important;align-items:center;justify-content:center;visibility:visible!important;opacity:1!important;position:relative;inset:auto;min-width:44px;min-height:44px;flex:0 0 44px}
+ #layout.mobile-open>#sidebar{position:fixed;top:0;left:0;bottom:0;max-height:100dvh;width:min(260px,82vw);z-index:150}
+ #layout>.content{min-width:0;max-width:100%;overflow-x:clip}
+}
+@media(max-width:390px){#layout{grid-template-columns:48px minmax(0,1fr)!important}}
+
+/* Consistent production-ready dense workspace across all modules. */
+#layout>.content{background:#f5f7fa}
+#layout>.content>.wrap{width:100%;margin:0 auto}
+#layout>.content section.active{min-width:0}
+#layout>.content section.active>.card{min-width:0}
+#layout>.content .card h2{line-height:1.35}
+#layout>.content .card .fields{min-width:0}
+#layout>.content .card .fields>label{min-width:0;overflow-wrap:anywhere}
+#layout>.content .card input,#layout>.content .card select,#layout>.content .card textarea{min-width:0;max-width:100%}
+#layout>.content .card .scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#layout>.content .card table{width:100%;font-variant-numeric:tabular-nums}
+#layout>.content .card table td,#layout>.content .card table th{vertical-align:middle}
+#layout>.content .card table tbody tr:nth-child(even){background:#fbfcfe}
+#layout>.content .card table tbody tr:hover{background:#eef5ff}
+#layout>.content .card table button{min-height:34px}
+#layout>.content .card .muted{line-height:1.5}
+@media(min-width:701px) and (max-width:1100px){
+ #layout>.content>.wrap{padding:16px}
+ #layout>.content .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #layout>.content .card{padding:15px}
+}
+@media(max-width:700px){
+ #layout>.content>.wrap{padding:12px}
+ #layout>.content .card{margin-bottom:12px;padding:14px}
+ #layout>.content .fields{grid-template-columns:minmax(0,1fr)}
+ #layout>.content .card table{min-width:560px}
+ #layout>.content .card .scroll{position:relative}
+ #layout>.content .card button{min-height:42px}
+ #layout>.content .card h2{font-size:17px}
+ #layout>.content .card .muted{font-size:13px}
+}
+
+/* The legacy collapsed-sidebar transform can shift the toggle off-screen. */
+@media(max-width:700px){
+ #layout>#sidebar{transform:none!important;translate:none!important;margin-left:0!important;left:0!important;right:auto!important}
+ #layout>#sidebar .sidecontrols{transform:none!important;translate:none!important;margin-left:0!important;left:0!important}
+ #layout>#sidebar #toggleSide{transform:none!important;translate:none!important;margin-left:0!important;left:auto!important}
+ #layout.mobile-open>#sidebar{transform:none!important;translate:none!important;left:0!important}
+}
