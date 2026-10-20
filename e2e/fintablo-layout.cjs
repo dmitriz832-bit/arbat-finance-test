@@ -63,6 +63,11 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
     assert.ok(state.navWidth>=190,'mobile navigation too narrow at '+width);
     assert.ok(state.contentWidth>=width-60,'mobile main pane shrank at '+width);
    }
+   if(width<=700){
+    const metrics=await page.evaluate(()=>{const content=document.querySelector('#layout>.content');const wrap=content.querySelector('.wrap');const rect=content.getBoundingClientRect();return {x:rect.x,right:rect.right,viewport:innerWidth,wrapWidth:wrap.getBoundingClientRect().width,contentWidth:rect.width}});
+    assert.ok(metrics.x>=0&&metrics.right<=width+2,'workspace escapes mobile viewport: '+JSON.stringify(metrics));
+    assert.ok(metrics.wrapWidth<=metrics.contentWidth+2,'workspace wrapper overflows: '+JSON.stringify(metrics));
+   }
    assert.deepEqual(browserErrors,[], 'Uncaught page errors at '+width);
    await context.close();
   }
