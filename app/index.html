@@ -351,11 +351,12 @@ window.reviewBankCounterparties=async function(active,db){
  const grouped=new Map();
  for(const x of relevant){let inn=String(x.cpInn||'').trim(),name=String(x.cpName||'').trim();let k=inn?'inn:'+inn:'name:'+name.toLowerCase();if(!grouped.has(k))grouped.set(k,{inn,name,items:[],existing:inn?db.counterparties.find(c=>c.inn===inn):null});grouped.get(k).items.push(x)}
  if(!grouped.size)return true;
- const modal=document.createElement('div');modal.className='modal-backdrop open';modal.style.zIndex='99999';
+ const modal=document.createElement('div');modal.className='modal-backdrop open bank-review-overlay';modal.style.zIndex='99999';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Проверка контрагентов перед импортом');
  const shell=document.createElement('div');shell.className='modal';shell.style.cssText='max-width:1020px;width:96vw;max-height:90vh;overflow:auto';
  const title=document.createElement('h2');title.textContent='Проверка контрагентов перед импортом';shell.appendChild(title);
  const note=document.createElement('p');note.textContent='Проверьте тип и роли. Контрагент из нескольких платежей показывается один раз. Для существующих карточек можно добавить вторую роль.';shell.appendChild(note);
  const table=document.createElement('table');table.innerHTML='<thead><tr><th>Контрагент</th><th>ИНН</th><th>Тип</th><th>Покупатель</th><th>Поставщик</th><th>Статус</th></tr></thead><tbody></tbody>';shell.appendChild(table);
+ table.className='bank-review-table';
  const entries=[];
  for(const group of grouped.values()){
  let tr=document.createElement('tr'),existing=group.existing,guessed=existing?.entityType||(group.inn.length===10?'company':group.inn.length===12?'person':'person');
@@ -363,16 +364,17 @@ window.reviewBankCounterparties=async function(active,db){
  let inn=document.createElement('input');inn.value=group.inn;inn.style.width='135px';inn.placeholder='Необязателен для физлица';
  let typ=document.createElement('select');for(let [value,label] of [['company','Организация'],['ip','ИП'],['person','Физлицо']]){let o=new Option(label,value);typ.add(o)}typ.value=guessed;
  let buyer=document.createElement('input'),supplier=document.createElement('input');buyer.type=supplier.type='checkbox';buyer.checked=existing?!!existing.isBuyer||existing.isBuyer===undefined&&existing.isSupplier!==true:group.items.some(x=>x.type==='in');supplier.checked=existing?!!existing.isSupplier:group.items.some(x=>x.type==='out');
- for(const element of [name,inn,typ,buyer,supplier]){let td=document.createElement('td');td.appendChild(element);tr.appendChild(td)}
+ name.setAttribute('aria-label','Наименование контрагента');inn.setAttribute('aria-label','ИНН');inn.inputMode='numeric';typ.setAttribute('aria-label','Тип контрагента');buyer.setAttribute('aria-label','Покупатель');supplier.setAttribute('aria-label','Поставщик');
+ for(const [index,element] of [name,inn,typ,buyer,supplier].entries()){let td=document.createElement('td');td.dataset.columnLabel=['Контрагент','ИНН','Тип','Покупатель','Поставщик'][index];td.appendChild(element);tr.appendChild(td)}
  let td=document.createElement('td');td.textContent=existing?'Уже есть':'Новый';tr.appendChild(td);table.tBodies[0].appendChild(tr);entries.push({group,name,inn,typ,buyer,supplier,existing})
  }
- const error=document.createElement('p');error.style.color='#b42318';shell.appendChild(error);
- const actions=document.createElement('div');actions.style.cssText='display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px';
- const cancel=document.createElement('button');cancel.textContent='Отмена';
+ const error=document.createElement('p');error.style.color='#b42318';error.setAttribute('role','alert');shell.appendChild(error);
+ const actions=document.createElement('div');actions.className='bank-review-actions';actions.style.cssText='display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px';
+ const cancel=document.createElement('button');cancel.id='bankReviewCancel';cancel.textContent='Отмена';
  const ok=document.createElement('button');ok.textContent='Подтвердить и импортировать';ok.className='primary';
  actions.append(cancel,ok);shell.appendChild(actions);modal.appendChild(shell);document.body.appendChild(modal);
  return await new Promise(resolve=>{
- const close=v=>{modal.remove();resolve(v)};cancel.onclick=()=>close(false);
+ const close=v=>{modal.remove();document.getElementById('bankImportCommit')?.focus({preventScroll:true});resolve(v)};cancel.onclick=()=>close(false);modal.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();close(false)}});cancel.focus({preventScroll:true});
  ok.onclick=()=>{
   const keys=new Set();
   for(const e of entries){let n=e.name.value.trim(),i=e.inn.value.trim(),t=e.typ.value;
@@ -1251,4 +1253,4 @@ let lock=false;new MutationObserver(()=>{if(lock)return;lock=true;queueMicrotask
  const mo=new MutationObserver(()=>{if(current==='reports:stock'){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display==='none')audit.style.display=''}else if(current.startsWith('reports:')){let audit=firstReport?.querySelector('#arbatAuditPanel');if(audit&&audit.style.display!=='none')audit.style.display='none'}});
  if(firstReport)mo.observe(firstReport,{childList:true,subtree:true});
 })();
-</script><link rel="stylesheet" href="./corporate-theme.css?v=3"><link rel="stylesheet" href="./cash-workspace.css?v=1"><link rel="stylesheet" href="./document-lists.css?v=1"><link rel="stylesheet" href="./profile-corporate.css?v=1"><link rel="stylesheet" href="./interface.css?v=13"><link rel="stylesheet" href="./business-system.css?v=5"><link rel="stylesheet" href="./dashboard.css?v=6"><link rel="stylesheet" href="./responsive-system.css?v=3"><link rel="stylesheet" href="./document-ux.css?v=3"><script src="./finance-core.js?v=7"></script><script src="./interface.js?v=12"></script><script src="./cash-workspace.js?v=2"></script><script src="./document-lists.js?v=2"></script><script src="./business-system.js?v=14"></script><script src="./dashboard.js?v=16"></script><script src="./vat-forms.js?v=1"></script><script src="./document-ux.js?v=3"></script><script src="./sync.js?v=3"></script><script src="./profile.js?v=3"></script><script src="./auth.js?v=8"></script></body></html>
+</script><link rel="stylesheet" href="./corporate-theme.css?v=3"><link rel="stylesheet" href="./cash-workspace.css?v=1"><link rel="stylesheet" href="./document-lists.css?v=1"><link rel="stylesheet" href="./profile-corporate.css?v=1"><link rel="stylesheet" href="./interface.css?v=13"><link rel="stylesheet" href="./business-system.css?v=5"><link rel="stylesheet" href="./dashboard.css?v=6"><link rel="stylesheet" href="./responsive-system.css?v=3"><link rel="stylesheet" href="./document-ux.css?v=4"><script src="./finance-core.js?v=7"></script><script src="./interface.js?v=13"></script><script src="./cash-workspace.js?v=2"></script><script src="./document-lists.js?v=2"></script><script src="./business-system.js?v=14"></script><script src="./dashboard.js?v=16"></script><script src="./vat-forms.js?v=1"></script><script src="./document-ux.js?v=4"></script><script src="./sync.js?v=3"></script><script src="./profile.js?v=3"></script><script src="./auth.js?v=8"></script></body></html>

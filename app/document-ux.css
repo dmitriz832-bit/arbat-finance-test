@@ -22,3 +22,36 @@ body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-read
 .deal-realization-action{margin-right:auto!important;background:#0d7654!important;border-color:#0d7654!important;color:#fff!important;font-weight:750!important}
 .wh-document-lines{grid-column:1/-1;display:grid;gap:10px;padding:16px;background:#eef5f8;border:1px solid #bed1de;border-radius:12px}.wh-document-lines>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.wh-document-line{display:grid;grid-template-columns:minmax(220px,2fr) minmax(110px,.7fr) minmax(150px,1fr) auto;gap:10px;align-items:end;padding:12px;background:#fff;border:1px solid #cfdce6;border-radius:10px}.wh-document-line label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#526a80}.wh-document-line button{min-height:42px}
 @media(max-width:700px){.document-section{grid-template-columns:1fr}.wh-document-line{grid-template-columns:1fr}.wh-document-line button{width:100%}}
+
+/* Portalled options stay outside scroll containers and above nested dialogs. */
+.smart-combobox-list[data-open="1"]{display:block;z-index:1000000;box-sizing:border-box;overscroll-behavior:contain}
+.smart-combobox-list .combobox-option{min-height:44px;font-size:16px!important}
+.bank-review-table{width:100%;table-layout:auto}
+.bank-review-table input:not([type=checkbox]),.bank-review-table .smart-combobox{width:100%!important;min-width:0;box-sizing:border-box}
+.bank-review-actions{position:sticky;bottom:0;background:#fff;padding:14px 0 0;z-index:2;display:flex;gap:12px;flex-wrap:wrap}
+.bank-review-actions button{min-height:44px}
+body.ab-ready.ui-modern:not(.ab-profile-only) #bankImportPreview table.ui-data-cards>tbody{gap:24px!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #bankImportPreview table.ui-data-cards>tbody>tr{padding:0 18px 12px!important;border:2px solid #9db5c8!important;border-radius:14px!important;box-shadow:0 7px 20px #193d5a1c!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #bankImportPreview table.ui-data-cards>tbody>tr>td{padding-top:11px!important;padding-bottom:11px!important}
+@media(max-width:1000px){
+  .bank-review-table,.bank-review-table tbody{display:block!important;width:100%!important;min-width:0!important}
+  .bank-review-table thead{display:none!important}
+  .bank-review-table tbody>tr{display:grid!important;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;padding:16px!important;border:2px solid #b4c8d8!important;border-radius:12px;background:#fff!important}
+  .bank-review-table tbody>tr>td{display:block!important;padding:0!important;border:0!important;min-width:0;text-align:left!important}
+  .bank-review-table tbody>tr>td:nth-child(-n+3),.bank-review-table tbody>tr>td:last-child{grid-column:1/-1}
+  .bank-review-table td[data-column-label]::before{content:attr(data-column-label);display:block;margin-bottom:6px;color:#304b61;font-size:14px;font-weight:700}
+  .bank-review-table input[type=checkbox]{width:24px;height:24px;margin:6px}
+}
+@media(max-width:700px){
+  body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-ready.ui-modern:not(.ab-profile-only) form.document-form{grid-template-columns:minmax(0,1fr)!important}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-overlay,body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-overlay{top:var(--document-view-top,0px)!important;bottom:auto!important;height:var(--document-view-height,100dvh)!important;padding:0!important;align-items:stretch!important;box-sizing:border-box}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet,body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-overlay>.modal{width:100%!important;max-width:none!important;height:100%!important;max-height:100%!important;margin:0!important;border-radius:0!important;box-sizing:border-box}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet{display:flex!important;flex-direction:column}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-body{min-height:0;overflow:auto!important;padding:14px!important;padding-bottom:max(16px,env(safe-area-inset-bottom))!important;overscroll-behavior:contain}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header{flex-shrink:0;gap:8px!important;padding:10px 12px!important}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header h2{font-size:17px!important;white-space:normal!important}
+  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.ui-sheet,.modal,.whmodal) :is(input:not([type=checkbox]):not([type=radio]),textarea,select,.smart-combobox-input){font-size:16px!important;min-width:0;max-width:100%;box-sizing:border-box}
+  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.ui-sheet,.modal,.whmodal) button{min-height:44px}
+  .document-section{padding:12px;gap:14px}.document-section>label{min-width:0}
+  .bank-review-actions button{flex:1 1 140px}
+}
