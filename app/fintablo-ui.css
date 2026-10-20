@@ -1,0 +1,54 @@
+/* ARBAT FINANCE | FinTablo-inspired visual design layer
+   Presentation-only. No business logic, data schema or event handlers changed.
+   Kept separate so the redesign can be reverted independently. */
+:root{
+  --ui-bg:#f5f7fa;--ui-surface:#fff;--ui-text:#17233b;
+  --ui-muted:#718096;--ui-line:#e5eaf0;--ui-blue:#2878f0;
+  --ui-blue-soft:#eaf3ff;--ui-radius:12px;
+}
+body{background:var(--ui-bg);color:var(--ui-text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#fff;color:var(--ui-text);border-bottom:1px solid var(--ui-line);box-shadow:0 1px 3px #16233b08}
+header small{color:var(--ui-muted)}
+.layout{grid-template-columns:232px minmax(0,1fr)}
+.layout.collapsed{grid-template-columns:68px minmax(0,1fr)}
+.sidebar{background:#fff;color:#40516a;border-right:1px solid var(--ui-line)}
+.sidebar #toggleSide{background:#f7f9fc;color:#52637a;border:1px solid var(--ui-line);box-shadow:none}
+.side-nav{gap:3px}
+.side-nav button{color:#52627a;font-weight:550;border-radius:9px;min-height:44px;transition:background .12s,color .12s}
+.side-nav button.active,.side-nav button:hover{background:var(--ui-blue-soft);color:#1769dd;box-shadow:none}
+.sidebar-caption{color:#7b8ca0}.side-bottom{border-color:var(--ui-line)}
+.content .wrap{max-width:100%;padding:22px 25px}
+h1,h2,h3{color:var(--ui-text);letter-spacing:-.02em}
+h1{font-size:26px;line-height:1.22}
+p,.muted{color:var(--ui-muted)}
+.card,.modal{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-radius);box-shadow:0 2px 12px #0e284408}
+.card{padding:18px}
+.cards{gap:12px}
+.stat{font-weight:750;letter-spacing:-.025em}
+button,select,input,textarea{font-family:inherit;border-radius:9px}
+button{border-color:#dce4ef;color:#30415c;background:#fff}
+button:hover:not(:disabled){border-color:#a9c9fd}
+button.active,button.primary,.primary{background:var(--ui-blue);color:#fff;border-color:var(--ui-blue)}
+button.active:hover,button.primary:hover{background:#176add;color:#fff}
+input,select,textarea,.purpose-area{background:#fff;border:1px solid #dce4ef;color:var(--ui-text)}
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{outline:2px solid #89b9ff;outline-offset:2px}
+table{font-size:13px}
+table th{color:#64748b;background:#f8fafd;font-weight:650;font-size:12px;letter-spacing:0;border-color:var(--ui-line)}
+table td,table th{padding:11px 12px;border-color:var(--ui-line)}
+table tbody tr:hover{background:#f7faff}
+.scroll{border-radius:10px;scrollbar-color:#cbd8e8 transparent}
+.metric-ok,.ok{color:#10845b}.metric-danger,.danger{color:#cf3851}
+.modal{border-radius:16px;box-shadow:0 24px 68px #15253d30}
+.banner{background:#fff6df;color:#785c22}
+.fields>label{color:#4c5b70}
+@media(max-width:700px){
+  .layout,.layout.collapsed{grid-template-columns:56px minmax(0,1fr)}
+  .layout.mobile-open{grid-template-columns:210px minmax(0,1fr)}
+  .sidebar{background:#fff}
+  .content .wrap{padding:13px}
+  .card{padding:13px}
+  .cards{gap:9px}
+  h1{font-size:23px}
+  input,select,textarea{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){.side-nav button,.layout{transition:none}}
