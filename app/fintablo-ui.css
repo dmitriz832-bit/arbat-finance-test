@@ -214,3 +214,14 @@ table tbody tr:hover{background:#f7faff}
  .layout.mobile-open{grid-template-columns:190px minmax(0,1fr)}
  .side-nav .sicon svg{width:18px;height:18px}
 }
+
+/* Expanded phone navigation acts as an overlay rather than shrinking the workspace. */
+@media(max-width:700px){
+ .layout.mobile-open,.layout.mobile-open.collapsed{grid-template-columns:52px minmax(0,1fr)}
+ .layout.mobile-open>.sidebar{position:fixed;left:0;top:0;bottom:0;height:100dvh;width:min(260px,82vw);z-index:150;background:#fff;box-shadow:10px 0 35px #10223b30;border-right:1px solid var(--ui-line);overflow-y:auto}
+ .layout.mobile-open>.content{grid-column:2;min-width:0}
+ .layout.mobile-open .side-nav{width:100%}
+}
+@media(max-width:390px){
+ .layout.mobile-open,.layout.mobile-open.collapsed{grid-template-columns:48px minmax(0,1fr)}
+}
