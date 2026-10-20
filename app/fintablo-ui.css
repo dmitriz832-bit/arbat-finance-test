@@ -117,3 +117,39 @@ table tbody tr:hover{background:#f7faff}
  #overview>#kpis{grid-template-columns:minmax(0,1fr)}
  #overview>.card:first-child .fields{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Shared data-entry and journal appearance. Presentation-only changes. */
+.fields label,.report-controls label{color:#52627a;font-size:13px;font-weight:550}
+.fields input,.fields select,.report-controls select,.report-controls input{background:#fff;border:1px solid #dce4ef;box-shadow:0 1px 2px #14253d05}
+.fields input:hover,.fields select:hover{border-color:#a9bdd7}
+.fields input:disabled,.fields select:disabled{background:#f1f4f8;color:#8a97a8;cursor:not-allowed}
+.modal-head{position:sticky;top:-24px;z-index:1;background:#fff;border-bottom:1px solid var(--ui-line);padding:0 0 14px;margin-bottom:14px}
+.modal-actions{position:sticky;bottom:-24px;background:#fff;padding:14px 0 0;border-top:1px solid var(--ui-line);z-index:1}
+.report-toolbar{padding:4px 0 16px;gap:14px}
+.report-controls{gap:10px}
+.report-controls button,.report-controls select{min-height:42px}
+.scroll>table{border-collapse:separate;border-spacing:0;width:100%}
+.scroll>table thead th{position:sticky;top:0;z-index:1;background:#f8fafd;border-bottom:1px solid #dce4ef}
+.scroll>table tbody tr:nth-child(even){background:#fbfcfe}
+.scroll>table tbody tr:hover{background:#edf5ff}
+.scroll>table th:first-child,.scroll>table td:first-child{padding-left:14px}
+.scroll>table th:last-child,.scroll>table td:last-child{padding-right:14px}
+#reportTable,#bankImportPreview{border:1px solid var(--ui-line);border-radius:10px;background:white}
+#bankImportPreview table{border-collapse:separate;border-spacing:0}
+#bankImportPreview tbody tr{border-bottom:2px solid #e5eaf0}
+#bankImportPreview tbody tr:hover{background:#eff6ff}
+#bankImportPreview td{vertical-align:top}
+#bankImportPreview .bank-purpose{line-height:1.45;overflow-wrap:anywhere}
+#bankImportPreview select{min-width:min(240px,100%);max-width:100%}
+#genericFields .purpose-area{border:1px solid #dce4ef;background:#fff;line-height:1.5}
+#reportTable td:first-child,#reportTable th:first-child{z-index:2}
+@media(max-width:700px){
+ .modal{padding:16px;max-height:94dvh}
+ .modal-head{top:-16px}
+ .modal-actions{bottom:-16px;flex-wrap:wrap}
+ .modal-actions button{min-height:44px}
+ .report-controls{width:100%}
+ .report-controls>*{min-width:0;max-width:100%}
+ #bankImportPreview{overflow:auto}
+ #bankImportPreview select{min-height:44px}
+}
