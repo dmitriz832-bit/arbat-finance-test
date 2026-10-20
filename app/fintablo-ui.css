@@ -52,3 +52,42 @@ table tbody tr:hover{background:#f7faff}
   input,select,textarea{font-size:16px}
 }
 @media(prefers-reduced-motion:reduce){.side-nav button,.layout{transition:none}}
+
+/* Dashboard composition: existing data widgets, rearranged only through CSS. */
+#overview.active{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:14px;align-items:start}
+#overview>.card,#overview>#kpis{margin:0;min-width:0}
+#overview>.card:first-child,#overview>#kpis,#overview>.card:nth-child(3),#overview>.card:nth-child(4),#overview>.card:nth-child(5),#overview>.card:nth-child(9),#overview>.card:nth-child(10){grid-column:1/-1}
+#overview>.card:first-child{padding:14px 18px}
+#overview>.card:first-child h2{font-size:15px;margin:0 0 12px}
+#overview>.card:first-child .fields{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#overview>.card:first-child .fields>label{font-size:12px;gap:5px}
+#overview>.card:first-child .fields input,#overview>.card:first-child .fields select{height:40px;min-height:40px}
+#overview>#kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+#overview>#kpis>.card{margin:0;padding:16px;min-height:110px}
+#overview>#kpis .stat{font-size:clamp(20px,1.9vw,29px)}
+#overview>.card h2{font-size:17px;line-height:1.35;margin-top:0}
+#overview>.card:nth-child(6),#overview>.card:nth-child(7),#overview>.card:nth-child(8){grid-column:auto}
+#overview>.card:nth-child(8){grid-column:1/-1}
+#overview .scroll{max-height:440px}
+.content>.wrap>label:has(#orgFilter){display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:10px 0 18px;color:#52627a;font-size:13px}
+#orgFilter{min-width:200px;max-width:100%;background:#fff}
+@media(max-width:1350px){
+ #overview>#kpis{grid-template-columns:repeat(auto-fit,minmax(175px,1fr))}
+ #overview>.card:first-child .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+ #overview.active{grid-template-columns:minmax(0,1fr)}
+ #overview>.card,#overview>.card:nth-child(6),#overview>.card:nth-child(7){grid-column:1/-1}
+}
+@media(max-width:700px){
+ #overview.active{gap:10px}
+ #overview>#kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ #overview>#kpis>.card{padding:12px;min-height:98px}
+ #overview>#kpis .stat{font-size:20px}
+ #overview>.card:first-child .fields{grid-template-columns:1fr 1fr}
+ #overview>.card:first-child{padding:12px}
+}
+@media(max-width:390px){
+ #overview>#kpis{grid-template-columns:1fr}
+ #overview>.card:first-child .fields{grid-template-columns:1fr}
+}
