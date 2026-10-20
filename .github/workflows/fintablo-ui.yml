@@ -21,3 +21,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
+      - name: Upload diagnostic artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintablo-ui-diagnostics
+          path: test-results/
+          if-no-files-found: ignore
