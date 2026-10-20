@@ -8,7 +8,7 @@ test('document editing and searchable lists fit desktop, tablet and phone in Chr
  try{for(const engine of [chromium,webkit]){
   const browser=await engine.launch({headless:true});
   try{for(const width of [1440,834,430,390,375]){
-   const context=await browser.newContext({viewport:{width,height:932}}),page=await context.newPage();
+   const context=await browser.newContext({viewport:{width,height:932},reducedMotion:'reduce'}),page=await context.newPage();
    const origin='http://127.0.0.1:'+server.address().port;
    await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(url.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:'document.body.classList.add("ab-ready")'});if(['/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* offline fixture */'});return route.continue()});
    await context.addInitScript(data=>localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data)),fixture());
@@ -19,7 +19,8 @@ test('document editing and searchable lists fit desktop, tablet and phone in Chr
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});
    await page.screenshot({path:path.join(root,'test-results',`counterparty-initial-${engine.name()}-${width}.png`)});
    assert.ok((await name.boundingBox()).width>=150,engine.name()+' '+width+': name is readable');
-   assert.equal(await modal.evaluate(el=>el.querySelector('.modal').scrollWidth<=el.querySelector('.modal').clientWidth+2),true,'dialog has no horizontal overflow');
+   const overflow=await modal.evaluate(el=>{const shell=el.querySelector('.modal');return {client:shell.clientWidth,scroll:shell.scrollWidth,offenders:[...shell.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>shell.getBoundingClientRect().right).map(n=>n.tagName+'.'+n.className)}});
+   assert.ok(overflow.scroll<=overflow.client+2,engine.name()+' '+width+': dialog overflow '+JSON.stringify(overflow));
    await name.fill('Исправленное название');assert.equal(await name.inputValue(),'Исправленное название');
    const combo=modal.getByRole('combobox',{name:'Тип контрагента',exact:true});
    await combo.click();await combo.pressSequentially('Физ');

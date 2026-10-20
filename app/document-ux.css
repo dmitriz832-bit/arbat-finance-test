@@ -24,6 +24,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-read
 @media(max-width:700px){.document-section{grid-template-columns:1fr}.wh-document-line{grid-template-columns:1fr}.wh-document-line button{width:100%}}
 
 /* Portalled options stay outside scroll containers and above nested dialogs. */
+body.ab-ready.ui-modern:not(.ab-profile-only) .smart-combobox>select{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;min-width:0!important;min-height:0!important;max-width:1px!important;margin:0!important;padding:0!important;border:0!important;clip-path:inset(50%)}
 .smart-combobox-list[data-open="1"]{display:block;z-index:1000000;box-sizing:border-box;overscroll-behavior:contain}
 .smart-combobox-list .combobox-option{min-height:44px;font-size:16px!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table{width:100%;table-layout:fixed!important}
