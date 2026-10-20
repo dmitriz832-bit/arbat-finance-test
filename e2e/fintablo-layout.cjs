@@ -40,6 +40,7 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
    await page.addStyleTag({content:'#layout{display:grid!important}#sidebar{display:flex!important;visibility:visible!important}#toggleSide{display:block!important}'});
    const geometry=await page.evaluate(()=>{const b=document.querySelector('#toggleSide').getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height,viewport:innerWidth}});
    assert.ok(geometry.width>0&&geometry.height>0,'menu control has no dimensions at '+width);
+   if(width<=700)assert.ok(geometry.x>=0&&geometry.x<width&&geometry.y>=0&&geometry.y<900,'mobile menu control is outside viewport at '+width+': '+JSON.stringify(geometry));
    const theme=await page.evaluate(()=>{
     const sidebar=document.querySelector('.sidebar');
     return {background:getComputedStyle(sidebar).backgroundColor,linked:[...document.styleSheets].some(s=>s.href&&s.href.includes('fintablo-ui.css'))};
