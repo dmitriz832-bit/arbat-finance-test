@@ -241,3 +241,14 @@ table tbody tr:hover{background:#f7faff}
  .content button,.modal button{touch-action:manipulation}
  .modal{max-width:calc(100vw - 16px)}
 }
+
+/* Keep navigation reachable on phones regardless of header height. */
+@media(max-width:700px){
+ #layout{position:relative;grid-template-columns:52px minmax(0,1fr)!important;max-width:100%;overflow:visible}
+ #layout>#sidebar{position:sticky;top:0;align-self:start;height:100dvh;max-height:100dvh;z-index:80;overflow-y:auto;overflow-x:hidden}
+ #layout>#sidebar .sidecontrols{position:sticky;top:0;z-index:2;background:#fff;min-height:52px;display:flex;align-items:center;justify-content:center}
+ #layout>#sidebar #toggleSide{display:inline-flex!important;align-items:center;justify-content:center;visibility:visible!important;opacity:1!important;position:relative;inset:auto;min-width:44px;min-height:44px;flex:0 0 44px}
+ #layout.mobile-open>#sidebar{position:fixed;top:0;left:0;bottom:0;max-height:100dvh;width:min(260px,82vw);z-index:150}
+ #layout>.content{min-width:0;max-width:100%;overflow-x:clip}
+}
+@media(max-width:390px){#layout{grid-template-columns:48px minmax(0,1fr)!important}}
