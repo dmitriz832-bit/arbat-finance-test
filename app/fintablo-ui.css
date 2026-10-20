@@ -190,3 +190,27 @@ table tbody tr:hover{background:#f7faff}
  .batch-line>*{min-width:0}
  #crewMembers{width:100%}
 }
+
+/* Mobile navigation: maximize content width and keep accessible nav controls. */
+@media(max-width:700px){
+ .layout,.layout.collapsed{grid-template-columns:52px minmax(0,1fr)}
+ .sidebar{padding:8px 3px;height:calc(100dvh - 75px);min-height:0;position:sticky;top:0;overflow-y:auto;overflow-x:hidden}
+ .sidecontrols{padding:3px 0;justify-content:center}
+ .sidebar #toggleSide{min-width:42px;min-height:42px;padding:8px}
+ .side-nav{gap:2px;min-height:0;flex:1 0 auto}
+ .side-nav button{min-height:44px;padding:10px 6px;justify-content:center}
+ .side-nav .sicon{width:22px;min-width:22px}
+ .layout.mobile-open{grid-template-columns:minmax(195px,220px) minmax(0,1fr)}
+ .layout.mobile-open .sidebar{padding:8px}
+ .layout.mobile-open .sidecontrols{justify-content:flex-start}
+ .layout.mobile-open .side-nav button{justify-content:flex-start;gap:10px;padding:10px}
+ .layout.mobile-open .sidebar .slabel{white-space:normal;overflow-wrap:anywhere}
+ .content{min-width:0;overflow-x:clip}
+ .content .wrap{min-width:0}
+ .sidebar .side-bottom{padding:8px 0}
+}
+@media(max-width:390px){
+ .layout,.layout.collapsed{grid-template-columns:48px minmax(0,1fr)}
+ .layout.mobile-open{grid-template-columns:190px minmax(0,1fr)}
+ .side-nav .sicon svg{width:18px;height:18px}
+}
