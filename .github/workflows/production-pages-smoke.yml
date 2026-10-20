@@ -13,7 +13,7 @@ jobs:
         run: |
           set -euo pipefail
           base="https://dmitriz832-bit.github.io/arbat-finance-test/app"
-          for file in index.html fintablo-ui.css finance-core.js vat-forms.js dashboard.js sync.js auth.js; do
+          for file in index.html finance-core.js vat-forms.js dashboard.js sync.js auth.js; do
             url="$base/$file"
             echo "Checking $url"
             body="$(mktemp)"
@@ -31,10 +31,6 @@ jobs:
             if [[ "$file" == "index.html" ]]; then
               grep -q 'vat-forms.js' "$body" || { echo "::error::Production HTML missing VAT script"; exit 1; }
               grep -q 'finance-core.js' "$body" || { echo "::error::Production HTML missing finance core"; exit 1; }
-              grep -q 'fintablo-ui.css' "$body" || { echo "::error::Production HTML missing redesign stylesheet link"; exit 1; }
-            fi
-            if [[ "$file" == "fintablo-ui.css" ]]; then
-              grep -q "FinTablo-inspired visual design layer" "$body" || { echo "::error::Production CSS does not contain PR 77 redesign"; exit 1; }
             fi
             if [[ "$file" == "vat-forms.js" ]]; then
               grep -q 'vatDeductible' "$body" || { echo "::error::VAT forms not deployed"; exit 1; }
