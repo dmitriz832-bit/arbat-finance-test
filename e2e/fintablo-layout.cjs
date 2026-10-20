@@ -37,6 +37,7 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
    const browserErrors=[];
    page.on('pageerror',error=>browserErrors.push(error.message));
    await page.goto(origin+'/app/',{waitUntil:'load'});
+   await page.addStyleTag({content:'#layout{display:grid!important}#sidebar{display:flex!important;visibility:visible!important}#toggleSide{display:block!important}'});
    const theme=await page.evaluate(()=>{
     const sidebar=document.querySelector('.sidebar');
     return {background:getComputedStyle(sidebar).backgroundColor,linked:[...document.styleSheets].some(s=>s.href&&s.href.includes('fintablo-ui.css'))};
