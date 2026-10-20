@@ -153,3 +153,40 @@ table tbody tr:hover{background:#f7faff}
  #bankImportPreview{overflow:auto}
  #bankImportPreview select{min-height:44px}
 }
+
+/* Deal detail, warehouse workflows and staff accruals: consistent workspace surfaces. */
+#dealModal .modal{width:min(1180px,100%);max-width:1180px}
+#dealModal .modal-head{display:flex;align-items:center;justify-content:space-between}
+#dealModal .deal-plan,#dealModal .deal-history{border-top:1px solid var(--ui-line);padding-top:18px;margin-top:22px}
+#dealModal .deal-plan h3,#dealModal .deal-history h3{font-size:16px;font-weight:700}
+#dealModal .deal-plan-crew{min-width:0;max-width:100%}
+#dealModal .scroll{border:1px solid var(--ui-line);border-radius:10px;background:#fff}
+#dealModal .fields{gap:14px}
+#dealModal .modal-actions{gap:10px}
+#workForm,#crewForm,#costForm,#editDealForm{min-width:0}
+#workForm .fields,#editDealForm .fields{min-width:0}
+#crewMembers{background:#fff;border:1px solid #dce4ef;border-radius:9px;min-height:120px}
+#payrollReconciliationTable{border:1px solid var(--ui-line);border-radius:10px;background:#fff}
+#payrollReconciliationIssues:not(:empty){margin:12px 0;line-height:1.5}
+.batch-project{border:1px solid var(--ui-line);background:#fff;border-radius:12px;box-shadow:0 2px 9px #14253d06}
+.batch-project-head{gap:14px}
+.batch-line{gap:12px}
+.batch-line input,.batch-line select{max-width:100%;min-width:0}
+.batch-project strong{color:var(--ui-text)}
+.deal-history,.deal-plan{min-width:0}
+.deal-history tbody tr:hover,.deal-plan tbody tr:hover{background:#edf5ff}
+@media(max-width:800px){
+ #dealModal .modal{width:100%;padding:16px}
+ #dealModal .deal-plan-crew{width:100%;display:flex;margin:0 0 10px}
+ #dealModal .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .batch-line{grid-template-columns:minmax(0,1fr) 100px}
+}
+@media(max-width:550px){
+ #dealModal .fields{grid-template-columns:minmax(0,1fr)}
+ #dealModal .modal-head{align-items:flex-start}
+ #dealModal .modal-head button{min-height:44px}
+ .batch-project-head{flex-wrap:wrap}
+ .batch-line{grid-template-columns:minmax(0,1fr) 85px}
+ .batch-line>*{min-width:0}
+ #crewMembers{width:100%}
+}
