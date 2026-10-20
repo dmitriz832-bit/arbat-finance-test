@@ -34,13 +34,15 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
     return route.continue();
    });
    const page=await context.newPage();
+   const browserErrors=[];
+   page.on('pageerror',error=>browserErrors.push(error.message));
    await page.goto(origin+'/app/',{waitUntil:'load'});
    const theme=await page.evaluate(()=>{
     const sidebar=document.querySelector('.sidebar');
     return {background:getComputedStyle(sidebar).backgroundColor,linked:[...document.styleSheets].some(s=>s.href&&s.href.includes('fintablo-ui.css'))};
    });
    assert.equal(theme.linked,true,'Missing external design layer at width '+width);
-   assert.equal(theme.background,'rgb(255, 255, 255)');
+   assert.equal(theme.background,'rgb(255, 255, 255)', 'sidebar should be opaque at '+width);
    const exists=await page.locator('#overview').count();
    assert.equal(exists,1);
    if(width<=700){
@@ -57,6 +59,7 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
     assert.ok(state.navWidth>=190,'mobile navigation too narrow at '+width);
     assert.ok(state.contentWidth>=width-60,'mobile main pane shrank at '+width);
    }
+   assert.deepEqual(browserErrors,[], 'Uncaught page errors at '+width);
    await context.close();
   }
  }finally{await browser?.close();await new Promise(ok=>server.close(ok));}
