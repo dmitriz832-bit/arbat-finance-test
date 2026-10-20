@@ -91,3 +91,29 @@ table tbody tr:hover{background:#f7faff}
  #overview>#kpis{grid-template-columns:1fr}
  #overview>.card:first-child .fields{grid-template-columns:1fr}
 }
+
+/* Overflow and touch safety for dense financial screens. */
+.content,.content .wrap,#overview,#overview>*{min-width:0}
+#overview>.card .scroll,#overview>.card table{max-width:100%}
+#overview>#kpis>.card{overflow-wrap:anywhere}
+#overview>#kpis .stat{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#overview .card h2{overflow-wrap:break-word}
+#overview input,#overview select{max-width:100%}
+#overview .fields>*{min-width:0}
+#overview table{width:100%}
+#overview .scroll{overflow-x:auto;overscroll-behavior-x:contain}
+#overview .scroll:focus-visible{outline:2px solid #89b9ff;outline-offset:2px}
+@media(max-width:700px){
+ .content .wrap{overflow-x:clip}
+ .content .wrap>h1{overflow-wrap:anywhere}
+ .content>.wrap>label:has(#orgFilter){flex-wrap:wrap}
+ #orgFilter{width:100%;min-width:0}
+ #overview .scroll{max-height:none}
+ #overview>.card .fields{grid-template-columns:minmax(0,1fr)}
+ #overview>.card:first-child .fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #overview button,#overview select,#overview input{min-height:44px}
+}
+@media(max-width:420px){
+ #overview>#kpis{grid-template-columns:minmax(0,1fr)}
+ #overview>.card:first-child .fields{grid-template-columns:minmax(0,1fr)}
+}
