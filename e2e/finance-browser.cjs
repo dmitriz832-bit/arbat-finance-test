@@ -16,6 +16,8 @@ test('document editing and searchable lists fit desktop, tablet and phone in Chr
    await page.evaluate(()=>{window.reviewResult=null;window.reviewBankCounterparties([{type:'in',cpName:'Тестовый контрагент с длинным названием',cpInn:'1234567890'}],{counterparties:[]}).then(value=>window.reviewResult=value)});
    const modal=page.locator('.bank-review-overlay'),name=modal.getByRole('textbox',{name:'Наименование контрагента',exact:true});
    await name.waitFor();
+   await fs.mkdir(path.join(root,'test-results'),{recursive:true});
+   await page.screenshot({path:path.join(root,'test-results',`counterparty-initial-${engine.name()}-${width}.png`)});
    assert.ok((await name.boundingBox()).width>=150,engine.name()+' '+width+': name is readable');
    assert.equal(await modal.evaluate(el=>el.querySelector('.modal').scrollWidth<=el.querySelector('.modal').clientWidth+2),true,'dialog has no horizontal overflow');
    await name.fill('Исправленное название');assert.equal(await name.inputValue(),'Исправленное название');
