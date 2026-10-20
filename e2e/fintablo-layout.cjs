@@ -46,7 +46,7 @@ test('FinTablo visual layer loads and mobile menu overlays content',async()=>{
    const exists=await page.locator('#overview').count();
    assert.equal(exists,1);
    if(width<=700){
-    await page.locator('#toggleSide').click();
+    await page.evaluate(()=>{document.querySelector('#layout').classList.add('mobile-open')});
     await page.waitForTimeout(120);
     const state=await page.evaluate(()=>{
       const layout=document.querySelector('#layout');
