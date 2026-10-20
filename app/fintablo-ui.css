@@ -231,3 +231,13 @@ table tbody tr:hover{background:#f7faff}
 
 /* Corporate sidebar styles target the ID; override at the same specificity. */
 #layout > #sidebar{background:#fff!important;background-color:#fff!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+/* Narrow-screen form and data-grid usability. */
+@media(max-width:700px){
+ .content,.content>.wrap,.panel,.card,.modal,.fields,.grid,.table-wrap{min-width:0;max-width:100%}
+ .content input:not([type=checkbox]):not([type=radio]),.content select,.content textarea,.modal input:not([type=checkbox]):not([type=radio]),.modal select,.modal textarea{max-width:100%;min-width:0;font-size:16px}
+ .content table,.modal table{border-collapse:separate;border-spacing:0}
+ .content .scroll,.modal .scroll,.table-wrap,.table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+ .content button,.modal button{touch-action:manipulation}
+ .modal{max-width:calc(100vw - 16px)}
+}
