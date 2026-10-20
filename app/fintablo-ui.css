@@ -228,3 +228,6 @@ table tbody tr:hover{background:#f7faff}
 
 /* Keep sidebar opaque for readable desktop and mobile navigation. */
 .layout>.sidebar{background:#fff!important;backdrop-filter:none}
+
+/* Corporate sidebar styles target the ID; override at the same specificity. */
+#layout > #sidebar{background:#fff!important;background-color:#fff!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
