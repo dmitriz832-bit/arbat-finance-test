@@ -36,6 +36,10 @@ test('approved navigation, periods, source documents and every section fit all s
    await page.evaluate(route=>window.arbatNavigate(route),route);
    const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(overflow.scroll<=width+2,`${engine.name()} ${width} ${route}: page overflow ${overflow.scroll}`);
   }
+  await page.evaluate(()=>window.arbatNavigate('reports'));
+  await page.locator('#reportTable tbody tr').first().locator('[data-ux-report-cell]').first().click();
+  assert.equal(await page.locator('#uxDetail').isVisible(),true);assert.match(await page.locator('#uxDetailScope').innerText(),/01/);await page.locator('#uxDetailBack').click();
+  assert.equal(await page.locator('#reports').evaluate(el=>el.classList.contains('active')),true,'return to original report');
   assert.deepEqual(errors,[],engine.name()+' '+width+': no runtime errors');await context.close();
  }}finally{await browser.close()}}}finally{await new Promise(r=>server.close(r))}
 });

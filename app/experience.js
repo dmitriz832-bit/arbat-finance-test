@@ -38,6 +38,39 @@
    title=({revenue:'Реализации без НДС',direct:'Прямые затраты',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
    const rows=model.financialRows(data.financial,value,core),total=rows.reduce((v,x)=>v+x.amount,0n);scope=data.bounds.label+' · '+(data.org||'Весь бизнес');
    body='<div class="ux-detail-summary"><strong>'+rub(total)+'</strong><p>Источник: документы выбранного периода. В результате расходы показаны со знаком минус, доходы — плюс. Корректировка НЗП выделена отдельно.</p></div>'+sourceRows(rows);
+  }else if(kind==='report'){
+   const {label,column,year,reportKind,organization,displayed}=value;
+   const month=column<=12?String(column).padStart(2,'0'):null,bounds=core.ownerPeriodBounds(month?'month':'year',year+'-'+(month||'01')+'-01');
+   let warehouse={};try{warehouse=JSON.parse(localStorage.getItem('arbat-warehouse-v1')||'{}')}catch{}
+   const input={...db,warehouse,fifo:window.arbatFifo?.(warehouse),wipAccounting:true},snapshot=core.ownerPeriodSnapshot(input,bounds,organization);
+   title=label.trim();scope=bounds.label+' · '+(organization||'Весь бизнес');let rows,explanation='';
+   if(reportKind==='cash'){
+    let type=value.cashType,records=snapshot.cash.rows;
+    if(label.includes('Технические переводы'))records=records.filter(x=>x.type==='transfer');
+    else{records=records.filter(x=>x.type!=='transfer');if(type)records=records.filter(x=>x.type===type);if(value.articleName)records=records.filter(x=>(db.articles.find(a=>a.id===x.articleId)?.name||'Не классифицировано')===value.articleName)}
+    rows=records.map(source=>({source,collection:'cash',id:source._id,date:source.date,label:source.type==='in'?'Поступление':source.type==='out'?'Платёж':'Перевод',amount:core.cents(source.amount||0)}));explanation='ДДС отражает платежи с НДС. Переводы между своими счетами не входят в чистый поток.';
+   }else{
+    const metric=label.includes('РЕАЛИЗАЦИЯМ')?'revenue':label.includes('ВАЛОВАЯ')||label.includes('ПРИБЫЛЬ НАПРАВЛЕНИЙ')?'gross':label==='EBITDA'?'ebitda':label.includes('РЕЗУЛЬТАТ')&&!label.includes('СВЕРКА')?'result':null;
+    if(metric)rows=model.financialRows(snapshot,metric,core);
+    else{
+     let ledger=snapshot.rows;let filtered=true;
+     if(label==='Фактические расходы проектов')ledger=ledger.filter(x=>x.kind==='project-expense');
+     else if(label.includes('Начисления сотрудникам')){const type=label.includes('административные')?'administrative':label.includes('коммерческие')?'commercial':'production';ledger=ledger.filter(x=>x.kind==='work-act'?type==='production':x.kind==='payroll'&&core.laborType(x.source,db.people||[])===type)}
+     else if(label==='Расходы направлений')ledger=ledger.filter(x=>x.kind==='general-expense'&&x.dir);
+     else if(label==='Общехозяйственные расходы')ledger=ledger.filter(x=>x.kind==='general-expense'&&!x.dir);
+     else if(label.startsWith('Общепроизводственные'))ledger=ledger.filter(x=>x.category==='production');
+     else if(label.startsWith('Коммерческие расходы'))ledger=ledger.filter(x=>x.category==='commercial');
+     else if(label.startsWith('Административные расходы'))ledger=ledger.filter(x=>x.category==='administrative');
+     else if(label==='Доходы ниже EBITDA')ledger=ledger.filter(x=>x.category==='belowIncome');
+     else if(label==='Расходы ниже EBITDA')ledger=ledger.filter(x=>x.category==='belowExpenses');
+     else filtered=false;
+     const kinds={'project-expense':['expenses','Расход проекта'],'general-expense':['costs','Общий расход'],'work-act':['workActs','Работа'],payroll:['labor','Начисление']};
+     rows=ledger.map(x=>({source:x.source,collection:kinds[x.kind]?.[0],id:x.source._id||x.source.id,date:x.date,label:kinds[x.kind]?.[1]||x.kind,amount:x.amount}));
+     if(label.trim().startsWith('↳ Реализация:')){const dir=label.split('Реализация:')[1].trim();rows=model.financialRows(snapshot,'revenue',core).filter(x=>db.deals.some(d=>d.dir===dir&&window.arbatDealKey(d)===x.source.projectKey));filtered=true}
+     if(!filtered){rows=model.financialRows(snapshot,'result',core);explanation='Расчётный показатель. Ниже исходные документы периода для проверки, а не простая сумма данной строки. Сверка использует распределение по направлениям; проценты — отношение соответствующих итогов. Корректировка НЗП показана отдельной строкой.'}
+    }
+   }
+   body='<div class="ux-detail-summary"><strong>'+esc(displayed)+'</strong><p>Значение выбранной ячейки отчёта · '+esc(scope)+'</p></div><p class="ux-explanation">'+esc(explanation||'Состав показателя по данным финансового ядра. Нажмите документ для просмотра и изменения.')+'</p>'+sourceRows(rows);
   }else if(kind==='plan'){
    const p=data.plans,rows=value==='overdue'?p.overdue:value==='month'?data.payments30:p.week.filter(x=>value==='forecast'||(value==='income'?(x.type==='in'||x.kind==='income'):!(x.type==='in'||x.kind==='income')));
    title=({income:'План поступлений на 7 дней',outcome:'План платежей на 7 дней',forecast:'Прогноз свободного остатка',month:'План обязательств на 30 дней',overdue:'Плановые даты прошли'})[value];scope=(data.org||'Весь бизнес')+' · '+(value==='overdue'?'Ранее '+p.from:p.from+' — '+(value==='month'?model.iso(new Date(new Date(p.from+'T12:00:00').getTime()+30*86400000)):p.to));
@@ -79,7 +112,10 @@
  function enhanceRows(host){for(const table of host.querySelectorAll('table')){const headers=[...(table.tHead?.rows[0]?.cells||[])].map(x=>x.textContent.trim());table.classList.add('ux-register-table');for(const row of table.tBodies[0]?.rows||[]){if(row.querySelector('[colspan]'))continue;[...row.cells].forEach((cell,i)=>{if(cell.dataset.label!==headers[i])cell.dataset.label=headers[i]||''});if(row.dataset.uxOpen)return;const editor=row.querySelector('button[data-edit]');if(!editor)continue;const cell=[...row.cells].find(c=>!c.querySelector('button,input,select,a')&&c.textContent.trim());if(!cell)continue;const link=document.createElement('button');link.type='button';link.className='ux-text-link';link.textContent=cell.textContent;cell.replaceChildren(link);link.onclick=e=>{e.stopPropagation();editor.click()};row.dataset.uxOpen='1'}}}
  for(const id of tableHosts){const host=$(id);if(host){enhanceRows(host);new MutationObserver(()=>enhanceRows(host)).observe(host,{childList:true,subtree:true})}}
  // Report context is explicit; the same source drilldown uses the selected dashboard period.
- const reports=$('reports'),reportTools=document.createElement('div');reportTools.className='ux-report-sources';reportTools.innerHTML='<strong>Проверка первичных документов</strong><p>Откройте финансовый результат и выберите нужный период для расшифровки до документа.</p><button type="button" data-ux-route="overview">Период и расшифровки →</button>';reports.prepend(reportTools);
+ const reports=$('reports'),reportTools=document.createElement('div');reportTools.className='ux-report-sources';reportTools.innerHTML='<strong>От суммы — к документам</strong><p>Нажмите значение в таблице: откроются источники за этот месяц или год. Возврат сохранит параметры отчёта.</p>';reports.prepend(reportTools);
+ const reportTable=$('reportTable');
+ function reportLinks(){if(!reportTable)return;let cashType='';for(const row of reportTable.querySelectorAll('tbody tr')){const label=row.cells[0]?.textContent.trim();if(!label)continue;if(label==='ПОСТУПЛЕНИЯ')cashType='in';else if(label==='ВЫБЫТИЯ')cashType='out';else if(!label.startsWith('↳'))cashType='';for(let i=1;i<row.cells.length;i++){const cell=row.cells[i];if(cell.querySelector('[data-ux-report-cell]'))continue;const b=document.createElement('button');b.type='button';b.className='ux-text-link';b.dataset.uxReportCell=String(i);b.textContent=cell.textContent;const state={label,column:i,year:$('reportYear').value,reportKind:$('reportType').value,organization:org(),displayed:cell.textContent,cashType,articleName:label.startsWith('↳')?label.slice(1).trim():''};b.onclick=()=>showDetail('report',state,b);cell.replaceChildren(b)}}}
+ if(reportTable){new MutationObserver(reportLinks).observe(reportTable,{childList:true,subtree:true});reportLinks()}
  const original=window.render;window.render=function(){const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{periodIds.forEach((id,i)=>$(id).value=good[i])}const result=original.apply(this,arguments);refreshDetail();return result};
  const routeScroll=new Map(),navigate=window.arbatNavigate;
  window.arbatNavigate=function(next){const previous=route();routeScroll.set(previous,window.scrollY);if(detailState&&next!=='overview'){detailState=null;detail.hidden=true;visuals.hidden=false}const result=navigate.apply(this,arguments);requestAnimationFrame(()=>window.scrollTo(0,routeScroll.get(next)||0));return result};
