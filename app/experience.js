@@ -1,0 +1,87 @@
+/* Approved interaction contract, using the original record editors and save handlers. */
+(()=>{
+ 'use strict';
+ const $=id=>document.getElementById(id),model=window.ArbatExperience,core=window.ArbatFinanceCore;
+ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const rub=x=>Number(core.rubles(x)).toLocaleString('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:2});
+ const today=()=>model.iso(new Date()),org=()=>$('orgFilter').value;
+ document.body.classList.add('ux-app');
+ const overview=$('overview'),visuals=$('dashboardVisuals');if(!visuals)return;
+ const period=$('ownerPeriodMode').closest('.card');period.classList.add('ux-period');period.querySelector('h2').textContent='Период финансового результата';visuals.prepend(period);
+ const note=document.createElement('p');note.className='ux-help';note.textContent='Применяется к финансовому результату и его расшифровкам. Прогноз календаря — от сегодняшней даты; налоги имеют свой квартал.';period.querySelector('h2').after(note);
+ const controls=document.createElement('div');controls.className='ux-period-actions';controls.innerHTML='<button type="button" data-ux-period-step="-1" aria-label="Предыдущий период">←</button><button type="button" data-ux-period-step="1" aria-label="Следующий период">→</button><button type="button" data-ux-period-current>Текущий</button><span id="uxPeriodError" role="alert"></span>';period.append(controls);
+ const periodIds=['ownerPeriodMode','ownerPeriodReference','ownerPeriodFrom','ownerPeriodTo'];let good=periodIds.map(id=>$(id).value);
+ try{const saved=JSON.parse(sessionStorage.getItem('arbat-financial-period')||'null');if(saved&&saved.length===4){core.ownerPeriodBounds(...saved);periodIds.forEach((id,i)=>$(id).value=saved[i]);good=saved}}catch{}
+ function updatePeriod(){
+  const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{$('uxPeriodError').textContent='Укажите корректный период: дата начала не позже даты окончания.';return false}
+  good=values;$('uxPeriodError').textContent='';try{sessionStorage.setItem('arbat-financial-period',JSON.stringify(values))}catch{}
+  const range=values[0]==='range',all=values[0]==='all';$('ownerPeriodReference').closest('label').hidden=range||all;for(const id of ['ownerPeriodFrom','ownerPeriodTo'])$(id).closest('label').hidden=!range;
+  controls.querySelectorAll('[data-ux-period-step]').forEach(b=>b.disabled=range||all);window.render();return true;
+ }
+ for(const id of periodIds)$(id).onchange=updatePeriod;
+ controls.addEventListener('click',e=>{const step=e.target.closest('[data-ux-period-step]');if(step)$('ownerPeriodReference').value=model.shiftPeriod(good[1],good[0],Number(step.dataset.uxPeriodStep));else if(e.target.closest('[data-ux-period-current]')){$('ownerPeriodReference').value=today();$('ownerPeriodFrom').value=today().slice(0,7)+'-01';$('ownerPeriodTo').value=today()}else return;updatePeriod()});
+ const taxPanel=$('dashboardTaxes').closest('article'),taxControl=document.createElement('div');taxControl.className='ux-tax-controls';taxControl.innerHTML='<label>Квартал по дате<input type="date" id="uxTaxReference" aria-label="Квартал налогового расчёта"></label><button type="button" data-tax-step="-1" aria-label="Предыдущий налоговый квартал">←</button><button type="button" data-tax-step="1" aria-label="Следующий налоговый квартал">→</button><span class="ux-help">Отдельно от периода финансового результата. Обе организации.</span><button type="button" class="ux-text-link" data-ux-tax>Документы и правила расчёта →</button>';taxPanel.querySelector('.dashboard-panel-head').after(taxControl);$('uxTaxReference').value=today();
+ try{const v=sessionStorage.getItem('arbat-tax-reference');if(v){core.ownerPeriodBounds('quarter',v);$('uxTaxReference').value=v}}catch{}
+ const taxChange=()=>{if(!$('uxTaxReference').value)return;try{sessionStorage.setItem('arbat-tax-reference',$('uxTaxReference').value)}catch{}window.arbatRenderDashboard();refreshDetail()};$('uxTaxReference').onchange=taxChange;taxControl.addEventListener('click',e=>{const b=e.target.closest('[data-tax-step]');if(b){$('uxTaxReference').value=model.shiftPeriod($('uxTaxReference').value,'quarter',+b.dataset.taxStep);taxChange()}});
+ const flowNote=document.createElement('p');flowNote.className='ux-help';flowNote.textContent='Фактическое движение денег за последние 6 месяцев, включая текущий. Переводы между своими счетами не увеличивают доходы и расходы.';$('dashboardCashFlow').before(flowNote);
+ const spendAction=document.createElement('button');spendAction.type='button';spendAction.className='ux-text-link';spendAction.dataset.uxMetric='expenses';spendAction.textContent='Открыть расходы выбранного периода →';$('dashboardSpending').after(spendAction);
+ const detail=document.createElement('article');detail.id='uxDetail';detail.className='ux-detail';detail.hidden=true;detail.innerHTML='<button type="button" id="uxDetailBack">← Назад</button><h2 id="uxDetailTitle" tabindex="-1"></h2><p id="uxDetailScope" class="ux-help"></p><div id="uxDetailBody"></div>';overview.append(detail);
+ let detailState=null,origin=null;
+ const route=()=>sessionStorage.getItem('arbat-last-route')||document.querySelector('main > section.active')?.id||'overview';
+ function showDetail(kind,value,trigger){if(!detailState){origin={route:route(),scroll:window.scrollY,trigger:trigger||document.activeElement};if(origin.route!=='overview')window.arbatNavigate('overview')}detailState={kind,value};visuals.hidden=true;detail.hidden=false;refreshDetail();$('uxDetailTitle').focus({preventScroll:true});window.scrollTo(0,0)}
+ $('uxDetailBack').onclick=()=>{const saved=origin;detailState=null;origin=null;detail.hidden=true;visuals.hidden=false;if(saved?.route&&saved.route!=='overview')window.arbatNavigate(saved.route);requestAnimationFrame(()=>{window.scrollTo(0,saved?.scroll||0);saved?.trigger?.isConnected&&saved.trigger.focus({preventScroll:true})})};
+ const sourceButton=row=>row.collection&&row.id?'<button type="button" class="ux-text-link" data-ux-source="'+esc(row.collection)+'" data-ux-id="'+esc(row.id)+'">'+esc(row.source?.document||row.source?.name||row.label||'Открыть документ')+'</button>':'<strong>'+esc(row.label||'Расчётная строка')+'</strong>';
+ function sourceRows(rows){return rows.length?'<div class="ux-source-list">'+rows.map(row=>'<div class="ux-source-row"><div>'+sourceButton(row)+'<small>'+esc([row.date,row.label,row.source?.org].filter(Boolean).join(' · '))+'</small><p>'+esc(row.explanation||row.source?.note||row.source?.payee||'')+'</p></div><strong class="'+(row.amount<0n?'dashboard-negative':'')+'">'+rub(row.amount)+'</strong></div>').join('')+'</div>':'<div class="ux-empty">За выбранный период записей нет. Измените период или добавьте документ в соответствующем разделе.</div>'}
+ function refreshDetail(){
+  if(!detailState)return;const data=window.arbatDashboardSnapshot(),{kind,value}=detailState;let title='',scope='',body='';
+  if(kind==='metric'){
+   title=({revenue:'Реализации без НДС',direct:'Прямые затраты',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
+   const rows=model.financialRows(data.financial,value,core),total=rows.reduce((v,x)=>v+x.amount,0n);scope=data.bounds.label+' · '+(data.org||'Весь бизнес');
+   body='<div class="ux-detail-summary"><strong>'+rub(total)+'</strong><p>Источник: документы выбранного периода. В результате расходы показаны со знаком минус, доходы — плюс. Корректировка НЗП выделена отдельно.</p></div>'+sourceRows(rows);
+  }else if(kind==='plan'){
+   const p=data.plans,rows=value==='overdue'?p.overdue:value==='month'?data.payments30:p.week.filter(x=>value==='forecast'||(value==='income'?(x.type==='in'||x.kind==='income'):!(x.type==='in'||x.kind==='income')));
+   title=({income:'План поступлений на 7 дней',outcome:'План платежей на 7 дней',forecast:'Прогноз свободного остатка',month:'План обязательств на 30 дней',overdue:'Плановые даты прошли'})[value];scope=(data.org||'Весь бизнес')+' · '+(value==='overdue'?'Ранее '+p.from:p.from+' — '+(value==='month'?model.iso(new Date(new Date(p.from+'T12:00:00').getTime()+30*86400000)):p.to));
+   body='<p class="ux-explanation">Источник — активные записи платёжного календаря и их даты. Система не выводит эти сроки из суммы сделки. Это план, а не подтверждение оплаты. Для повторяющейся записи прошедшая начальная дата означает необходимость проверки правила, а не сумму долга.</p>';
+   if(value==='forecast')body+='<p class="ux-detail-summary">Остаток сейчас '+rub(core.cents(data.totals.liquidity))+' + план поступлений − план платежей. Полнота прогноза зависит от заполнения календаря.</p>';
+   body+=sourceRows(rows.map(source=>({source,collection:'calendar',id:source.id,date:source.occurrence,label:source.type==='in'||source.kind==='income'?'План поступления':'План платежа',amount:core.cents(source.amount||0)*(value==='forecast'&&!(source.type==='in'||source.kind==='income')?-1n:1n)})))+'<button type="button" data-ux-new-plan>Добавить запись календаря</button>';
+  }else if(kind==='wallets'){
+   title='Деньги по счетам и кассам';scope='На текущий момент · '+(data.org||'Весь бизнес');body='<p class="ux-explanation">Начальные остатки + движения денег. Статус сверки показан на главной. Нажмите счёт для просмотра реквизитов и параметров.</p>'+sourceRows(data.wallets.map(w=>({source:{name:w.name,org:w.org},id:w.walletId,collection:'wallets',label:w.kind,amount:core.cents(w.balance)})));
+  }else if(kind==='stock'){
+   title='Остатки материалов';scope='По движениям FIFO · '+(data.org||'Все организации');body='<p class="ux-explanation">Остатки по местам хранения. Неоценённые материалы не подменяются нулевой стоимостью.</p><div class="ux-source-list">'+data.stock.rows.map(x=>'<div class="ux-source-row"><div><strong>'+esc(x.name||x.itemName||x.itemId)+'</strong><small>'+esc(x.placeName||x.placeId)+' · '+esc(x.qty)+' '+esc(x.unit||'')+'</small></div><strong>'+(x.value===null?'Требует оценки':rub(x.value))+'</strong></div>').join('')+'</div><button type="button" data-ux-route="materials:catalog">Открыть остатки и номенклатуру →</button>';
+  }else if(kind==='tax'){
+   title='Источники налогового расчёта';scope=data.taxes.bounds.label+' · Обе организации';const bounds=data.taxes.bounds,within=x=>(x.date||x.dt||'')>=bounds.from&&(x.date||x.dt||'')<=bounds.to;
+   const rows=[];for(const collection of ['cash','realizations','expenses','costs','labor'])for(const source of db[collection]||[]){if(!within(source))continue;if(collection==='cash'?(source.org!=='АИР-КЛИМАТ'||source.type==='transfer'):source.org!=='АРБАТ.ГК')continue;rows.push({collection,source,id:source._id||source.id,date:source.date||source.dt,label:({cash:'ДДС — источник УСН',realizations:'Реализация',expenses:'Расход проекта',costs:'Общий расход',labor:'Начисление'})[collection],amount:core.cents(source.amount||0)})}
+   body='<p class="ux-explanation">Показаны исходные документы для проверки, их суммы не складываются в налог напрямую. УСН: классифицированные поступления и расходы АИР-КЛИМАТ. НДС: реализации и расходы АРБАТ.ГК с подтверждённой ставкой и признаком вычета. Прибыль: налоговые доходы, допустимые расходы и начисления. Исключения задаются в документах. Расчёт предварительный, до зачёта авансов.</p>'+sourceRows(rows);
+  }
+  $('uxDetailTitle').textContent=title;$('uxDetailScope').textContent=scope;$('uxDetailBody').innerHTML=body;
+ }
+ function openSource(collection,id){
+  if(collection==='calendar')return editCalendar(id);
+  if(collection==='wallets')return showWallet(id);
+  if(collection==='workActs')return openWorkEdit('act',id);
+  if(['realizations','expenses','cash','materials','labor','costs','people'].includes(collection))return openRecord(collection,id);
+ }
+ document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-ux-metric],[data-ux-plan],[data-ux-source],[data-ux-project],[data-ux-projects],[data-ux-wallets],[data-ux-stock],[data-ux-tax],[data-ux-new-plan],[data-ux-route]');if(!b)return;
+  if(b.hasAttribute('data-ux-source'))openSource(b.dataset.uxSource,b.dataset.uxId);
+  else if(b.hasAttribute('data-ux-project'))showDealModal(b.dataset.uxProject);
+  else if(b.hasAttribute('data-ux-projects'))window.arbatNavigate('deals');
+  else if(b.hasAttribute('data-ux-new-plan'))window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'calendarForm'}}));
+  else if(b.hasAttribute('data-ux-route'))window.arbatNavigate(b.dataset.uxRoute);
+  else if(b.hasAttribute('data-ux-wallets'))showDetail('wallets','',b);
+  else if(b.hasAttribute('data-ux-stock'))showDetail('stock','',b);
+  else if(b.hasAttribute('data-ux-tax'))showDetail('tax','',b);
+  else if(b.hasAttribute('data-ux-plan'))showDetail('plan',b.dataset.uxPlan,b);
+  else showDetail('metric',b.dataset.uxMetric,b);
+ });
+ // Journals: visible column labels and an explicit opening action, without replacing existing handlers.
+ const tableHosts=['dealsTable','realTable','expensesTable','cashTable','costTable','laborTable','workActsList','workBatchList','materialsTable','personTable','counterpartyTable','walletsTable','articlesTable','whMovements','whBalances','whItems','whPlaces'];
+ function enhanceRows(host){for(const table of host.querySelectorAll('table')){const headers=[...(table.tHead?.rows[0]?.cells||[])].map(x=>x.textContent.trim());table.classList.add('ux-register-table');for(const row of table.tBodies[0]?.rows||[]){if(row.querySelector('[colspan]'))continue;[...row.cells].forEach((cell,i)=>{if(cell.dataset.label!==headers[i])cell.dataset.label=headers[i]||''});if(row.dataset.uxOpen)return;const editor=row.querySelector('button[data-edit]');if(!editor)continue;const cell=[...row.cells].find(c=>!c.querySelector('button,input,select,a')&&c.textContent.trim());if(!cell)continue;const link=document.createElement('button');link.type='button';link.className='ux-text-link';link.textContent=cell.textContent;cell.replaceChildren(link);link.onclick=e=>{e.stopPropagation();editor.click()};row.dataset.uxOpen='1'}}}
+ for(const id of tableHosts){const host=$(id);if(host){enhanceRows(host);new MutationObserver(()=>enhanceRows(host)).observe(host,{childList:true,subtree:true})}}
+ // Report context is explicit; the same source drilldown uses the selected dashboard period.
+ const reports=$('reports'),reportTools=document.createElement('div');reportTools.className='ux-report-sources';reportTools.innerHTML='<strong>Проверка первичных документов</strong><p>Откройте финансовый результат и выберите нужный период для расшифровки до документа.</p><button type="button" data-ux-route="overview">Период и расшифровки →</button>';reports.prepend(reportTools);
+ const original=window.render;window.render=function(){const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{periodIds.forEach((id,i)=>$(id).value=good[i])}const result=original.apply(this,arguments);refreshDetail();return result};
+ const routeScroll=new Map(),navigate=window.arbatNavigate;
+ window.arbatNavigate=function(next){const previous=route();routeScroll.set(previous,window.scrollY);if(detailState&&next!=='overview'){detailState=null;detail.hidden=true;visuals.hidden=false}const result=navigate.apply(this,arguments);requestAnimationFrame(()=>window.scrollTo(0,routeScroll.get(next)||0));return result};
+ updatePeriod();
+})();

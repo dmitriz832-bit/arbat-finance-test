@@ -1,0 +1,116 @@
+/* Approved visual system — shared by every operational section. */
+body.ux-app.ab-ready:not(.ab-profile-only){--ui-blue:#086da7;--ui-ink:#203b53;--ui-muted:#526e85;--ui-line:#ccdae5;background:#f0f5f8!important;color:var(--ui-ink);font-size:15px;line-height:1.5}
+body.ux-app.ab-ready main{max-width:none;width:100%;padding:24px!important;min-width:0}
+body.ux-app.ab-ready .ui-page-heading{margin-bottom:24px;gap:20px;align-items:center}
+body.ux-app.ab-ready #title{font-size:26px;font-weight:750;color:#203b53}
+body.ux-app.ab-ready .card,body.ux-app.ab-ready .dashboard-panel{background:#fff!important;border:1px solid #ccdae5!important;border-radius:14px!important;box-shadow:none!important;padding:22px!important;margin-bottom:20px}
+body.ux-app.ab-ready .card>h2,body.ux-app.ab-ready .dashboard-panel h2{font-size:18px!important;color:#203b53!important;margin:0 0 14px;font-weight:700}
+body.ux-app.ab-ready .ui-page-toolbar{background:#fff!important;border:1px solid #ccdae5;border-radius:14px;padding:18px 20px!important;margin-bottom:20px;gap:18px;align-items:center}
+body.ux-app.ab-ready .ui-page-toolbar p{color:#526e85;font-size:14px;line-height:1.5}
+body.ux-app.ab-ready button,body.ux-app.ab-ready input,body.ux-app.ab-ready select,body.ux-app.ab-ready textarea{font-family:inherit}
+body.ux-app.ab-ready button{min-height:42px;line-height:1.35}
+body.ux-app.ab-ready button.primary{background:#086da7!important;border-color:#086da7!important;box-shadow:none!important;color:#fff!important}
+body.ux-app.ab-ready label{color:#203b53;font-size:14px;font-weight:650;gap:6px}
+body.ux-app.ab-ready input:not([type=checkbox]):not([type=radio]),body.ux-app.ab-ready select,body.ux-app.ab-ready textarea{border:1px solid #9cb6ca!important;border-radius:9px!important;background:#fff!important;color:#203b53!important;font-size:16px!important;font-weight:400!important;min-height:44px}
+body.ux-app.ab-ready :is(input,select,textarea):focus,body.ux-app.ab-ready button:focus-visible{outline:3px solid #63b9ef!important;outline-offset:2px}
+body.ux-app.ab-ready .muted,body.ux-app.ab-ready .small,body.ux-app.ab-ready .ux-help{color:#526e85!important;line-height:1.55}
+body.ux-app.ab-ready .ui-segments{gap:8px;padding:6px;background:#e3edf4;border-radius:12px;margin-bottom:20px;overflow-x:auto;max-width:100%}
+body.ux-app.ab-ready .ui-segments button{padding:10px 16px;color:#38566d!important;flex-shrink:0}
+body.ux-app.ab-ready .ui-segments button.active{background:#fff!important;color:#086da7!important;box-shadow:0 1px 4px #23445a20!important;font-weight:750}
+body.ux-app.ab-ready .corporate-list-tools{background:#f5f9fc;border:1px solid #d7e3ec;border-radius:10px;padding:12px 16px;margin:12px 0;gap:16px;align-items:end}
+body.ux-app.ab-ready .corporate-list-counter{color:#526e85;font-size:13px;white-space:normal}
+body.ux-app.ab-ready table th{font-size:13px!important;color:#38566d!important;background:#edf4f8!important;padding:12px!important;border-bottom:2px solid #b7cddd!important;line-height:1.4}
+body.ux-app.ab-ready table td{font-size:14px!important;line-height:1.5!important;padding:14px 12px!important;border-bottom:1px solid #cfdee9!important;vertical-align:top}
+body.ux-app.ab-ready .ux-register-table tbody tr:nth-child(even){background:#f6f9fc!important}
+body.ux-app.ab-ready .ux-register-table tbody tr:hover{background:#eaf5fc!important}
+body.ux-app.ab-ready .ux-register-table tr[hidden]{display:none!important}
+body.ux-app.ab-ready .ux-text-link,body.ux-app.ab-ready .ux-value{background:transparent!important;border:0!important;box-shadow:none!important;color:#086da7!important;text-decoration:underline;text-underline-offset:3px;white-space:normal;text-align:left;font-weight:650;border-radius:4px;padding:4px 0;cursor:pointer}
+body.ux-app.ab-ready .ux-value{font-size:20px!important;font-variant-numeric:tabular-nums;line-height:1.4}
+body.ux-app.ab-ready .ux-value.dashboard-negative{color:#ba273a!important}
+body.ux-app.ab-ready .ux-help{font-size:13px;margin:8px 0 16px}
+body.ux-app.ab-ready #dashboardVisuals[hidden],body.ux-app.ab-ready #uxDetail[hidden],body.ux-app.ab-ready .ux-period label[hidden]{display:none!important}
+body.ux-app.ab-ready #overview .ux-period{display:block!important;margin:0 0 20px!important}
+body.ux-app.ab-ready .ux-period .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+.ux-period-actions{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+#uxPeriodError{color:#b42339}
+body.ux-app.ab-ready #overview .dashboard-command{background:transparent!important;color:#203b53!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0 0 14px!important;gap:20px}
+body.ux-app.ab-ready #overview .dashboard-command:after{display:none}
+body.ux-app.ab-ready #overview .dashboard-command h2{color:#203b53!important;font-size:20px}
+body.ux-app.ab-ready #overview .dashboard-command p{color:#526e85!important;font-size:14px}
+body.ux-app.ab-ready .dashboard-command-meta small{color:#526e85!important}
+body.ux-app.ab-ready .dashboard-status{background:#e5edf3!important;color:#203b53!important;font-size:12px}
+body.ux-app.ab-ready #overview .dashboard-kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:20px}
+body.ux-app.ab-ready .dashboard-kpi{border:1px solid #ccdae5;border-radius:14px;box-shadow:none;padding:20px;min-height:150px;overflow:visible}
+body.ux-app.ab-ready .dashboard-kpi:before{display:none}
+body.ux-app.ab-ready .dashboard-kpi-top{font-size:14px;color:#203b53;line-height:1.5}
+body.ux-app.ab-ready .dashboard-kpi-top span,body.ux-app.ab-ready .dashboard-kpi>small{white-space:normal;overflow:visible;text-overflow:clip}
+body.ux-app.ab-ready .dashboard-kpi .ux-value{display:block;margin:12px 0}
+body.ux-app.ab-ready .dashboard-kpi>small{font-size:12px;color:#526e85}
+body.ux-app.ab-ready #overview .dashboard-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+body.ux-app.ab-ready #overview .dashboard-layout>.dashboard-panel{grid-column:auto!important;margin:0!important;min-width:0;overflow:hidden}
+body.ux-app.ab-ready #overview .dashboard-project-panel,body.ux-app.ab-ready #overview .dashboard-tax-panel{grid-column:1/-1!important}
+body.ux-app.ab-ready .dashboard-attention-panel{margin-bottom:20px!important}
+body.ux-app.ab-ready .dashboard-attention strong{font-size:14px;white-space:normal}
+body.ux-app.ab-ready .dashboard-attention small{font-size:12px;white-space:normal;color:#526e85}
+body.ux-app.ab-ready .dashboard-attention{padding:14px 2px;gap:12px}
+body.ux-app.ab-ready .dashboard-link{font-size:13px!important;min-height:36px;margin:0!important}
+body.ux-app.ab-ready .executive-finance-row{grid-template-columns:minmax(100px,1fr) minmax(100px,auto);gap:12px;align-items:center;padding:14px 0;font-size:14px;min-height:70px}
+body.ux-app.ab-ready .executive-finance-row.head{display:none}
+body.ux-app.ab-ready .executive-finance-row>small{grid-column:1/-1;color:#526e85;font-size:12px}
+body.ux-app.ab-ready .executive-finance-row .ux-value{text-align:right}
+body.ux-app.ab-ready .executive-note{background:#edf5fa;border-left:3px solid #3797c6;padding:12px;margin-top:18px;font-size:13px;color:#38566d;line-height:1.5}
+body.ux-app.ab-ready .executive-project-table{overflow-x:auto;min-width:0}
+body.ux-app.ab-ready .dashboard-project-row{font-size:13px;min-width:1000px;padding:12px 0;gap:16px}
+body.ux-app.ab-ready .project-name small{font-size:12px;color:#526e85}
+body.ux-app.ab-ready .dashboard-wallet-balance strong,body.ux-app.ab-ready .dashboard-wallet-balance b{font-size:15px}
+body.ux-app.ab-ready .dashboard-wallet-balance small{font-size:12px;color:#526e85}
+.ux-tax-controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:12px 0 20px}
+.ux-tax-controls label{display:grid;max-width:240px}
+.ux-tax-controls .ux-help{flex-basis:100%;margin:0!important}
+body.ux-app.ab-ready .dashboard-tax-company{border:1px solid #cfdee9;border-radius:12px;padding:18px;background:#f8fbfd}
+body.ux-app.ab-ready .dashboard-tax-company p,body.ux-app.ab-ready .dashboard-tax-company small{font-size:12px;line-height:1.5;color:#526e85}
+body.ux-app.ab-ready .dashboard-tax-company dt,body.ux-app.ab-ready .dashboard-tax-company dd{font-size:14px}
+body.ux-app.ab-ready .ux-detail{background:#fff;border:1px solid #ccdae5;border-radius:14px;padding:24px;margin-bottom:24px}
+.ux-detail h2{font-size:24px;margin:20px 0 8px;color:#203b53}
+.ux-detail-summary{padding:18px;background:#edf5fa;border-radius:10px;margin:16px 0}
+.ux-detail-summary>strong{font-size:28px}.ux-detail-summary p,.ux-explanation{font-size:14px;line-height:1.6;color:#38566d}
+.ux-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;border-bottom:1px solid #cfdee9;padding:18px 0;align-items:center}
+.ux-source-row>div{min-width:0}.ux-source-row small{display:block;color:#526e85;font-size:13px;margin:6px 0}.ux-source-row p{margin:0;font-size:13px;overflow-wrap:anywhere;color:#526e85}.ux-source-row>strong{font-size:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ux-empty{padding:24px;background:#f4f8fb;border-radius:10px;color:#526e85}
+.ux-report-sources{padding:16px 20px;border:1px solid #ccdae5;background:#fff;border-radius:12px;margin-bottom:20px}.ux-report-sources p{font-size:13px;color:#526e85;margin:4px 0 12px}
+body.ux-app.ab-ready .document-section{background:#fff;border:1px solid #c8dae8;border-radius:12px;padding:18px;gap:18px;margin-bottom:20px}
+body.ux-app.ab-ready .document-section legend{font-size:15px;color:#203b53;font-weight:750}
+body.ux-app.ab-ready .ui-sheet-header,body.ux-app.ab-ready .modal-head{border-bottom:1px solid #bfd3e2;background:#fff!important;padding:18px 22px}
+body.ux-app.ab-ready .modal-actions{border-top:1px solid #bfd3e2;background:#fff!important;padding-top:16px;gap:12px}
+body.ux-app.ab-ready .bank-review-card{border:1px solid #9cb8cc!important;background:#fff!important;margin:16px 0!important;box-shadow:0 2px 6px #24435a10}
+@media(max-width:1100px){body.ux-app.ab-ready #overview .dashboard-layout{grid-template-columns:minmax(0,1fr)}body.ux-app.ab-ready #overview .dashboard-layout>.dashboard-panel{grid-column:1!important}}
+@media(max-width:700px){
+ body.ux-app.ab-ready main{padding:16px 12px!important}body.ux-app.ab-ready #title{font-size:23px}
+ body.ux-app.ab-ready .card,body.ux-app.ab-ready .dashboard-panel{padding:16px!important;border-radius:12px!important}
+ body.ux-app.ab-ready #overview .dashboard-kpis{grid-template-columns:minmax(0,1fr);gap:12px}
+ body.ux-app.ab-ready .dashboard-kpi{min-height:0;padding:18px}
+ body.ux-app.ab-ready #overview .dashboard-command{display:block!important}.dashboard-command-meta{align-items:flex-start!important;margin-top:12px}
+ body.ux-app.ab-ready .ui-page-toolbar{padding:16px!important;display:block}.ui-toolbar-actions{margin-top:12px}
+ body.ux-app.ab-ready button{min-height:44px}
+ body.ux-app.ab-ready .ux-register-table,body.ux-app.ab-ready .ux-register-table tbody{display:block!important;min-width:0!important;max-width:100%!important;width:100%!important;table-layout:auto!important}
+ body.ux-app.ab-ready .ux-register-table colgroup,body.ux-app.ab-ready .ux-register-table thead{display:none!important}
+ body.ux-app.ab-ready .ux-register-table tbody tr{display:block!important;background:#fff!important;border:1px solid #bfd3e2!important;border-radius:12px;margin:12px 0!important;padding:8px 12px;min-width:0!important}
+ body.ux-app.ab-ready .ux-register-table tbody tr[hidden]{display:none!important}
+ body.ux-app.ab-ready .ux-register-table td{display:grid!important;grid-template-columns:minmax(90px,36%) minmax(0,1fr);gap:10px;width:auto!important;max-width:none!important;min-width:0!important;border:0!important;padding:8px 0!important;white-space:normal!important;overflow-wrap:anywhere;box-shadow:none!important;background:transparent!important;position:static!important}
+ body.ux-app.ab-ready .ux-register-table td:before{content:attr(data-label);color:#526e85;font-size:12px;font-weight:500}
+ body.ux-app.ab-ready .ux-register-table td>*{min-width:0;max-width:100%;white-space:normal!important;overflow-wrap:anywhere}
+ body.ux-app.ab-ready .dashboard-project-table{display:block;min-width:0}
+ body.ux-app.ab-ready .dashboard-project-row{display:grid;grid-template-columns:1fr 1fr;min-width:0;gap:12px;padding:18px 0}
+ body.ux-app.ab-ready .dashboard-project-row.head{display:none}.dashboard-project-row .project-name{grid-column:1/-1}
+ body.ux-app.ab-ready .dashboard-project-row>span,body.ux-app.ab-ready .dashboard-project-row>strong{text-align:left!important;white-space:normal}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(2):before{content:'Договор';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(3):before{content:'План затрат';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(4):before{content:'Начислено';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(5):before{content:'НЗП';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(6):before{content:'Реализация';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(7):before{content:'Прибыль';display:block;color:#526e85;font-size:12px}
+ body.ux-app.ab-ready .dashboard-project-row>:nth-child(8):before{content:'Маржа';display:block;color:#526e85;font-size:12px}
+ .ux-source-row{grid-template-columns:1fr;gap:8px}.ux-source-row>strong{font-size:20px}.ux-detail{padding:16px!important}.ux-tax-controls label{max-width:100%}
+ body.ux-app.ab-ready .dashboard-tax-grid{grid-template-columns:1fr}
+ body.ux-app.ab-ready .ui-sheet-header,body.ux-app.ab-ready .modal-head{padding:12px}
+}
