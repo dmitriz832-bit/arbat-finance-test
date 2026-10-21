@@ -38,7 +38,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #bankImportPreview table.ui-data-c
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table,body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody{display:block!important;width:100%!important;min-width:0!important}
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table thead{display:none!important}
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody>tr{display:grid!important;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;padding:16px!important;border:2px solid #b4c8d8!important;border-radius:12px;background:#fff!important}
-  body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody>tr>td{display:block!important;padding:0!important;border:0!important;min-width:0;text-align:left!important}
+  body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody>tr>td{display:block!important;padding:0!important;border:0!important;min-width:0;max-width:none!important;text-align:left!important}
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody>tr>td:nth-child(-n+3),body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table tbody>tr>td:last-child{grid-column:1/-1}
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table td[data-column-label]::before{content:attr(data-column-label);display:block;margin-bottom:6px;color:#304b61;font-size:14px;font-weight:700}
   body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table input[type=checkbox]{width:24px;height:24px;margin:6px}
