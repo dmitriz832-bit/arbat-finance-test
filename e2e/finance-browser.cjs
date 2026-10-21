@@ -1,7 +1,50 @@
 /* Offline application integration only. All non-local requests are denied. */
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
 const root=path.resolve(__dirname,'..');
+test('document editing and searchable lists fit desktop, tablet and phone in Chromium and WebKit',async()=>{
+ const server=http.createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname,file=path.resolve(root,'.'+(pathname.endsWith('/')?pathname+'index.html':pathname));if(!file.startsWith(root+path.sep))throw Error('Invalid path');res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{for(const engine of [chromium,webkit]){
+  const browser=await engine.launch({headless:true});
+  try{for(const width of [1440,834,430,390,375]){
+   const context=await browser.newContext({viewport:{width,height:932},reducedMotion:'reduce'}),page=await context.newPage();
+   const origin='http://127.0.0.1:'+server.address().port;
+   await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(url.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:'document.body.classList.add("ab-ready")'});if(['/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({contentType:'text/javascript',body:'/* offline fixture */'});return route.continue()});
+   await context.addInitScript(data=>localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data)),fixture());
+   await page.goto(origin+'/app/',{waitUntil:'load'});
+   await page.evaluate(()=>{window.reviewResult=null;window.reviewBankCounterparties([{type:'in',cpName:'Тестовый контрагент с длинным названием',cpInn:'1234567890'}],{counterparties:[]}).then(value=>window.reviewResult=value)});
+   const modal=page.locator('.bank-review-overlay'),name=modal.getByRole('textbox',{name:'Наименование контрагента',exact:true});
+   await name.waitFor();
+   await fs.mkdir(path.join(root,'test-results'),{recursive:true});
+   await page.screenshot({path:path.join(root,'test-results',`counterparty-initial-${engine.name()}-${width}.png`)});
+   assert.ok((await name.boundingBox()).width>=150,engine.name()+' '+width+': name is readable');
+   const overflow=await modal.evaluate(el=>{const shell=el.querySelector('.modal');return {client:shell.clientWidth,scroll:shell.scrollWidth,offenders:[...shell.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>shell.getBoundingClientRect().right).map(n=>n.tagName+'.'+n.className)}});
+   assert.ok(overflow.scroll<=overflow.client+2,engine.name()+' '+width+': dialog overflow '+JSON.stringify(overflow));
+   await name.fill('Исправленное название');assert.equal(await name.inputValue(),'Исправленное название');
+   const combo=modal.getByRole('combobox',{name:'Тип контрагента',exact:true});
+   await combo.click();await combo.pressSequentially('Физ');
+   assert.equal(await combo.inputValue(),'Физ','typing replaces previous selection');
+   const options=page.locator('.smart-combobox-list[data-open="1"]');
+   assert.equal(await options.getByRole('option').count(),1);
+   const box=await options.boundingBox();assert.ok(box&&box.x>=0&&box.x+box.width<=width+1&&box.y>=0&&box.y+box.height<=933,'options fit viewport');
+   await options.getByRole('option',{name:'Физлицо',exact:true}).click();
+   assert.equal(await combo.inputValue(),'Физлицо');assert.equal(await modal.locator('select').inputValue(),'person');
+   await combo.click();await combo.press('ArrowDown');assert.equal(await page.locator(':focus').getAttribute('role'),'option');
+   await page.keyboard.press('Escape');assert.equal(await options.count(),0);assert.equal(await modal.count(),1,'escape closes list before dialog');
+   await fs.mkdir(path.join(root,'test-results'),{recursive:true});
+   await page.screenshot({path:path.join(root,'test-results',`counterparty-${engine.name()}-${width}.png`)});
+   await modal.getByRole('button',{name:'Отмена',exact:true}).click();
+   assert.equal(await page.evaluate(()=>window.reviewResult),false);
+   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'cashForm'}})));
+   await page.locator('.ui-sheet-overlay:not([hidden])').waitFor();
+   await page.waitForFunction(()=>document.activeElement?.classList.contains('ui-sheet'));
+   assert.equal(await page.locator(':focus').evaluate(el=>el.classList.contains('ui-sheet')),true,'opening does not focus input and summon keyboard');
+   if(width<=700){const sheet=await page.locator('.ui-sheet').boundingBox();assert.ok(sheet.width>=width-2);assert.ok(sheet.height>=930);assert.equal(await page.locator('#cashForm').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1)}
+   await context.close();
+  }}finally{await browser.close()}
+ }}finally{await new Promise(resolve=>server.close(resolve))}
+});
 function fixture(){
  const date=new Date().toISOString().slice(0,10),org='АИР-КЛИМАТ',projectKey=org+'::1C#AUDIT-20261017-browser',base={date,org};
  const state=Object.fromEntries(['cash','costs','crews','deals','labor','people','wallets','articles','calendar','expenses','workActs','dealPlans','materials','workBatches','costArticles','priceCatalog','priceHistory','priceImports','realizations','counterparties','employeeEvents','crewSettlements'].map(k=>[k,[]]));
