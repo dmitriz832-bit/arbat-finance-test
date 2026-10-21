@@ -6,6 +6,19 @@
  const rub=x=>Number(core.rubles(x)).toLocaleString('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:2});
  const today=()=>model.iso(new Date()),org=()=>$('orgFilter').value;
  document.body.classList.add('ux-app');
+ // Protect edits in legacy cards as well as the shared creation sheet.
+ const dirtyModals=new Map(),modalSelector='.modal-backdrop,.whdialog';
+ const formValues=node=>JSON.stringify([...node.querySelectorAll('input,select,textarea')].filter(x=>x.name&&x.type!=='file').map(x=>[x.name,x.value,x.checked]));
+ const trackModal=node=>{if(!node.matches(modalSelector))return;const active=node.classList.contains('open');if(active&&!dirtyModals.has(node)){dirtyModals.set(node,{initial:formValues(node),focus:document.activeElement})}else if(!active)dirtyModals.delete(node)};
+ const modalChanges=new MutationObserver(records=>{for(const record of records)trackModal(record.target)});
+ for(const node of document.querySelectorAll(modalSelector)){modalChanges.observe(node,{attributes:true,attributeFilter:['class']});trackModal(node)}
+ function guardClose(event){
+  if(event.type==='keydown'&&(event.key!=='Escape'||document.querySelector('.smart-combobox-list[data-open="1"]')))return;
+  const node=[...dirtyModals.keys()].filter(x=>x.getClientRects().length).sort((a,b)=>(+getComputedStyle(a).zIndex||0)-(+getComputedStyle(b).zIndex||0)).at(-1);if(!node)return;
+  if(event.type==='click'&&event.target!==node&&!event.target.closest('#closeDealModal,#cancelDealEdit,#genericCancel,#genericClose,#calendarModalCancel,#calendarModalClose,#walletEditCancel,#walletModalClose,#workEditCancel,#workEditClose,#batchCancel,#batchClose,#allocCancel,#allocClose,#whCancel'))return;
+  if(formValues(node)!==dirtyModals.get(node).initial&&!confirm('Закрыть карточку без сохранения изменений?')){event.preventDefault();event.stopImmediatePropagation()}
+ }
+ window.addEventListener('click',guardClose,true);window.addEventListener('keydown',guardClose,true);
  const overview=$('overview'),visuals=$('dashboardVisuals');if(!visuals)return;
  const period=$('ownerPeriodMode').closest('.card');period.classList.add('ux-period');period.querySelector('h2').textContent='Период финансового результата';visuals.prepend(period);
  const note=document.createElement('p');note.className='ux-help';note.textContent='Применяется к финансовому результату и его расшифровкам. Прогноз календаря — от сегодняшней даты; налоги имеют свой квартал.';period.querySelector('h2').after(note);

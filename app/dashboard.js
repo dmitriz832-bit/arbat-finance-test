@@ -121,7 +121,7 @@
   function wallets(data){
     const target=document.getElementById('dashboardWallets');if(!target)return;const rows=[...data.wallets].sort((a,b)=>String(a.org).localeCompare(String(b.org),'ru')||b.balance-a.balance);
     if(!rows.length){target.innerHTML='<div class="dashboard-empty">Добавьте и подтвердите счёт или кассу — здесь появится остаток.</div>';return}
-    target.innerHTML='<div class="dashboard-wallet-balances">'+rows.map(item=>{const status=item.reconciliation?.status==='matched'?'Сверено':item.reconciliation?.status==='mismatch'?'Есть расхождение':'Нужна сверка';return '<div class="dashboard-wallet-balance"><span><strong>'+esc(item.name)+'</strong><small>'+esc(item.org+' · '+item.kind+' · '+status)+'</small></span><b class="'+(item.balance<0?'dashboard-negative':'')+'">'+rub(item.balance)+'</b></div>'}).join('')+'</div>';
+    target.innerHTML='<div class="dashboard-wallet-balances">'+rows.map(item=>{const status=item.reconciliation?.status==='matched'?'Сверено':item.reconciliation?.status==='mismatch'?'Есть расхождение':'Нужна сверка';return '<div class="dashboard-wallet-balance"><span><button type="button" class="ux-text-link" data-ux-source="wallets" data-ux-id="'+esc(item.walletId)+'">'+esc(item.name)+'</button><small>'+esc(item.org+' · '+item.kind+' · '+status)+'</small></span><b class="'+(item.balance<0?'dashboard-negative':'')+'">'+rub(item.balance)+'</b></div>'}).join('')+'</div>';
   }
   function taxes(data){
     const target=document.getElementById('dashboardTaxes'),period=document.getElementById('dashboardTaxPeriod');if(!target)return;const core=window.ArbatFinanceCore,tax=data.taxes,num=value=>Number(core.rubles(value));if(period)period.textContent=tax.bounds.label;

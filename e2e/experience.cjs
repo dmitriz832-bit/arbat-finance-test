@@ -22,6 +22,10 @@ test('approved navigation, periods, source documents and every section fit all s
   assert.match(await page.locator('#uxDetail').innerText(),/60\s?000/);
   await page.locator('#uxDetail [data-ux-source="realizations"]').click();await page.locator('#genericModal.open').waitFor();
   assert.equal(await page.locator('#genericEditForm [name=document]').inputValue(),'Акт UX-1');
+  await page.locator('#genericEditForm [name=document]').fill('Несохранённая правка');
+  page.once('dialog',d=>d.dismiss());await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#genericModal.open').isVisible(),true,'cancel discard keeps edited document');
+  await page.locator('#genericEditForm [name=document]').fill('Акт UX-1');
   await page.keyboard.press('Escape');await page.locator('#genericModal.open').waitFor({state:'hidden'});
   assert.equal(await page.locator('#uxDetail').isVisible(),true);await page.locator('#uxDetailBack').click();
   await page.locator('#dashboardProjects [data-ux-project]').click();await page.locator('#dealModal.open').waitFor();
