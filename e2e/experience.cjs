@@ -41,8 +41,14 @@ test('approved navigation, periods, source documents and every section fit all s
    const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(overflow.scroll<=width+2,`${engine.name()} ${width} ${route}: page overflow ${overflow.scroll}`);
   }
   await page.evaluate(()=>window.arbatNavigate('reports'));
-  await page.locator('#reportTable tbody tr').first().locator('[data-ux-report-cell]').first().click();
-  assert.equal(await page.locator('#uxDetail').isVisible(),true);assert.match(await page.locator('#uxDetailScope').innerText(),/01/);await page.locator('#uxDetailBack').click();
+  const month=await page.evaluate(()=>new Date().getMonth()+1);
+  await page.locator('#reportTable tbody tr').first().locator('[data-ux-report-cell="'+month+'"]').click();
+  assert.equal(await page.locator('#uxDetail').isVisible(),true);assert.match(await page.locator('#uxDetail .ux-detail-summary').innerText(),/60\s?000/);
+  await page.locator('#uxDetail [data-ux-source="realizations"]').click();
+  await page.locator('#genericEditForm [name=amount]').fill('70000');
+  await page.locator('#genericEditForm button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
+  assert.match(await page.locator('#uxDetail .ux-detail-summary').innerText(),/70\s?000/,'summary updates after editing report source');
+  await page.locator('#uxDetailBack').click();
   assert.equal(await page.locator('#reports').evaluate(el=>el.classList.contains('active')),true,'return to original report');
   assert.deepEqual(errors,[],engine.name()+' '+width+': no runtime errors');await context.close();
  }}finally{await browser.close()}}}finally{await new Promise(r=>server.close(r))}

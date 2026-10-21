@@ -31,5 +31,27 @@
   if(snapshot.deferredChange)rows.push({collection:null,id:null,date:'',label:'Корректировка признания затрат / НЗП',amount:snapshot.deferredChange,explanation:'Расчётная корректировка финансового ядра: изменение незавершённого производства за выбранный период. Отдельного первичного документа нет.'});
   return rows;
  }
- return Object.freeze({iso,shiftPeriod,plans,financialRows});
+ function reportRows(snapshot,label,core){
+  if(label==='ВЫРУЧКА ПО РЕАЛИЗАЦИЯМ БЕЗ НДС')return financialRows(snapshot,'revenue',core);
+  if(['ВАЛОВАЯ ПРИБЫЛЬ','ПРИБЫЛЬ НАПРАВЛЕНИЙ ДО ОБЩИХ'].includes(label))return financialRows({...snapshot,rows:snapshot.rows.filter(x=>x.category==='direct')},'gross',core);
+  if(label==='EBITDA')return financialRows(snapshot,'ebitda',core);
+  if(['ИТОГОВЫЙ УПРАВЛЕНЧЕСКИЙ РЕЗУЛЬТАТ','ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ'].includes(label))return financialRows(snapshot,'result',core);
+  if(label.startsWith('Изменение НЗП'))return financialRows({...snapshot,rows:[],revenueDocuments:[]},'result',core);
+  const filters={
+   'Фактические расходы проектов':x=>x.kind==='project-expense',
+   'Начисления сотрудникам — производственные':x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct',
+   'Начисления сотрудникам — административные':x=>x.kind==='payroll'&&x.category==='administrative',
+   'Начисления сотрудникам — коммерческие':x=>x.kind==='payroll'&&x.category==='commercial',
+   'Расходы направлений':x=>x.kind==='general-expense'&&x.category==='direct',
+   'Общехозяйственные расходы':x=>x.kind==='general-expense'&&x.category==='administrative',
+   'Общепроизводственные расходы':x=>x.category==='production',
+   'Коммерческие расходы — всего':x=>x.category==='commercial',
+   'Административные расходы — всего':x=>x.category==='administrative',
+   'Доходы ниже EBITDA':x=>x.category==='belowIncome',
+   'Расходы ниже EBITDA':x=>x.category==='belowExpenses'
+  };
+  if(!filters[label])return null;
+  return snapshot.rows.filter(filters[label]).map(row=>({source:row.source,collection:kinds[row.kind]?.[0]||null,id:row.source?._id||row.source?.id,date:row.date,label:kinds[row.kind]?.[1]||row.kind,amount:row.amount}));
+ }
+ return Object.freeze({iso,shiftPeriod,plans,financialRows,reportRows});
 });

@@ -20,3 +20,9 @@ test('result drilldown reconciles with the exact core including WIP and below-in
 test('period stepping clamps month end and keeps year and quarter semantics',()=>{
  assert.equal(typeof ux.shiftPeriod,'function');assert.equal(ux.shiftPeriod('2026-01-31','month',1),'2026-02-28');assert.equal(ux.shiftPeriod('2026-10-21','quarter',1),'2027-01-21');assert.equal(ux.shiftPeriod('2024-02-29','year',1),'2025-02-28');
 });
+test('report source rows use report categories, including production overhead and allocated costs',()=>{
+ assert.equal(typeof ux.reportRows,'function');
+ const d={deals:[],realizations:[{_id:'r',date:'2026-10-01',org:'A',amount:1000,vatRate:0}],costs:[{_id:'production',date:'2026-10-01',org:'A',amount:100,vatRate:0,pnlGroup:'Общепроизводственные'},{_id:'admin-dir',date:'2026-10-01',org:'A',dir:'Service',amount:50,vatRate:0,pnlGroup:'Административные'},{_id:'direct',date:'2026-10-01',org:'A',amount:60,vatRate:0,pnlAllocationRule:'proportional',pnlAllocations:[{dir:'Service',weight:1},{dir:'Build',weight:2}]}]};
+ const snapshot=core.ownerPeriodSnapshot(d,core.ownerPeriodBounds('month','2026-10-01'),'A'),report=core.preliminaryPeriod(d,'2026-10','A');
+ for(const [label,expected] of [['ВАЛОВАЯ ПРИБЫЛЬ',report.gross],['Расходы направлений',report.components.assignedExpenses],['Общехозяйственные расходы',report.components.generalCostTotal],['Общепроизводственные расходы',report.production]])assert.equal(ux.reportRows(snapshot,label,core).reduce((v,x)=>v+x.amount,0n),expected,label);
+});

@@ -34,6 +34,12 @@ test('runtime crew shares conserve full act value with remainder on the last emp
  assert.equal(JSON.stringify(parts),JSON.stringify([{personId:'a',amount:33.33},{personId:'b',amount:33.33},{personId:'c',amount:33.34}]));
 });
 module.exports={runtime};
+test('report detail recomputes its selected cell after source edit, date move and deletion',()=>{
+ const db=fixture(),ctx=runtime(db),read=()=>vm.runInContext("reportData({year:2026,kind:'pnl',org:'АИР-КЛИМАТ'}).rows.find(x=>x[0]==='ВЫРУЧКА ПО РЕАЛИЗАЦИЯМ БЕЗ НДС')[10]",ctx);
+ ctx.document.getElementById('reportYear').value='2025';
+ assert.equal(read(),'60000.00','captured report year is independent of current controls');
+ db.realizations[0].amount='70000';assert.equal(read(),'70000.00');db.realizations[0].date='2026-09-01';assert.equal(read(),'0.00');db.realizations=[];assert.equal(read(),'0.00');
+});
 test('actual cash report includes unclassified receipts and preserves decimal totals',()=>{
  const d=fixture();d.cash=[{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'in',amount:'0.10'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'in',amount:'0.20'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'out',amount:'1.00'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'transfer',amount:'100.00'}];
  const ctx=runtime(d);ctx.document.getElementById('reportType').value='cash';const result=vm.runInContext('reportData()',ctx);
