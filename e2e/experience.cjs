@@ -44,6 +44,7 @@ test('approved navigation, periods, source documents and every section fit all s
   await page.evaluate(()=>window.arbatNavigate('reports'));
   const month=await page.evaluate(()=>new Date().getMonth()+1);
   await page.locator('#reportTable tbody tr').first().locator('[data-ux-report-cell="'+month+'"]').click();
+  assert.deepEqual(errors,[],engine.name()+' '+width+': report drilldown errors');
   assert.equal(await page.locator('#uxDetail').isVisible(),true);assert.match(await page.locator('#uxDetail .ux-detail-summary').innerText(),/60\s?000/);
   await page.locator('#uxDetail [data-ux-source="realizations"]').click();
   await page.locator('#genericEditForm [name=amount]').fill('70000');
