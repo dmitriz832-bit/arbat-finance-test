@@ -9,7 +9,7 @@ function fixture(){
 function runtime(db){
  const inputs={orgFilter:{value:'',addEventListener(){}},reportYear:{value:'2026'},reportType:{value:'pnl'}};
  const ctx={db,dirs:['Service'],document:{getElementById:id=>inputs[id]||null},localStorage:{getItem:()=>null},Date:class extends Date{constructor(...args){super(...(args.length?args:['2026-10-17T12:00:00Z']))}static now(){return new Date('2026-10-17T12:00:00Z').getTime()}},console};
- ctx.window={ArbatFinanceCore:core,arbatDealKey:core.dealKey};vm.createContext(ctx);
+ ctx.window={ArbatFinanceCore:core,arbatDealKey:core.dealKey,ArbatExperience:require('../app/experience-model')};vm.createContext(ctx);
  vm.runInContext(`const f=x=>Number(x||0).toFixed(2);`+['monthNumbers','percentText','reportPercentRow','reportRow','reportData','dealMargin','projectCost','settlementShares'].map(declaration).join('\n'),ctx);
  vm.runInContext(fs.readFileSync(path.join(root,'app/dashboard.js'),'utf8'),ctx);
  return ctx;
@@ -34,6 +34,12 @@ test('runtime crew shares conserve full act value with remainder on the last emp
  assert.equal(JSON.stringify(parts),JSON.stringify([{personId:'a',amount:33.33},{personId:'b',amount:33.33},{personId:'c',amount:33.34}]));
 });
 module.exports={runtime};
+test('report detail recomputes its selected cell after source edit, date move and deletion',()=>{
+ const db=fixture(),ctx=runtime(db),read=()=>vm.runInContext("reportData({year:2026,kind:'pnl',org:'АИР-КЛИМАТ'}).rows.find(x=>x[0]==='ВЫРУЧКА ПО РЕАЛИЗАЦИЯМ БЕЗ НДС')[10]",ctx);
+ ctx.document.getElementById('reportYear').value='2025';
+ assert.equal(read(),'60000.00','captured report year is independent of current controls');
+ db.realizations[0].amount='70000';assert.equal(read(),'70000.00');db.realizations[0].date='2026-09-01';assert.equal(read(),'0.00');db.realizations=[];assert.equal(read(),'0.00');
+});
 test('actual cash report includes unclassified receipts and preserves decimal totals',()=>{
  const d=fixture();d.cash=[{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'in',amount:'0.10'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'in',amount:'0.20'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'out',amount:'1.00'},{org:'АИР-КЛИМАТ',date:'2026-10-17',type:'transfer',amount:'100.00'}];
  const ctx=runtime(d);ctx.document.getElementById('reportType').value='cash';const result=vm.runInContext('reportData()',ctx);
