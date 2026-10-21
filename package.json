@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.cjs",
-    "test:browser": "node --test e2e/finance-browser.cjs"
+    "test:browser": "node --test e2e/*.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
