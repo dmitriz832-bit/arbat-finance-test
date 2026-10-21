@@ -54,7 +54,8 @@
   }else if(kind==='report'){
    const {label,column,year,reportKind,organization}=value;
    const cell=reportData({year,kind:reportKind,org:organization}).rows.find(row=>row[0].trim()===label)?.[column];
-   const displayed=cell==null?'Статья больше не содержит операций':String(cell).endsWith('%')||cell==='—'?cell:rub(core.cents(cell));
+   // reportData already formats currency/percent cells; do not parse presentation text as money.
+   const displayed=cell==null?'Статья больше не содержит операций':String(cell);
    const month=column<=12?String(column).padStart(2,'0'):null,bounds=core.ownerPeriodBounds(month?'month':'year',year+'-'+(month||'01')+'-01');
    let warehouse={};try{warehouse=JSON.parse(localStorage.getItem('arbat-warehouse-v1')||'{}')}catch{}
    const input={...db,warehouse,fifo:window.arbatFifo?.(warehouse),wipAccounting:true},snapshot=core.ownerPeriodSnapshot(input,bounds,organization);
