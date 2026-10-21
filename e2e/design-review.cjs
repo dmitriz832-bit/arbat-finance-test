@@ -27,6 +27,7 @@ test('design review: period, source drilldown, editing and linked realization on
    await page.screenshot({path:path.join(root,'test-results',`review-detail-${engine.name()}-${width}.png`),fullPage:true});
    await page.locator('#back').click();assert.equal(await page.locator('#month').inputValue(),'2026-09');
    await page.locator('#homeProjects [data-project="p1"]').click();
+   if(width<=600)assert.ok((await page.locator('#editor').boundingBox()).width>=width-1,'mobile dialog uses full width');
    await page.screenshot({path:path.join(root,'test-results',`review-project-${engine.name()}-${width}.png`)});
    await page.getByRole('button',{name:'Создать реализацию',exact:true}).click();
    assert.match(await page.locator('#editorBody').innerText(),/Вентиляция офиса/);
