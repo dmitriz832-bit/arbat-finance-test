@@ -21,6 +21,7 @@ body.ux-app.ab-ready.ui-modern #reportTable table tr[hidden]{display:none!import
  body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th){display:none!important;min-width:0!important;width:auto!important;padding:0!important;position:static!important;border:0!important;white-space:normal!important;background:transparent!important;overflow:visible!important;font-size:14px!important}
  body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th).ux-report-selected{display:block!important}
  body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):first-child{min-width:0!important;overflow-wrap:anywhere!important}
+ body.ux-app.ab-ready.ui-modern #reportTable .cell-text{display:block!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-height:none!important;-webkit-line-clamp:unset!important}
  body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):not(:first-child){text-align:right!important}
  body.ux-app.ab-ready.ui-modern #reportTable .ux-text-link{width:100%;text-align:right;font-size:15px!important;overflow-wrap:anywhere!important;font-variant-numeric:tabular-nums}
  body.ux-app.ab-ready.ui-modern #reportTable table tr.ux-report-total{background:#edf5fa!important;border-radius:8px!important;padding:12px 8px!important;font-weight:700}
