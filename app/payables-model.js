@@ -3,6 +3,10 @@
  'use strict';
  const id=x=>String(x._id||x.id||''),money=x=>core.cents(x),amount=x=>{try{return money(x)}catch{return null}};
  const receiptKey=x=>'receipt:'+JSON.stringify([x.org||'',x.documentId||x.importId||id(x)]);
+ function lineCents(qty,price){
+  const parts=[qty,price].map(value=>{const raw=String(value).trim().replace(',','.');if(!/^\d+(?:\.\d+)?$/.test(raw))throw Error('Invalid quantity or price');const [whole,fraction='']=raw.split('.');return {n:BigInt(whole+fraction),scale:10n**BigInt(fraction.length)}}),scale=parts[0].scale*parts[1].scale;
+  return (parts[0].n*parts[1].n*100n+scale/2n)/scale;
+ }
  function documents(data={},warehouse={}){
   const rows=[];
   for(const collection of ['expenses','costs'])for(const source of data[collection]||[]){
@@ -13,7 +17,7 @@
   const groups=new Map();
   for(const source of warehouse.moves||[]){if(source.kind!=='receipt'||!id(source))continue;const key=receiptKey(source);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(source)}
   for(const [key,sources] of groups){const source=sources[0];let total=0n,valid=true;
-   for(const line of sources){const n=Number(line.qty)*Number(line.price);if(!Number.isFinite(n)||Number(line.qty)<=0||Number(line.price)<=0)valid=false;else total+=money(n.toFixed(2))}
+   for(const line of sources){if(Number(line.qty)<=0||Number(line.price)<=0)valid=false;else try{total+=lineCents(line.qty,line.price)}catch{valid=false}}
    rows.push({key,collection:'receipt',id:id(source),sources,org:source.org||'',date:(source.date||'').slice(0,10),label:source.note||source.documentId||'Приход на склад',supplierId:source.supplierId||'',dueDate:source.paymentDueDate||'',total:valid?total:null,issues:[],paid:0n,links:[]});
   }
   return rows;
