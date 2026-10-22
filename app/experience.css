@@ -1,4 +1,31 @@
 /* Approved visual system — shared by every operational section. */
+/* Reports keep their own layout; generic journal-to-card rules do not apply. */
+.ux-report-period{display:none}
+body.ux-app.ab-ready.ui-modern #reportTable{overflow-x:auto!important}
+body.ux-app.ab-ready.ui-modern #reportTable table{display:table!important;table-layout:auto!important;min-width:1200px!important;width:100%!important}
+body.ux-app.ab-ready.ui-modern #reportTable table thead{display:table-header-group!important}
+body.ux-app.ab-ready.ui-modern #reportTable table tbody{display:table-row-group!important}
+body.ux-app.ab-ready.ui-modern #reportTable table tr{display:table-row!important}
+body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th){display:table-cell!important;width:auto!important;min-width:90px!important;white-space:nowrap!important}
+body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):first-child{min-width:240px!important;white-space:normal!important}
+body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):before{display:none!important}
+body.ux-app.ab-ready.ui-modern #reportTable table tr[hidden]{display:none!important}
+@media(max-width:700px){
+ body.ux-app.ab-ready.ui-modern .ux-report-period{display:block;padding:16px 0}
+ .ux-report-period>label{display:block;margin-bottom:8px}.ux-report-period>div{display:flex;gap:8px;align-items:center}.ux-report-period select{flex:1;width:100%;min-width:0}.ux-report-period p{font-size:13px;color:#526e85;margin:8px 0}
+ body.ux-app.ab-ready.ui-modern #reports #reportKpis{display:none!important}
+ body.ux-app.ab-ready.ui-modern #reportTable{overflow:visible!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table{display:block!important;min-width:0!important;border:0!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table :is(thead,tbody){display:block!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table tr{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(100px,42%)!important;gap:12px!important;padding:12px 0!important;border:0!important;border-bottom:1px solid #ccdae5!important;border-radius:0!important;background:#fff!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th){display:none!important;min-width:0!important;width:auto!important;padding:0!important;position:static!important;border:0!important;white-space:normal!important;background:transparent!important;overflow:visible!important;font-size:14px!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th).ux-report-selected{display:block!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):first-child{min-width:0!important;overflow-wrap:anywhere!important}
+ body.ux-app.ab-ready.ui-modern #reportTable table :is(td,th):not(:first-child){text-align:right!important}
+ body.ux-app.ab-ready.ui-modern #reportTable .ux-text-link{width:100%;text-align:right;font-size:15px!important;overflow-wrap:anywhere!important;font-variant-numeric:tabular-nums}
+ body.ux-app.ab-ready.ui-modern #reportTable table tr.ux-report-total{background:#edf5fa!important;border-radius:8px!important;padding:12px 8px!important;font-weight:700}
+ body.ux-app.ab-ready.ui-modern #reportTable table tr[hidden]{display:none!important}
+}
 body.ux-app.ab-ready.ui-modern:not(.ab-profile-only){--ui-blue:#086da7;--ui-ink:#203b53;--ui-muted:#526e85;--ui-line:#ccdae5;background:#f0f5f8!important;color:var(--ui-ink);font-size:15px;line-height:1.5}
 body.ux-app.ab-ready.ui-modern main{max-width:none;width:100%;padding:24px!important;min-width:0}
 body.ux-app.ab-ready.ui-modern .ui-page-heading{margin-bottom:24px;gap:20px;align-items:center}

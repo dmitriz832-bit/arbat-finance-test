@@ -43,6 +43,21 @@ test('approved navigation, periods, source documents and every section fit all s
   }
   await page.evaluate(()=>window.arbatNavigate('reports'));
   const month=await page.evaluate(()=>new Date().getMonth()+1);
+  if(width<=700){
+   for(const kind of ['cash','pnl']){
+    await page.evaluate(kind=>window.arbatNavigate('reports:'+kind),kind);
+    await page.locator('#uxReportMonth').selectOption('13');
+    const row=page.locator('#reportTable tbody tr').first();
+    assert.equal(await row.locator('td:visible').count(),2,'mobile report shows only article and selected amount');
+    assert.ok(await row.evaluate(el=>el.getBoundingClientRect().height)<180,'report row is readable without twelve stacked months');
+    await row.locator('[data-ux-report-cell="13"]').click();
+    assert.equal(await page.locator('#uxDetail').isVisible(),true,'year amount opens sources');
+    await page.locator('#uxDetailBack').click();
+    await page.locator('#uxReportMonth').selectOption(String(month));
+    assert.equal(await page.locator('#reportTable thead th:visible').count(),2);
+    await page.screenshot({path:path.join(root,'test-results',`mobile-report-${kind}-${engine.name()}-${width}.png`),fullPage:true});
+   }
+  }
   await page.locator('#reportTable tbody tr').first().locator('[data-ux-report-cell="'+month+'"]').click();
   assert.deepEqual(errors,[],engine.name()+' '+width+': report drilldown errors');
   assert.equal(await page.locator('#uxDetail').isVisible(),true);assert.match(await page.locator('#uxDetail .ux-detail-summary').innerText(),/60\s?000/);
