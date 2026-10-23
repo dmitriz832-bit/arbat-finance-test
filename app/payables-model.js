@@ -54,5 +54,26 @@
   if(existing)existing.amount=core.rubles(money(existing.amount)+n);else links.push({documentKey,amount:core.rubles(n)});
   return links;
  }
- return {documents,snapshot,allocate,receiptKey,id};
+ function summary(data,warehouse,org='',today){
+  const docs=snapshot(data,warehouse,today).documents.filter(d=>!org||d.org===org),valid=docs.filter(d=>d.status!=='review');
+  return {remaining:valid.reduce((n,d)=>n+d.remaining,0n),overdue:valid.filter(d=>d.overdue).reduce((n,d)=>n+d.remaining,0n),review:docs.filter(d=>d.status==='review').length,open:valid.filter(d=>d.remaining>0n).length};
+ }
+ function editReceipt(warehouse,key,baseline,lines,note,uuid){
+  const original=(warehouse.moves||[]).filter(m=>m.kind==='receipt'&&receiptKey(m)===key);
+  if(!original.length||JSON.stringify(original)!==baseline)throw Error('Документ изменён другим сотрудником или удалён. Откройте его заново.');
+  if(!lines.length)throw Error('В накладной должна остаться хотя бы одна позиция');
+  const seen=new Set(),now=new Date().toISOString(),first=original[0];
+  const result=lines.map((line,i)=>{
+   const previous=original.find(m=>id(m)===line.id);
+   if(line.id&&(!previous||seen.has(line.id)))throw Error('Некорректная строка документа');
+   if(line.id)seen.add(line.id);
+   const qty=Number(String(line.qty).replace(',','.')),price=Number(String(line.price).replace(',','.'));
+   if(!(warehouse.items||[]).some(x=>x.id===line.itemId)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0)throw Error('Проверьте товар, количество и цену каждой строки');
+   return {...(previous||first),id:previous?.id||uuid(),n:previous?.n||Math.max(0,...warehouse.moves.map(m=>Number(m.n)||0))+i+1,documentId:first.documentId||(!first.importId?id(first):undefined),itemId:line.itemId,qty,price,note,documentLine:i+1,documentLines:lines.length,correctedAt:now,correctionHistory:[...(previous?.correctionHistory||[]),{at:now,previous:previous?{itemId:previous.itemId,qty:previous.qty,price:previous.price,note:previous.note}:null}]};
+  });
+  const byId=new Map(result.filter(m=>original.some(o=>id(o)===id(m))).map(m=>[id(m),m])),last=id(original.at(-1)),moves=[];
+  for(const m of warehouse.moves){if(m.kind==='receipt'&&receiptKey(m)===key){if(byId.has(id(m)))moves.push(byId.get(id(m)));if(id(m)===last)moves.push(...result.filter(r=>!byId.has(id(r))))}else moves.push({...m})}
+  return {...warehouse,moves,imports:(warehouse.imports||[]).map(x=>x.id===first.importId?{...x,count:lines.length}:x)};
+ }
+ return {documents,snapshot,allocate,receiptKey,id,summary,editReceipt};
 });
