@@ -24,7 +24,7 @@
  }
  function apply(table,state){
   const {order,hidden}=config(state),visible=order.filter(id=>!hidden.has(id)),byId=new Map(state.columns.map(c=>[c.id,c])),widths=visible.map(id=>Math.max(width(table,byId.get(id)),Number(layouts[state.key]?.widths?.[id])||0));
-  table.style.setProperty('--tp-columns',widths.map(w=>`minmax(${w}px,1fr)`).join(' '));table.style.setProperty('--tp-min-width',widths.reduce((a,b)=>a+b,0)+'px');
+  table.style.setProperty('--tp-columns',widths.map((w,i)=>layouts[state.key]?.widths?.[visible[i]]?`${w}px`:`minmax(${w}px,1fr)`).join(' '));table.style.setProperty('--tp-min-width',widths.reduce((a,b)=>a+b,0)+'px');
   table.classList.add('tp-table');table.setAttribute('role','table');
   for(const row of table.rows){row.setAttribute('role','row');for(const cell of row.cells){
    if(cell.colSpan>1){cell.classList.add('tp-span');continue}

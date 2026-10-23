@@ -5,7 +5,17 @@ const app=path.resolve(__dirname,'../app'),html=fs.readFileSync(path.join(app,'i
 const styles=[...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>|<link\b[^>]*rel="stylesheet"[^>]*href="([^"?]+)[^"]*"[^>]*>/g)].map(m=>m[1]??fs.readFileSync(path.resolve(app,m[2]),'utf8')).join('\n');
 const scripts=['finance-core.js','vat-forms.js','document-ux.js'].map(file=>fs.readFileSync(path.join(app,file),'utf8'));
 const screenshotDir=path.resolve(__dirname,'../test-results');fs.mkdirSync(screenshotDir,{recursive:true});
-const ids=['dealForm','editDealForm','cashForm','realizationForm','expenseForm','costForm','laborForm','calendarForm'];
+const expectedGroups={
+ dealForm:['Основные данные','Условия договора'],
+ editDealForm:['Проект и заказчик','Финансы и состояние'],
+ cashForm:['Документ','Участники и аналитика','Сумма и основание'],
+ realizationForm:['Основание реализации','Сумма документа'],
+ expenseForm:['Документ расхода','Сумма и налоги'],
+ costForm:['Классификация','Сумма и налоги'],
+ laborForm:['Кому и за что','Расчёт начисления'],
+ calendarForm:['Обязательство','Сумма и график']
+};
+const ids=Object.keys(expectedGroups);
 test('grouped document forms fill the sheet in reading order without implicit columns',async()=>{
  for(const engine of [chromium,webkit]){
   const browser=await engine.launch();
@@ -16,17 +26,21 @@ test('grouped document forms fill the sheet in reading order without implicit co
     await page.setContent(`<style>${styles}</style><body class="ab-ready ui-modern ux-app"><div class="ui-sheet"><div class="ui-sheet-body">${markup}</div></div></body>`);
     await page.locator('form').evaluate(form=>{form.classList.add('ui-sheet-content');window.originalControls=[...form.elements];window.controlChanges=0;form.addEventListener('change',()=>window.controlChanges++);});
     for(const script of scripts)await page.addScriptTag({content:script});
+    // The sheet enters with scale(.99); transformed rects cannot be compared to layout scrollWidth.
+    await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
     const layout=await page.locator('form').evaluate(form=>{
      const r=form.getBoundingClientRect(),groups=[...form.querySelectorAll(':scope > fieldset')];
-     return {width:r.width,scroll:form.scrollWidth,columns:getComputedStyle(form).gridTemplateColumns.split(' ').length,groups:groups.map(g=>({title:g.querySelector('legend').textContent,width:g.getBoundingClientRect().width,top:g.getBoundingClientRect().top,bottom:g.getBoundingClientRect().bottom,columns:getComputedStyle(g).gridTemplateColumns.split(' ').length})),sameControls:window.originalControls.every(c=>c.form===form),orphanFields:form.querySelectorAll(':scope > label input,:scope > label select,:scope > label textarea').length};
+     return {width:r.width,client:form.clientWidth,scroll:form.scrollWidth,overflowing:[...form.querySelectorAll('*')].filter(el=>el.getClientRects().length&&el.getBoundingClientRect().right>r.right+2).map(el=>({tag:el.tagName,id:el.id,className:el.className,name:el.name,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right-r.right})),columns:getComputedStyle(form).gridTemplateColumns.split(' ').length,groups:groups.map(g=>({title:g.querySelector('legend').textContent,width:g.getBoundingClientRect().width,top:g.getBoundingClientRect().top,bottom:g.getBoundingClientRect().bottom,columns:getComputedStyle(g).gridTemplateColumns.split(' ').length})),sameControls:window.originalControls.every(c=>c.form===form),orphanFields:form.querySelectorAll(':scope > label input,:scope > label select,:scope > label textarea').length};
     });
+    if(id==='editDealForm'||layout.scroll>layout.client+2)await page.screenshot({path:path.join(screenshotDir,`grouped-${id}-${engine.name()}-${width}.png`),fullPage:true});
+    if(layout.scroll>layout.client+2)console.log('Grouped form overflow diagnostics',JSON.stringify({engine:engine.name(),viewport:width,id,...layout}));
     assert.equal(layout.columns,1,`${engine.name()} ${width} ${id}: outer form has one track`);
-    assert.ok(layout.scroll<=layout.width+2,`${id}: no horizontal overflow`);
+    assert.ok(layout.scroll<=layout.client+2,`${id}: no horizontal overflow (scroll=${layout.scroll}, client=${layout.client}, rect=${layout.width})`);
     assert.equal(layout.sameControls,true,'accounting handlers keep original control nodes');
     assert.equal(layout.orphanFields,0,`${id}: all labelled fields are grouped`);
-    assert.equal(layout.groups.length,2,id+' has two logical groups');
+    assert.deepEqual(layout.groups.map(g=>g.title),expectedGroups[id],id+' has the intended logical group order');
     for(const g of layout.groups){assert.ok(Math.abs(g.width-layout.width)<=2,`${id}: ${g.title} spans the sheet`);assert.equal(g.columns,width<=700?1:2);}
-    assert.ok(layout.groups[1].top>=layout.groups[0].bottom&&layout.groups[1].top-layout.groups[0].bottom<45,`${id}: ordered groups without empty rows`);
+    for(let i=1;i<layout.groups.length;i++)assert.ok(layout.groups[i].top>=layout.groups[i-1].bottom&&layout.groups[i].top-layout.groups[i-1].bottom<45,`${id}: ordered groups without empty rows`);
     if(id==='dealForm'){
      assert.equal(layout.groups[0].title,'Основные данные');
      assert.equal(await page.locator('[name=vatRate]').evaluate(el=>el.closest('fieldset')===document.querySelector('[name=contractTotal]').closest('fieldset')),true);

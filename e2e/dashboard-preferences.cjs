@@ -20,7 +20,8 @@ test('dashboard period dialog and personal wallet order work in the actual appli
   await page.addStyleTag({content:'#layout{transition:none!important}'});
   await page.locator('#uxPeriodTrigger').click();
   assert.equal(await page.locator('.ux-preferences-dialog:has(#ownerPeriodMode)').evaluate(e=>e.open),true);
-  await page.locator('#ownerPeriodMode').selectOption('year',{force:true});
+  await page.locator('#ownerPeriodMode').locator('..').getByRole('combobox').fill('Год');
+  await page.locator('.ux-preferences-dialog [role=option]').filter({hasText:/^Год$/}).click();
   await page.locator('.ux-preferences-dialog:has(#ownerPeriodMode)').getByRole('button',{name:'Готово',exact:true}).click();
   assert.match(await page.locator('#uxPeriodTrigger').innerText(),/Год/);
   assert.equal(await page.locator('#ownerPeriodMode').isVisible(),false);

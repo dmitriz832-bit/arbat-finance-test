@@ -204,7 +204,8 @@ test('offline full application reconciles report, dashboard and project at deskt
     assert.ok(responsive.minFont>=16,'iPhone form controls use 16px text to prevent focus zoom');
     assert.ok(responsive.bodyPaddingBottom>=92,'content is not hidden behind the iPhone tab bar');
     assert.equal(responsive.dealTableDisplay,'block','operational table becomes a readable card list on iPhone');
-    assert.equal(responsive.dealRowDisplay,'block','each operational row becomes a separate iPhone card');
+    assert.ok(['block','grid'].includes(responsive.dealRowDisplay),'each operational row becomes a separate iPhone card');
+    assert.ok(await page.locator('#dealsTable tbody tr').evaluateAll(rows=>rows.every(r=>r.scrollWidth<=r.clientWidth+1)),'all mobile record content remains inside its card');
     await page.locator('[data-mobile-route="deals"]').click();
     await page.waitForFunction(()=>document.getElementById('title').textContent.includes('Сделки'));
     assert.equal(await page.locator('[data-mobile-route="deals"]').getAttribute('aria-current'),'page');

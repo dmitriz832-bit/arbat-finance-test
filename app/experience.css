@@ -186,3 +186,7 @@ body.ux-app.ab-ready.ui-modern .executive-note{margin-top:12px;padding:10px;font
 @container(max-width:460px){body.ux-app.ab-ready.ui-modern .executive-spend{grid-template-columns:minmax(0,1fr)}body.ux-app.ab-ready.ui-modern .executive-donut{justify-self:center}}
 @media(max-width:1100px){body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{grid-auto-rows:auto}body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-row:auto!important}}
 @media(max-width:600px){.ux-preferences-dialog{padding:16px!important}.ux-period-bar{align-items:stretch}.ux-period-bar #uxPeriodTrigger{width:100%}.wallet-order-list>div{grid-template-columns:1fr auto auto}.wallet-order-list span{font-size:13px}}
+
+body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-tax-panel{grid-column:1/-1!important}
+.dashboard-tax-details{margin:12px 0}.dashboard-tax-details summary{cursor:pointer;color:#086da7;font-size:14px;padding:8px 0;font-weight:650}.dashboard-tax-details summary:focus-visible{outline:3px solid #63b9ef;outline-offset:2px}
+body.ux-app.ab-ready.ui-modern .dashboard-tax-company{padding:14px!important}
