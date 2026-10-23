@@ -9,7 +9,7 @@ function fixture(){
 function runtime(db){
  const inputs={orgFilter:{value:'',addEventListener(){}},reportYear:{value:'2026'},reportType:{value:'pnl'}};
  const ctx={db,dirs:['Service'],document:{getElementById:id=>inputs[id]||null},localStorage:{getItem:()=>null},Date:class extends Date{constructor(...args){super(...(args.length?args:['2026-10-17T12:00:00Z']))}static now(){return new Date('2026-10-17T12:00:00Z').getTime()}},console};
- ctx.window={ArbatFinanceCore:core,arbatDealKey:core.dealKey,ArbatExperience:require('../app/experience-model')};vm.createContext(ctx);
+ ctx.window={ArbatFinanceCore:core,ArbatLiquidity:require('../app/liquidity-model'),arbatDealKey:core.dealKey,ArbatExperience:require('../app/experience-model')};vm.createContext(ctx);
  vm.runInContext(`const f=x=>Number(x||0).toFixed(2);`+['monthNumbers','percentText','reportPercentRow','reportRow','reportData','dealMargin','projectCost','settlementShares'].map(declaration).join('\n'),ctx);
  vm.runInContext(fs.readFileSync(path.join(root,'app/dashboard.js'),'utf8'),ctx);
  return ctx;
@@ -19,7 +19,7 @@ test('actual report, dashboard, project card and table adapters execute against 
  const row=result.rows.find(x=>x[0]==='ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ');assert.equal(row[10],'32800.00');assert.equal(row[13],'32800.00');assert.equal(row[9],'0.00');
  const p=vm.runInContext('dealMargin(db.deals[0])',ctx);assert.equal(p.actualProfit,52800);assert.equal(p.wipProfit,52800);assert.equal(p.recognizedCost,7200);assert.equal(p.wipBalance,4800);assert.equal(vm.runInContext('projectCost(window.arbatDealKey(db.deals[0]))',ctx),12000);
  // Freeze the runtime clock to the fixture month.
- const snapshot=ctx.window.arbatDashboardSnapshot();assert.equal(snapshot.projects[0].cost,12000);assert.equal(snapshot.directions[0].result,45000);
+ const snapshot=ctx.window.arbatDashboardSnapshot();assert.equal(snapshot.projects[0].cost,12000);assert.equal(snapshot.directions[0].result,49800);
  assert.equal(snapshot.totals.operating,32800);assert.equal(snapshot.financial.result,core.ownerPeriodSnapshot({...db,wipAccounting:true},core.ownerPeriodBounds('month','2026-10-17')).result);
  vm.runInContext('reportData(); reportData()',ctx);assert.equal(JSON.stringify(db),before);
 });

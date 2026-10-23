@@ -217,7 +217,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal,.whmodal,.cw-dialog) :i
 /* Consolidated table layout: no fixed colgroups, no horizontal wheel traps. */
 html,body{max-width:100%;overflow-x:clip}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.layout,.content,main,.wrap,.card,.panel,.modal,.whmodal,.ui-sheet){min-width:0;max-width:100%}
-body.ab-ready :is(.scroll,.whtable,.ab-scroll){max-width:100%;min-width:0;overflow-x:hidden!important;overscroll-behavior-y:auto!important}
+body.ab-ready :is(.scroll,.whtable,.ab-scroll){max-width:100%;min-width:0;overflow-x:auto!important;overscroll-behavior-y:auto!important}
 body.ab-ready :is(.modal,.whmodal,.ui-sheet) :is(.scroll,.whtable,.ab-scroll){max-height:none!important;overflow-y:visible!important}
 body.ab-ready :is(.scroll,.whtable,.ab-scroll)>table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;border-collapse:collapse}
 body.ab-ready :is(.scroll,.whtable,.ab-scroll)>table>colgroup{display:none!important}
@@ -252,11 +252,11 @@ body.ab-ready :is(.scroll,.whtable,.ab-scroll)>table>tbody>tr>[colspan]:before{d
 body.ab-ready #dealPlanList table :is(th,td),body.ab-ready #dealMaterialsList table :is(th,td),body.ab-ready #personTable table :is(th,td){width:100%!important}
 }
 
-/* Unified no-horizontal-scroll policy, including dynamically generated modals. */
+/* Bound table viewports, including dynamically generated modals. */
 body.ab-ready :is(.scroll,.whtable,.ab-scroll),
 body.ab-ready :is(#dealModal,#warehouseApp,#ab-profile-window,.modal,.whmodal,.cw-dialog,.ui-sheet) :is(.scroll,.whtable,.ab-scroll){
   width:100%!important;max-width:100%!important;min-width:0!important;
-  overflow-x:clip!important;overscroll-behavior-x:auto!important;
+  overflow-x:auto!important;overscroll-behavior-x:contain!important;
   scrollbar-gutter:auto!important;
 }
 body.ab-ready :is(.scroll,.whtable,.ab-scroll) table,

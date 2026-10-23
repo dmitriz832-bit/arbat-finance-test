@@ -4,6 +4,7 @@ on:
     branches: [main, audit/finance-core-20261017]
   pull_request:
     paths:
+      - 'app/**'
       - 'app/finance-core.js'
       - 'app/payables*'
       - 'app/vat-forms.js'
