@@ -107,11 +107,11 @@ body.ux-app.ab-ready.ui-modern .dashboard-tax-company p,body.ux-app.ab-ready.ui-
 body.ux-app.ab-ready.ui-modern .dashboard-tax-company dt,body.ux-app.ab-ready.ui-modern .dashboard-tax-company dd{font-size:14px}
 body.ux-app.ab-ready.ui-modern .ux-detail{background:#fff;border:1px solid #ccdae5;border-radius:14px;padding:24px;margin-bottom:24px}
 .ux-detail h2{font-size:24px;margin:20px 0 8px;color:#203b53}
-.ux-detail-summary{padding:18px;background:#edf5fa;border-radius:10px;margin:16px 0}
-.ux-detail-summary>strong{font-size:28px}.ux-detail-summary p,.ux-explanation{font-size:14px;line-height:1.6;color:#38566d}
+.ux-detail-summary{padding:14px;background:#fff;border:1px solid #e0e7ef;border-radius:10px;margin:12px 0}
+.ux-detail-summary>strong{font-size:20px;line-height:1.35}.ux-detail-summary p,.ux-explanation{font-size:14px;line-height:1.6;color:#38566d}
 .ux-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;border-bottom:1px solid #cfdee9;padding:18px 0;align-items:center}
 .ux-source-row>div{min-width:0}.ux-source-row small{display:block;color:#526e85;font-size:13px;margin:6px 0}.ux-source-row p{margin:0;font-size:13px;overflow-wrap:anywhere;color:#526e85}.ux-source-row>strong{font-size:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.ux-empty{padding:24px;background:#f4f8fb;border-radius:10px;color:#526e85}
+.ux-empty{padding:12px 0;background:transparent;border-radius:0;color:#526e85}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{order:initial!important}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-events-panel{display:none!important}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-project-row .ux-text-link{font-size:14px!important}
