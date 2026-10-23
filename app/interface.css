@@ -316,9 +316,16 @@ body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like{
 }
 body.ab-ready :is(.scroll,.whtable,.ab-scroll,#ab-profile-window) :is(button.ab-person-link,button[data-person],button.ui-text-link,button[data-open-row],button[data-open-document],button[data-open-item]):hover,
 body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like:hover{
- color:#0967bd!important;text-decoration:underline!important;background:transparent!important;
+ color:#0967bd!important;text-decoration:none!important;background:#eaf3fc!important;
 }
 body.ab-ready :is(.scroll,.whtable,.ab-scroll,#ab-profile-window) :is(button.ab-person-link,button[data-person],button.ui-text-link,button[data-open-row],button[data-open-document],button[data-open-item]):focus-visible,
 body.ab-ready :is(.scroll,.whtable,.ab-scroll) td button.link-like:focus-visible{
  outline:2px solid #1677df!important;
 }
+
+/* Warehouse uses the same compact description/actions row as other registers. */
+body.ab-ready.ui-modern:not(.ab-profile-only) #warehouseApp.ui-warehouse-ready>#arbatWarehouseIntro.ui-warehouse-toolbar{display:flex!important;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px;margin:0 0 18px!important;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #arbatWarehouseIntro.ui-warehouse-toolbar>p{flex:1 1 320px;margin:0!important;font-size:13px;line-height:1.5}
+body.ab-ready.ui-modern:not(.ab-profile-only) #arbatWarehouseIntro.ui-warehouse-toolbar>.whbar{display:flex!important;flex-wrap:wrap;align-items:center;gap:8px;margin:0!important;width:auto}
+body.ab-ready.ui-modern:not(.ab-profile-only) #arbatWarehouseIntro.ui-warehouse-toolbar>.whbar>button{width:auto;min-height:44px}
+@media(max-width:650px){body.ab-ready.ui-modern:not(.ab-profile-only) #arbatWarehouseIntro.ui-warehouse-toolbar>.whbar{width:100%}}

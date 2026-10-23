@@ -65,8 +65,24 @@
  function refresh(){
   dashboard();
   const s=state();for(const section of ['cash','expenses','costs','calendar','materials']){const host=$('#'+section+' .ui-toolbar-actions')||$('#'+section+' .card');if(host&&!host.querySelector('[data-pay-registry]')){const b=document.createElement('button');b.type='button';b.dataset.payRegistry='';b.textContent='Обязательства / оплаты';b.onclick=()=>show();host.append(b)}}
-  for(const row of document.querySelectorAll('[data-arbat-kind="expenses"],[data-arbat-kind="costs"]')){const d=s.documents.find(d=>d.key===row.dataset.arbatKind+':'+row.dataset.arbatId);if(!d||row.querySelector('[data-pay-row]'))continue;const action=document.createElement('button');action.type='button';action.dataset.payRow=d.key;action.textContent=statuses[d.status]+' · '+fmt(d.remaining);action.onclick=e=>{e.stopPropagation();show(d.key)};action.onkeydown=e=>e.stopPropagation();(row.lastElementChild||row).append(action)}
-  for(const row of document.querySelectorAll('[data-wh-move]')){const d=s.documents.find(d=>d.collection==='receipt'&&d.sources.some(x=>model.id(x)===row.dataset.whMove));if(!d||row.querySelector('[data-pay-row]'))continue;const b=document.createElement('button');b.type='button';b.dataset.payRow=d.key;b.textContent='Оплата накладной';b.onclick=e=>{e.stopPropagation();show(d.key)};(row.lastElementChild||row).append(b)}
+  const byKey=new Map(s.documents.map(d=>[d.key,d])),byMove=new Map(),byImport=new Map();
+  for(const d of s.documents.filter(d=>d.collection==='receipt'))for(const source of d.sources){byMove.set(model.id(source),d);if(source.importId){const docs=byImport.get(String(source.importId))||new Set();docs.add(d);byImport.set(String(source.importId),docs)}}
+  for(const row of document.querySelectorAll('[data-arbat-kind="expenses"],[data-arbat-kind="costs"],[data-wh-move],[data-import-id]')){
+   const docs=row.dataset.arbatKind?[byKey.get(row.dataset.arbatKind+':'+row.dataset.arbatId)].filter(Boolean):row.dataset.whMove?[byMove.get(row.dataset.whMove)].filter(Boolean):[...(byImport.get(row.dataset.importId)||[])];
+   const keys=new Set(docs.map(d=>d.key));
+   for(const button of row.querySelectorAll('[data-pay-row]'))if(!keys.has(button.dataset.payRow))button.remove();
+   for(const d of docs){
+    let action=[...row.querySelectorAll('[data-pay-row]')].find(b=>b.dataset.payRow===d.key);
+    if(!action){action=document.createElement('button');action.type='button';action.dataset.payRow=d.key;action.onclick=e=>{e.stopPropagation();show(d.key)};action.onkeydown=e=>e.stopPropagation();(row.lastElementChild||row).append(action)}
+    // Update existing rows as well as newly rendered ones after cash/cloud changes.
+    const text=statuses[d.status]+' · Остаток: '+fmt(d.remaining);
+    if(action.textContent!==text)action.textContent=text;
+    if(action.dataset.payStatus!==d.status)action.dataset.payStatus=d.status;
+    action.title='Открыть оплаты документа: '+d.label;
+    action.setAttribute('aria-label',text+' · '+d.label);
+    action.parentElement.classList.add('pay-journal-cell');
+   }
+  }
  }
  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;refresh()})}
  // Only user-created documents prompt for settlement. Cloud refreshes never open a form.

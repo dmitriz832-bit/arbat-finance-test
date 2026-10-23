@@ -7,7 +7,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-body{padding:22px!import
 body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-ready.ui-modern:not(.ab-profile-only) form.document-form{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important}
 .document-section{grid-column:1/-1!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:0;padding:18px;border:1px solid #cbd9e4;border-radius:12px;background:#fff;min-width:0}
 .document-section legend{padding:0 9px;color:#0e5e91;font-size:13px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
-.document-section>label{display:grid!important;align-content:start;gap:7px!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;color:#304b61;font-size:13px;font-weight:700}
+.document-section>label{display:grid;align-content:start;gap:7px!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;color:#304b61;font-size:13px;font-weight:700}
 .document-section>label :is(input,textarea){margin:0!important;background:#fff!important;border:1px solid #aebfce!important;min-height:43px}
 .smart-combobox{position:relative;width:100%;min-width:0;margin:0}.smart-combobox>select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;inset:auto!important}
 .smart-combobox-input{width:100%!important;min-height:43px!important;margin:0!important;padding:9px 38px 9px 11px!important;background:#fff!important;border:1px solid #aebfce!important;border-radius:8px!important;color:#172b3e!important;font:inherit!important;font-weight:500!important;cursor:text;background-image:linear-gradient(45deg,transparent 50%,#547087 50%),linear-gradient(135deg,#547087 50%,transparent 50%)!important;background-position:calc(100% - 17px) 18px,calc(100% - 12px) 18px!important;background-size:5px 5px,5px 5px!important;background-repeat:no-repeat!important}
@@ -24,7 +24,9 @@ body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-read
 @media(max-width:700px){.document-section{grid-template-columns:1fr}.wh-document-line{grid-template-columns:1fr}.wh-document-line button{width:100%}}
 
 /* Portalled options stay outside scroll containers and above nested dialogs. */
-body.ab-ready.ui-modern:not(.ab-profile-only) .smart-combobox>select{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;min-width:0!important;min-height:0!important;max-width:1px!important;margin:0!important;padding:0!important;border:0!important;clip-path:inset(50%)}
+/* Override both logical and physical form-control sizing so the backing native
+   select stays visually hidden in every form container. */
+body.ab-ready.ui-modern:not(.ab-profile-only) .smart-combobox>select[data-searchable-select]{position:absolute!important;left:0!important;top:0!important;width:1px!important;height:1px!important;min-width:0!important;min-height:0!important;max-width:1px!important;inline-size:1px!important;min-inline-size:0!important;max-inline-size:1px!important;block-size:1px!important;min-block-size:0!important;max-block-size:1px!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)}
 .smart-combobox-list[data-open="1"]{display:block;z-index:1000000;box-sizing:border-box;overscroll-behavior:contain}
 .smart-combobox-list .combobox-option{min-height:44px;font-size:16px!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table{width:100%;table-layout:fixed!important}
@@ -58,3 +60,19 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #bankImportPreview table.ui-data-c
 }
 
 @media(min-width:1001px){body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table th:nth-child(1){width:28%}body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table th:nth-child(2){width:18%}body.ab-ready.ui-modern:not(.ab-profile-only) .bank-review-table th:nth-child(3){width:22%}}
+
+/* Grouped forms own their outer layout; fieldsets own the field columns. */
+body.ab-ready.ui-modern:not(.ab-profile-only) form.document-form,
+body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal form.document-form{grid-template-columns:minmax(0,1fr)!important;align-content:start!important;grid-auto-rows:auto!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) form.document-form>*{grid-column:1/-1!important;grid-row:auto!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) form.document-form>.document-section{width:100%!important;box-sizing:border-box;align-content:start;align-items:start}
+body.ab-ready.ui-modern:not(.ab-profile-only) .document-section>label{min-width:0;grid-column:auto!important;grid-row:auto!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) .document-section>:is(.ui-field-wide,.work-wide,.purpose-label,.document-form-summary),
+body.ab-ready.ui-modern:not(.ab-profile-only) .document-section>label:has(textarea){grid-column:1/-1!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) .document-section>.document-form-summary{display:block;padding:10px 12px!important;border-radius:8px;background:#f0f5fc!important;font-size:12px;font-weight:500;color:#53677e}
+
+/* Keep WebKit's native text/placeholder overflow within the editable control.
+   Options are portalled outside this wrapper by open(), so the menu stays visible. */
+.smart-combobox{overflow:hidden;border-radius:8px}
+.smart-combobox:focus-within{outline:2px solid #1677df;outline-offset:2px}
+body.ab-ready.ui-modern:not(.ab-profile-only) #dealCalc[hidden]{display:none!important}

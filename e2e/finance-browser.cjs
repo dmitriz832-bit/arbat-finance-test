@@ -70,6 +70,13 @@ test('offline full application reconciles report, dashboard and project at deskt
    await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],folders:[],places:[],moves:[],plans:[],projectIssues:[],imports:[]}))},fixture());
    const page=await context.newPage();page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(origin+'/app/',{waitUntil:'load'});
    await page.waitForFunction(()=>typeof window.arbatDashboardSnapshot==='function');
+   const spendingChart=await page.locator('#dashboardSpending').evaluate(el=>({gradient:el.querySelector('.executive-donut')?.style.background||'',values:[...el.querySelectorAll('.executive-spend-list>div')].map(row=>({amount:Number(row.querySelector('strong').textContent.replace(/[^0-9,.-]/g,'').replace(',','.')),percentage:Number(row.querySelector('small').textContent.replace(',','.').replace('%',''))}))}));
+   assert.ok(spendingChart.values.length>=2,'fixture exercises multiple expense categories');
+   const totalSpending=spendingChart.values.reduce((sum,row)=>sum+row.amount,0);
+   for(const row of spendingChart.values)assert.ok(Math.abs(row.percentage-row.amount/totalSpending*100)<0.11,'legend percentage reconciles to displayed amounts');
+   const stops=[...spendingChart.gradient.matchAll(/([0-9.]+)%/g)].map(m=>Number(m[1]));
+   assert.equal(stops.length,spendingChart.values.length*2,'chart has one actual sector per displayed category');
+   for(let i=0;i<spendingChart.values.length;i++)assert.ok(Math.abs((stops[i*2+1]-stops[i*2])-spendingChart.values[i].amount/totalSpending*100)<0.01,'sector angle matches actual amount');
    const vatForm=await page.evaluate(()=>{
     const form=document.getElementById('dealForm'),amount=form.elements.contractTotal,rate=form.elements.vatRate;
     amount.value='122000';rate.value='22';rate.dispatchEvent(new Event('change',{bubbles:true}));
@@ -204,7 +211,8 @@ test('offline full application reconciles report, dashboard and project at deskt
     assert.ok(responsive.minFont>=16,'iPhone form controls use 16px text to prevent focus zoom');
     assert.ok(responsive.bodyPaddingBottom>=92,'content is not hidden behind the iPhone tab bar');
     assert.equal(responsive.dealTableDisplay,'block','operational table becomes a readable card list on iPhone');
-    assert.equal(responsive.dealRowDisplay,'block','each operational row becomes a separate iPhone card');
+    assert.ok(['block','grid'].includes(responsive.dealRowDisplay),'each operational row becomes a separate iPhone card');
+    assert.ok(await page.locator('#dealsTable tbody tr').evaluateAll(rows=>rows.every(r=>r.scrollWidth<=r.clientWidth+1)),'all mobile record content remains inside its card');
     await page.locator('[data-mobile-route="deals"]').click();
     await page.waitForFunction(()=>document.getElementById('title').textContent.includes('Сделки'));
     assert.equal(await page.locator('[data-mobile-route="deals"]').getAttribute('aria-current'),'page');

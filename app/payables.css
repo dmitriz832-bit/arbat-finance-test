@@ -8,3 +8,14 @@
 /* Journals grow vertically, but wide desktop tables stay in their own scroll viewport.
    overflow:visible exposed resized columns outside the card and beyond the page. */
 body.ab-ready.ui-modern #warehouseApp :is(#whMovements,#whImportHistory){min-width:0;width:100%;max-width:100%;max-height:none!important;overflow-x:auto!important;overflow-y:auto!important;overscroll-behavior-x:contain}
+
+/* Keep settlement labels on their own line, independent of document note length. */
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) td.pay-journal-cell{white-space:normal!important;overflow-wrap:anywhere}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-row]{display:block;width:100%;max-width:100%!important;height:auto;min-height:40px;margin:8px 0 0;padding:8px 10px;white-space:normal!important;overflow-wrap:anywhere;text-overflow:clip;line-height:1.4;text-align:left}
+button[data-pay-status="paid"]{color:#176744!important;background:#edf8f1!important;border-color:#91c6a6!important}
+button[data-pay-status="partial"]{color:#805700!important;background:#fff7e5!important;border-color:#dbbb76!important}
+button[data-pay-status="unpaid"],button[data-pay-status="review"]{color:#8e3029!important;background:#fff1ef!important;border-color:#dfaaa4!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-row]{grid-column:1/-1}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-status="paid"]{color:#176744!important;background:#edf8f1!important;border-color:#91c6a6!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-status="partial"]{color:#805700!important;background:#fff7e5!important;border-color:#dbbb76!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button:is([data-pay-status="unpaid"],[data-pay-status="review"]){color:#8e3029!important;background:#fff1ef!important;border-color:#dfaaa4!important}

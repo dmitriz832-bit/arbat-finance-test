@@ -10,7 +10,7 @@ test('real application routes retain content bounds when sidebar opens and close
   await context.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin!==origin)return r.abort();if(u.pathname==='/app/auth.js')return r.fulfill({contentType:'text/javascript',body:'document.body.classList.add("ab-ready")'});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return r.fulfill({body:''});return r.continue()});
   await context.addInitScript(()=>{
    const org='АИР-КЛИМАТ',date='2026-10-22',state=Object.fromEntries(['cash','costs','crews','deals','labor','people','wallets','articles','calendar','expenses','workActs','materials','workBatches','costArticles','priceCatalog','priceHistory','priceImports','realizations','counterparties','employeeEvents','crewSettlements','pnlArticles'].map(k=>[k,[]]));
-   Object.assign(state,{dealPlans:{},deals:[{_id:'layout-project',name:'Проект проверки границ интерфейса',org,order1c:'LAYOUT-1',contractTotal:100000,cost:30000,vatRate:0}],wallets:[{id:'layout-wallet',name:'Основной счёт',org,verified:true,openingBalance:10000}]});
+   Object.assign(state,{dealPlans:{},cash:[{_id:'layout-cash',date,org,type:'in',walletId:'layout-wallet',amount:123456789,note:'Проверка полной суммы'}],deals:[{_id:'layout-project',name:'Проект проверки границ интерфейса',org,order1c:'LAYOUT-1',contractTotal:100000,cost:30000,vatRate:0}],wallets:[{id:'layout-wallet',name:'Основной счёт',org,verified:true,openingBalance:10000}]});
    localStorage.setItem('arbat-finance-demo-live',JSON.stringify(state));localStorage.setItem('arbat-sidebar-collapsed','0');localStorage.setItem('arbat-sidebar-auto','0');
    localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[{id:'layout-item',name:'Материал для проверки длинного наименования в журнале движений',unit:'шт'}],places:[{id:'layout-store',name:'Основной склад',org}],moves:[{id:'layout-move',n:1,date,org,kind:'receipt',importId:'layout-import',itemId:'layout-item',to:'layout-store',qty:2,price:30,note:'Приходная накладная'}],imports:[{id:'layout-import',mode:'receipt',count:1,filename:'Приходная накладная.pdf',date,org}],projectIssues:[],plans:[],folders:[]}));
   });
@@ -39,6 +39,19 @@ test('real application routes retain content bounds when sidebar opens and close
    if([390,1440].includes(width)&&['overview','materials:receipt'].includes(route))await page.screenshot({path:path.join(root,'test-results',`audit-${engine.name()}-${width}-${route.replace(':','-')}.png`),fullPage:true});
    if(width>1100){await page.locator('#toggleSide').click();await check(`${engine.name()} ${width} ${route} collapsed`,true);await page.locator('#toggleSide').click();}
    else {await page.locator(width<=650?'[data-mobile-route="menu"]':'#ui-nav-toggle').click();await check(`${engine.name()} ${width} ${route} drawer open`);await page.locator('#toggleSide').click();await check(`${engine.name()} ${width} ${route} drawer closed`);}
+  }
+  await page.evaluate(()=>window.arbatNavigate('cash'));
+  await page.locator('#cashTable table.tp-table').waitFor();
+  const cashCheck=await page.locator('#cashTable table').evaluate(table=>{
+   const index=[...table.tHead.rows[0].cells].findIndex(cell=>cell.dataset.tpLabel==='Сумма');
+   const cell=[...table.tBodies[0].rows].map(row=>row.cells[index]).find(cell=>cell&&/123/.test(cell.textContent));
+   return {index,found:!!cell,fits:!!cell&&cell.scrollWidth<=cell.clientWidth+1,overflow:cell&&getComputedStyle(cell).overflow,settings:!!table.closest('.tp-viewport').previousElementSibling?.querySelector('.tp-settings')};
+  });
+  assert.ok(cashCheck.found&&cashCheck.fits&&cashCheck.settings,`${engine.name()} ${width}: filled cash amount is complete and settings exist ${JSON.stringify(cashCheck)}`);
+  if(width===1440){
+   const button=page.locator('#cashTable').locator('xpath=preceding-sibling::*[1]').getByRole('button',{name:/Настройка таблицы/});await button.click();
+   await page.getByRole('button',{name:'Выше: Сумма',exact:true}).click();await page.getByRole('button',{name:'Готово',exact:true}).click();
+   assert.equal(await page.locator('#cashTable thead th[data-tp-label="Сумма"]').evaluate(cell=>Number(cell.style.order)===cell.cellIndex-1),true,'cash column moves visually without changing DOM edit indices');
   }
   assert.deepEqual(errors,[],`${engine.name()} ${width}: no application errors`);await context.close();
  }}finally{await browser.close()}}}finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
