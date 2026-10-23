@@ -15,6 +15,7 @@ test('real application routes retain content bounds when sidebar opens and close
    localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[{id:'layout-item',name:'Материал для проверки длинного наименования в журнале движений',unit:'шт'}],places:[{id:'layout-store',name:'Основной склад',org}],moves:[{id:'layout-move',n:1,date,org,kind:'receipt',importId:'layout-import',itemId:'layout-item',to:'layout-store',qty:2,price:30,note:'Приходная накладная'}],imports:[{id:'layout-import',mode:'receipt',count:1,filename:'Приходная накладная.pdf',date,org}],projectIssues:[],plans:[],folders:[]}));
   });
   await page.goto(origin+'/app/');
+  await fs.mkdir(path.join(root,'test-results'),{recursive:true});
   // Disable only animation for deterministic geometry; retain all production sizing rules.
   await page.addStyleTag({content:'#layout{transition:none!important}'});
   const routes=await page.locator('#tabs [data-route]').evaluateAll(els=>[...new Set(els.map(el=>el.dataset.route))]);
@@ -35,6 +36,7 @@ test('real application routes retain content bounds when sidebar opens and close
   for(const route of routes){
    await page.evaluate(route=>window.arbatNavigate(route),route);
    await check(`${engine.name()} ${width} ${route} expanded`);
+   if([390,1440].includes(width)&&['overview','materials:receipt'].includes(route))await page.screenshot({path:path.join(root,'test-results',`audit-${engine.name()}-${width}-${route.replace(':','-')}.png`),fullPage:true});
    if(width>1100){await page.locator('#toggleSide').click();await check(`${engine.name()} ${width} ${route} collapsed`,true);await page.locator('#toggleSide').click();}
    else {await page.locator(width<=650?'[data-mobile-route="menu"]':'#ui-nav-toggle').click();await check(`${engine.name()} ${width} ${route} drawer open`);await page.locator('#toggleSide').click();await check(`${engine.name()} ${width} ${route} drawer closed`);}
   }

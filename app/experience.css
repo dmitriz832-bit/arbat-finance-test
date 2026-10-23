@@ -78,6 +78,12 @@ body.ux-app.ab-ready.ui-modern .dashboard-kpi>small{font-size:12px;color:#526e85
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px!important;align-items:start}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-column:auto!important;margin:0!important;min-width:0;overflow:hidden}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-project-panel,body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-tax-panel{grid-column:1/-1!important}
+@media(min-width:1101px){
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-finance-panel{grid-column:1!important;grid-row:span 2}
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-flow-panel,body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-spend-panel{grid-column:2!important}
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-wallet-panel{grid-column:1/-1!important}
+ body.ux-app.ab-ready.ui-modern .dashboard-wallet-balances{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}
+}
 body.ux-app.ab-ready.ui-modern .dashboard-attention-panel{margin-bottom:20px!important}
 body.ux-app.ab-ready.ui-modern .dashboard-attention strong{font-size:14px;white-space:normal}
 body.ux-app.ab-ready.ui-modern .dashboard-attention small{font-size:12px;white-space:normal;color:#526e85}
