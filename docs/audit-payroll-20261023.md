@@ -42,3 +42,6 @@ New regressions: `tests/payroll-comprehensive-ui.cjs` (33 cases) and `tests/payr
 This is executable local source validation, not a completed browser acceptance session or a database RPC execution. Browser layout, keyboard interaction, real authenticated employee visibility, live SQL results, and persisted round trips require the parent integration/browser checks. Existing SQL payroll access/remainder regression tests passed, but this audit did not call the live payroll RPC.
 
 Tax/deduction amounts and leave-entitlement rules were checked for arithmetic consistency against the application's current model. This audit does not establish statutory payroll or employment-law compliance. Work-identity preservation prevents future batch edits from orphaning links; previously orphaned production records require an evidence-based reconciliation of actual stored data.
+
+
+Итог интеграции: 409/409 Node, 20/20 браузерных сценариев и PostgreSQL CI прошли. Подробности и общие ограничения — в [итоговом отчёте](comprehensive-audit-result-20261023.md). Промежуточные числа выше относятся к ходу отдельного направления.
