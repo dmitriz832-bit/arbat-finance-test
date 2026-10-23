@@ -21,7 +21,7 @@
     const weight=ws.reduce((a,b)=>a+b,0n);if(!ws.length||weight===0n)throw new RangeError('Positive weights required');
     const sign=amount<0n?-1n:1n,abs=amount<0n?-amount:amount;
     const shares=ws.map(w=>abs*w/weight);
-    const used=shares.reduce((a,b)=>a+b,0n);shares[shares.length-1]+=abs-used;
+    const used=shares.reduce((a,b)=>a+b,0n);let last=ws.length-1;while(ws[last]===0n)last--;shares[last]+=abs-used;
     return shares.map(x=>x*sign);
   }
   function difference(income,expenses){return sum(income)-sum(expenses)}
@@ -108,7 +108,11 @@
       const amount=documentPnlAmount(item,type!=='income'),allocations=Array.isArray(item.pnlAllocations)?item.pnlAllocations:[],rule=String(item.pnlAllocationRule||article?.allocationRule||'none');
       if(rule==='proportional'&&allocations.length){
         const targets=allocations.map(a=>({projectKey:String(a.projectKey||''),dir:String(a.dir||''),org:String(a.org||item.org||'')}));
-        if(targets.some(a=>!a.projectKey&&!a.dir)||targets.some(a=>a.org!==String(item.org||''))){
+        const crossOrganization=targets.some(target=>{
+          const deal=deals.find(d=>dealKey(d)===target.projectKey);
+          return target.org!==String(item.org||'')||deal&&String(deal.org||'')!==target.org;
+        });
+        if(targets.some(a=>!a.projectKey&&!a.dir)||crossOrganization){
           issues.push({code:'invalid-pnl-allocation-target',source:item});
           push(item,'general-expense',amount,item.projectKey||'',category);
         }else{
@@ -133,11 +137,43 @@
     }
     return {rows,issues};
   }
+  // Apply the date cutoff before resolving work/payroll links. A later act must
+  // never suppress an accrual in an earlier snapshot.
+  function expenseLedgerAt(data,cutoff='',inclusive=true){
+    if(!cutoff)return expenseLedger(data);
+    const scoped={...data},inScope=item=>{
+      const date=String(item.date||item.dt||'').slice(0,cutoff.length);
+      return inclusive?date<=cutoff:date<cutoff;
+    };
+    for(const field of ['expenses','costs','labor','workActs'])scoped[field]=(data[field]||[]).filter(inScope);
+    return expenseLedger(scoped);
+  }
+  function expenseLedgerRange(data,from='',to=''){
+    const end=expenseLedgerAt(data,to);
+    if(!from)return end;
+    const prior=expenseLedgerAt(data,from,false),rows=end.rows.filter(row=>String(row.date||'').slice(0,10)>=from);
+    // A later act can replace an older payroll gross in the cumulative ledger.
+    // Record that calculated reclassification in this range, without editing
+    // either source or expensing the same gross in two separate periods.
+    const sources=new Map((data.labor||[]).map((source,index)=>[source,index])),changes=new Map();
+    const add=(row,sign)=>{
+      const key=JSON.stringify([sources.get(row.source),row.projectKey,row.category,row.org,row.dir]);
+      if(!changes.has(key))changes.set(key,{row,amount:0n});
+      changes.get(key).amount+=sign*row.amount;
+    };
+    for(const row of prior.rows)if(row.kind==='payroll')add(row,-1n);
+    for(const row of end.rows)if(row.kind==='payroll'&&String(row.date||'').slice(0,10)<from)add(row,1n);
+    for(const {row,amount} of changes.values())if(amount!==0n)rows.push({...row,amount,date:from,calculated:true,adjustment:'linked-work-reclassification',label:'Расчётная переклассификация начисления в акт'});
+    return {rows,issues:end.issues};
+  }
+  function monthlyExpenseLedger(data,period=''){
+    return period?expenseLedgerRange(data,period+'-01',period+'-31'):expenseLedger(data);
+  }
   function directionSnapshot(data,name,period='',org=''){
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
     const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
     const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
-    const ledger=expenseLedger(data),assigned=ledger.rows.filter(x=>x.dir===name&&ok(x));
+    const ledger=monthlyExpenseLedger(data,period),assigned=ledger.rows.filter(x=>x.dir===name&&ok(x));
     const accruedCost=assigned.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
     const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
     const deferred=bridge?bridge.projects.filter(x=>x.dir===name).reduce((v,x)=>v+x.deferredChange,0n):0n;
@@ -147,7 +183,7 @@
   }
   function directionReconciliation(data,period='',org=''){
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
-    const deals=data.deals||[],ledger=expenseLedger(data);
+    const deals=data.deals||[],ledger=monthlyExpenseLedger(data,period);
     const names=new Set([...deals.map(x=>x.dir).filter(Boolean),...ledger.rows.map(x=>x.dir).filter(Boolean)]);
     const directions=[...names].sort().map(name=>({name,...directionSnapshot(data,name,period,org)}));
     const total=preliminaryPeriod(data,period,org);
@@ -167,14 +203,14 @@
     const linked=(expenses||[]).filter(x=>x.warehouseMoveId);
     const byMove=new Map();
     for(const e of linked){const key=String(e.warehouseMoveId);byMove.set(key,[...(byMove.get(key)||[]),e])}
-    for(const move of (moves||[]).filter(x=>x.kind==='consume'&&x.projectIssueId)){
+    for(const move of (moves||[]).filter(x=>x.kind==='consume'&&(x.projectIssueId||x.dealId))){
       const rows=byMove.get(String(move.id))||[];
       const valued=fifo?.byMove?.[move.id];
       if(rows.length!==1){issues.push({moveId:move.id,reason:rows.length?'duplicate-expense':'missing-expense'});continue}
       if(!valued||valued.invalid||valued.amount==null){issues.push({moveId:move.id,reason:'unverified-fifo'});continue}
       if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
     }
-    const eligible=new Set((moves||[]).filter(x=>x.kind==='consume'&&x.projectIssueId).map(x=>String(x.id)));
+    const eligible=new Set((moves||[]).filter(x=>x.kind==='consume'&&(x.projectIssueId||x.dealId)).map(x=>String(x.id)));
     for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
     return issues;
   }
@@ -221,25 +257,31 @@
     const usnBase=usnIncome>usnExpenses?usnIncome-usnExpenses:0n;
     const usnAccrued=(usnBase*15n+50n)/100n;
     const usnUnclassified=cash.filter(item=>item.type==='out'&&!item.articleId).length;
+    // General entries may be other income: use the same article metadata as P&L.
+    const incomeCosts=(data.costs||[]).filter(item=>{
+      const article=(data.pnlArticles||[]).find(a=>a.id===item.pnlArticleId)||(data.pnlArticles||[]).find(a=>a.name===item.name);
+      return String(item.pnlType||article?.type||'expense').toLowerCase()==='income';
+    });
+    const expenseCosts=(data.costs||[]).filter(item=>!incomeCosts.includes(item));
     const output=[],input=[],unconfirmed=[];
-    for(const item of data.realizations||[]){
+    for(const [kind,rows] of [['realization',data.realizations||[]],['general-income',incomeCosts]])for(const item of rows){
       if(item.org!=='АРБАТ.ГК'||!inRange(item))continue;
-      if(item.vatRate==null||String(item.vatRate).trim()===''){unconfirmed.push({kind:'realization',source:item});continue}
+      if(item.vatRate==null||String(item.vatRate).trim()===''){unconfirmed.push({kind,source:item});continue}
       output.push(documentVat(item.amountGross??item.amount??0,item.vatRate).vatAmount);
     }
-    for(const [kind,rows] of [['project-expense',data.expenses||[]],['general-expense',data.costs||[]]])for(const item of rows){
+    for(const [kind,rows] of [['project-expense',data.expenses||[]],['general-expense',expenseCosts]])for(const item of rows){
       if(item.org!=='АРБАТ.ГК'||!inRange(item)||item.vatDeductible!==true&&item.vatDeductible!=='true')continue;
       if(item.vatRate==null||String(item.vatRate).trim()===''){unconfirmed.push({kind,source:item});continue}
       input.push(documentVat(item.amountGross??item.amount??0,item.vatRate,true).vatAmount);
     }
     const outputVat=output.reduce((total,value)=>total+value,0n),inputVat=input.reduce((total,value)=>total+value,0n),difference=outputVat-inputVat;
-    const arbatRevenue=(data.realizations||[]).filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxable!==false).reduce((total,item)=>total+documentPnlAmount(item),0n);
+    const arbatRevenue=[...(data.realizations||[]),...incomeCosts].filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxable!==false).reduce((total,item)=>total+documentPnlAmount(item),0n);
     const deductibleDocument=(item,kind)=>{
       if(item.org!=='АРБАТ.ГК'||!inRange(item)||item.profitTaxDeductible===false)return 0n;
       try{return documentPnlAmount(item,true)}catch(_){unconfirmed.push({kind,source:item});return 0n}
     };
     const arbatProjectExpenses=(data.expenses||[]).reduce((total,item)=>total+deductibleDocument(item,'profit-project-expense'),0n);
-    const arbatGeneralExpenses=(data.costs||[]).reduce((total,item)=>total+deductibleDocument(item,'profit-general-expense'),0n);
+    const arbatGeneralExpenses=expenseCosts.reduce((total,item)=>total+deductibleDocument(item,'profit-general-expense'),0n);
     const arbatPayroll=(data.labor||[]).filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxDeductible!==false).reduce((total,item)=>total+cents(item.amount||0)+cents(item.employerContributions||0),0n);
     const profitExpenses=arbatProjectExpenses+arbatGeneralExpenses+arbatPayroll;
     const profitBase=arbatRevenue>profitExpenses?arbatRevenue-profitExpenses:0n;
@@ -247,7 +289,7 @@
     return {bounds,air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,unclassified:usnUnclassified},arbat:{outputVat,inputVat,payable:difference>0n?difference:0n,recoverable:difference<0n?-difference:0n,unconfirmed:unconfirmed.length,profitRevenue:arbatRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25},issues:unconfirmed};
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
-  function wipCheckPending(data,deal,key){return (data.expenses||[]).some(x=>x.projectKey===key&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId&&!data.fifo);}
+  function wipCheckPending(data,deal,key,period=''){const until=x=>!period||String(x.date||x.dt||'').slice(0,period.length===10?10:7)<=period;return (data.expenses||[]).some(x=>x.projectKey===key&&until(x)&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&until(x)&&x.kind==='consume'&&(x.projectIssueId||x.dealId)&&!data.fifo);}
   function projectWipSnapshot(data,deal,projectKey,period=''){
     const contractGross=deal.contractTotal??deal.revenue;
     const issues=[];
@@ -257,20 +299,19 @@
     const until=(item,p)=>!p||String(item.date||item.dt||'').slice(0,p.length===10?10:7)<=p;
     const before=(item,p)=>String(item.date||item.dt||'').slice(0,p.length===10?10:7)<p;
     const realizations=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
-    const ledger=expenseLedger(data);
+    const ledger=expenseLedgerAt(data,period),priorLedger=period?expenseLedgerAt(data,period,false):null;
     const projectRows=ledger.rows.filter(x=>x.projectKey===projectKey&&x.category==='direct');
     const totalOf=(xs)=>xs.reduce((a,x)=>a+x.amount,0n);
     const earned=(p,previous)=>realizations.filter(x=>previous?before(x,p):until(x,p)).reduce((a,x)=>a+documentPnlAmount(x),0n);
-    const accrued=(p,previous)=>totalOf(projectRows.filter(x=>previous?before(x,p):until(x,p)));
     const recognized=(revenue,cost)=>{
       const numerator=revenue<0n?0n:revenue>contractNet?contractNet:revenue;
       const sign=cost<0n?-1n:1n,absolute=cost<0n?-cost:cost;
       return sign*((absolute*numerator+contractNet/2n)/contractNet);
     };
     const revenue=earned(period,false),priorRevenue=period?earned(period,true):0n;
-    const accruedCost=accrued(period,false),priorCost=period?accrued(period,true):0n;
+    const accruedCost=totalOf(projectRows),priorCost=priorLedger?totalOf(priorLedger.rows.filter(x=>x.projectKey===projectKey&&x.category==='direct')):0n;
     if(revenue>contractNet)issues.push('realization-exceeds-contract');
-    if(revenue>=contractNet&&wipCheckPending(data,deal,projectKey))issues.push('project-closeout-unverified');
+    if(revenue>=contractNet&&wipCheckPending(data,deal,projectKey,period))issues.push('project-closeout-unverified');
     if(revenue<0n)issues.push('negative-cumulative-realization');
     const recognizedCost=recognized(revenue,accruedCost);
     const previouslyRecognizedCost=period?recognized(priorRevenue,priorCost):0n;
@@ -280,17 +321,17 @@
     const nonDirectCost=totalOf(nonDirectRows.filter(x=>x.category!=='belowIncome'));
     const otherIncome=totalOf(nonDirectRows.filter(x=>x.category==='belowIncome'));
     const directContribution=revenue-recognizedCost;
-    for(const issue of ledger.issues)if(issue.source?.projectKey===projectKey||(issue.source?.shares||[]).some(share=>share.projectKey===projectKey))issues.push(issue.code);
-    const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
+    for(const issue of ledger.issues)if(until(issue.source||{},period)&&(issue.source?.projectKey===projectKey||(issue.source?.shares||[]).some(share=>share.projectKey===projectKey)))issues.push(issue.code);
+    const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey&&until(x,period));
     if(expenses.some(x=>x.valuationStatus==='requires-review'))issues.push('expense-valuation');
     const warehouseMoves=data.warehouse?.moves||[];
-    const consumed=warehouseMoves.filter(x=>x.dealId===deal._id&&x.kind==='consume'&&x.projectIssueId);
+    const consumed=warehouseMoves.filter(x=>x.dealId===deal._id&&x.kind==='consume'&&(x.projectIssueId||x.dealId)&&until(x,period));
     if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');
     if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch');
     if(data.warehouse&&expenses.some(e=>e.warehouseMoveId&&!warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');
     if(expenses.some(e=>e.warehouseMoveId&&warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');
     if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');
-    const labor=projectPayroll(data.labor||[],projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey));
+    const labor=projectPayroll((data.labor||[]).filter(x=>until(x,period)),projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey&&until(x,period)));
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
     return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,fullyRealized:revenue===contractNet,closedCostReconciled:revenue===contractNet&&wip===0n&&recognizedCost===accruedCost,directContribution,nonDirectCost,otherIncome,operatingProfit:directContribution-nonDirectCost+otherIncome};
@@ -310,7 +351,7 @@
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
-    if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&m.projectIssueId);const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(expenses.some(e=>e.warehouseMoveId&&moves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
+    if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&(m.projectIssueId||m.dealId));const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(expenses.some(e=>e.warehouseMoveId&&moves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
     return {revenue,cost,otherIncome,result:revenue+otherIncome-cost,issues:[...new Set(issues)],payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
@@ -324,7 +365,7 @@
     const projects=[],issues=[];
     let deferredChange=0n,recognizedCost=0n,accruedCost=0n;
     if(!period)return {projects,issues:[{code:'wip-period-required'}],deferredChange,recognizedCost,accruedCost};
-    const ledgerRows=expenseLedger(data).rows;
+    const ledgerRows=expenseLedgerAt(data,period).rows;
     for(const deal of data.deals||[]){
       if(org&&deal.org!==org)continue;
       const projectKey=dealKey(deal);
@@ -348,10 +389,11 @@
   function wipDateRangeBridge(data,from,to,org=''){
     const projects=[],issues=[];let deferredChange=0n,recognizedCost=0n,accruedCost=0n;
     const priorDate=from?new Date(Date.parse(from+'T00:00:00Z')-86400000).toISOString().slice(0,10):'';
+    const ledgerRows=expenseLedgerAt(data,to).rows;
     for(const deal of data.deals||[]){
       if(org&&deal.org!==org)continue;
       const projectKey=dealKey(deal);
-      const relevant=[...(data.realizations||[]),...expenseLedger(data).rows].some(x=>x.projectKey===projectKey&&(!to||String(x.date||x.dt||'').slice(0,10)<=to));
+      const relevant=[...(data.realizations||[]),...ledgerRows].some(x=>x.projectKey===projectKey&&(!to||String(x.date||x.dt||'').slice(0,10)<=to));
       if(!relevant)continue;
       const end=projectWipSnapshot(data,deal,projectKey,to);
       const start=priorDate?projectWipSnapshot(data,deal,projectKey,priorDate):null;
@@ -367,12 +409,12 @@
   }
   function preliminaryPeriod(data,period,org=''){
     const ok=x=>(!org||x.org===org)&&(!period||String(x.date||x.dt||'').slice(0,7)===period);
-    const ledger=expenseLedger(data),rows=ledger.rows.filter(ok);
+    const ledger=monthlyExpenseLedger(data,period),rows=ledger.rows.filter(ok);
     const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
     const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
     const result=pnl({revenue:[rubles(revenue)],direct:[...rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),...(bridge?[rubles(-bridge.deferredChange)]:[])],administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
-    return {...result,issues:[...ledger.issues.filter(x=>ok(x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
+    return {...result,issues:[...ledger.issues.filter(x=>ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
       productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
       assignedExpenses:total(x=>x.kind==='general-expense'&&x.category==='direct'),
@@ -398,7 +440,7 @@
     const from=bounds.from||'',to=bounds.to||'';
     const inRange=x=>{const d=String(x.date||x.dt||'').slice(0,10);return (!from||d>=from)&&(!to||d<=to)};
     const ok=x=>(!org||x.org===org)&&inRange(x);
-    const ledger=expenseLedger(data);
+    const ledger=expenseLedgerRange(data,from,to);
     const rows=ledger.rows.filter(ok);
     const revenue=(data.realizations||[]).filter(ok).reduce((v,x)=>v+documentPnlAmount(x),0n);
     const categories={direct:0n,production:0n,administrative:0n,commercial:0n,belowIncome:0n,belowExpenses:0n};
@@ -425,7 +467,7 @@
     const cash=(data.cash||[]).filter(ok);
     const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
-    return {bounds,revenue,grossProfit,ebitda,result,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&ok(x.source)),...wipIssues],rows};
+    return {bounds,revenue,grossProfit,ebitda,result,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&(ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source))),...wipIssues],rows};
   }
   function ownerDebtSnapshot(data,org=''){
     const projects=new Map(),issues=[];
@@ -640,7 +682,8 @@
       }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
     }
     for(const payment of payments.filter(x=>x.type==='out'&&(x.personId||Array.isArray(x.payrollAllocations)||settledByCash.has(String(x._id||x.id||'')))&&x.payrollPayment!==false)){
-      const amount=cents(payment.amount||0);
+      let amount;
+      try{amount=cents(payment.amount||0)}catch(_){issues.push({code:'payroll-invalid-payment',source:payment});continue}
       if(amount<0n){issues.push({code:'payroll-invalid-payment',source:payment});continue}
       const allocations=Array.isArray(payment.payrollAllocations)?payment.payrollAllocations:(settledByCash.get(String(payment._id||payment.id||''))||null);
       // Project-based cash allocations have a different meaning and must never settle salary.
@@ -682,10 +725,11 @@
     const seen=new Map();
     const payrollState=payrollReconciliation({accruals:labor,payments:cash,settlements:crewSettlements,workActs});
     for(const issue of payrollState.issues){
-      if(['payroll-unallocated-payment','payroll-overallocated-payment','payroll-invalid-allocation'].includes(issue.code))add(issue.code,issue.source,issue.amount==null?'':rubles(issue.amount));
+      if(['payroll-unallocated-payment','payroll-overallocated-payment','payroll-invalid-allocation','payroll-invalid-payment'].includes(issue.code))add(issue.code,issue.source,issue.amount==null?'':rubles(issue.amount));
     }
     for(const item of cash){
-      const id=String(item._id||item.id||''),amount=cents(item.amount||0);
+      const id=String(item._id||item.id||'');let amount;
+      try{amount=cents(item.amount||0)}catch(_){if(!issues.some(x=>x.source===item&&x.code==='payroll-invalid-payment'))add('invalid-payment-amount',item);continue}
       if(item.type==='in'&&!item.projectKey&&!(item.customerId||item.personId))add('incoming-without-project-or-counterparty',item,rubles(amount));
       else if(item.type==='in'&&!item.projectKey)add('incoming-without-project',item,rubles(amount));
       if(item.type==='out'&&!item.personId&&item.type!=='transfer'&&(!item.projectKey||!item.articleId))add('supplier-payment-missing-project-or-article',item,rubles(amount));
@@ -693,8 +737,10 @@
       if(item.personId&&people.length&&!personSet.has(String(item.personId)))add('invalid-person-reference',item,String(item.personId));
       if(item.articleId&&articles.length&&item.articleId!=='internal-transfer'&&!articleSet.has(String(item.articleId)))add('invalid-article-reference',item,String(item.articleId));
       if(item.type==='out'&&Array.isArray(item.payrollAllocations)){
-        const allocationTotal=item.payrollAllocations.reduce((total,p)=>total+cents(p.amount||0),0n);
-        if(allocationTotal!==amount)add('payment-allocation-difference',item,rubles(amount-allocationTotal));
+        try{
+          const allocationTotal=item.payrollAllocations.reduce((total,p)=>total+cents(p.amount||0),0n);
+          if(allocationTotal!==amount)add('payment-allocation-difference',item,rubles(amount-allocationTotal));
+        }catch(_){if(!issues.some(x=>x.source===item&&x.code==='payroll-invalid-allocation'))add('payroll-invalid-allocation',item)}
       }
       // Treat matches as candidates only: never mutate or delete historical movements.
       if(item.type==='in'||item.type==='out'){
@@ -753,7 +799,7 @@
         const a=day(event.startDate),b=day(event.endDate);
         if(b<a){issues.push('invalid-leave-range');continue}
         if(a<first){issues.push('leave-before-hire');continue}
-        if(person.terminationDate&&a>day(person.terminationDate)){issues.push('leave-after-termination');continue}
+        if(person.terminationDate&&b>day(person.terminationDate)){issues.push('leave-after-termination');continue}
         const overlap=intervals.some(x=>a<=x.end&&b>=x.start);
         if(overlap&&!event.overlapConfirmed){issues.push('overlapping-leave');continue}
         intervals.push({start:a,end:b});

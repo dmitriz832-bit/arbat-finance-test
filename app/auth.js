@@ -3,7 +3,7 @@
   const K='sb_publishable_GJgjkhRNhlWRbjUJGAo8AA_JM6-D90C';
   const S='arbat-session-v1';
   const LAST_EMAIL='arbat-last-email-v1';
-  let session;
+  let session,refreshRequest=null;
   try{session=JSON.parse(localStorage.getItem(S))}catch{}
 
   const logoutButton=document.createElement('button');
@@ -107,7 +107,15 @@
   function save(s){session=s;localStorage.setItem(S,JSON.stringify(s))}
   window.abGetToken=async()=>{
     if(!session?.access_token)throw Error('Требуется вход');
-    if(session.expires_at&&Date.now()/1000>session.expires_at-60)save(await call('/auth/v1/token?grant_type=refresh_token',{refresh_token:session.refresh_token},false));
+    if(session.expires_at&&Date.now()/1000>session.expires_at-60){
+      if(!refreshRequest){
+        const refreshing=session;
+        refreshRequest=call('/auth/v1/token?grant_type=refresh_token',{refresh_token:refreshing.refresh_token},false)
+          .then(next=>{if(session!==refreshing)throw Error('Сессия завершена. Войдите снова.');save(next)})
+          .finally(()=>{refreshRequest=null});
+      }
+      await refreshRequest;
+    }
     return session.access_token;
   };
   async function enter(){

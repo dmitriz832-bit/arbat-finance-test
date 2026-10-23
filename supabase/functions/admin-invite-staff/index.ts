@@ -21,6 +21,11 @@ Deno.serve(async(req:Request)=>{
     const admin=createClient(url,service,{auth:{autoRefreshToken:false,persistSession:false}});
     const {data:{user},error:userError}=await admin.auth.getUser(token);
     if(userError||!user)return reply(401,{message:"Сессия недействительна"});
+    // Auth user lookup alone does not reject a signed JWT from a revoked session.
+    // Run the session RPC under the caller JWT before any service-role data access.
+    const caller=createClient(url,service,{global:{headers:{Authorization:"Bearer "+token}},auth:{autoRefreshToken:false,persistSession:false}});
+    const {data:activeSession,error:sessionError}=await caller.rpc("has_active_finance_session");
+    if(sessionError||activeSession!==true)return reply(401,{message:"Сессия завершена. Войдите снова."});
     const {data:actor}=await admin.from("staff_access").select("role,enabled,email").eq("user_id",user.id).maybeSingle();
     if(!actor?.enabled||actor.role!=="admin")return reply(403,{message:"Только администратор может выдавать доступ"});
     const payload=await req.json();

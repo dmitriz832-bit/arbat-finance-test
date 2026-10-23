@@ -1,6 +1,7 @@
 /* Supplier settlements are links to existing cash, never new cash or P&L entries. */
 ((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatPayables=api})(typeof window==='object'?window:globalThis,core=>{
  'use strict';
+ const validDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
  const id=x=>String(x._id||x.id||''),money=x=>core.cents(x),amount=x=>{try{return money(x)}catch{return null}};
  const receiptKey=x=>'receipt:'+JSON.stringify([x.org||'',x.documentId||x.importId||id(x)]);
  function lineCents(qty,price){
@@ -41,7 +42,7 @@
     if(doc){doc.links.push({paymentId:id(payment),amount:n||0n,valid:!reason,source:payment});if(!reason)doc.paid+=n;seen.add(doc.key)}
    }
   }
-  for(const doc of rows){if(doc.total!==null&&doc.paid>doc.total)issue('Привязано больше суммы документа — уточните распределение',doc);doc.remaining=doc.total===null?null:doc.total>doc.paid?doc.total-doc.paid:0n;doc.status=doc.issues.length?'review':doc.remaining===0n?'paid':doc.paid>0n?'partial':'unpaid';doc.overdue=doc.remaining>0n&&!!doc.dueDate&&doc.dueDate<today}
+  for(const doc of rows){if(doc.total!==null&&doc.paid>doc.total)issue('Привязано больше суммы документа — уточните распределение',doc);doc.remaining=doc.total===null?null:doc.total>doc.paid?doc.total-doc.paid:0n;doc.status=doc.issues.length?'review':doc.remaining===0n?'paid':doc.paid>0n?'partial':'unpaid';doc.overdue=doc.remaining>0n&&validDate(doc.dueDate)&&doc.dueDate<today}
   return {documents:rows,payments,issues};
  }
  function allocate(data,warehouse,documentKey,paymentId,value){

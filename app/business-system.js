@@ -107,9 +107,9 @@
   window.arbatPriceForDate=function(label,date=workDate()){
     ensureBusinessData();const current=(db.priceCatalog||[]).find(price=>labelOf(price)===label);if(!current)return null;
     const versions=[...(db.priceHistory||[]).filter(price=>price.priceCode===(current.priceCode||current.id)),current].filter(price=>(!price.effectiveFrom||date>=price.effectiveFrom)&&(!price.effectiveTo||date<=price.effectiveTo)).sort((a,b)=>String(b.effectiveFrom||'').localeCompare(String(a.effectiveFrom||'')));
-    return versions[0]||current;
+    return versions[0]||null;
   };
-  if(typeof window.workPriceByLabel==='function')window.workPriceByLabel=label=>window.arbatPriceForDate(label);
+  if(typeof window.workPriceByLabel==='function')window.workPriceByLabel=(label,date)=>window.arbatPriceForDate(label,date);
 
   function previousDay(date){const value=new Date(date+'T12:00:00Z');value.setUTCDate(value.getUTCDate()-1);return value.toISOString().slice(0,10)}
   function versionPrice(price,newRate,effectiveFrom,changes={}){

@@ -1,0 +1,35 @@
+name: Atomic shared-state PostgreSQL validation
+on:
+  push:
+    branches: [main, audit/finance-core-20261017]
+  pull_request:
+    paths:
+      - 'app/sync.js'
+      - 'supabase/migrations/*atomic_shared_state_batch.sql'
+      - 'tests/atomic-shared-state-batch.sql'
+      - '.github/workflows/atomic-shared-state-tests.yml'
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container: postgres:16
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: atomic_batch_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-only
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify real PostgreSQL transaction rollback and RPC permissions
+        env:
+          PGPASSWORD: isolated-ci-only
+        run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/atomic-shared-state-batch.sql

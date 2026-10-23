@@ -4,7 +4,8 @@
   const K=['arbat-finance-demo-live','arbat-warehouse-v1'];
   const T=['finance_state','warehouse_state'];
   const B='arbat-cloud-revision-v1';
-  let rev={},active=false,busy=false,halt=false,pending={},conflictRetries=0,lastCloudCheck=0;
+  const RECOVERY='arbat-unsynced-recovery-v1:';
+  let rev={},active=false,busy=false,halt=false,pending={},conflictRetries=0,lastCloudCheck=0,writeVersion=0;
   const previous=[null,null];
   const financialDocuments=['deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
   function attributeDocuments(payload,prior){
@@ -52,29 +53,84 @@
     }));
   }
 
+  const recoveryOwner=()=>{
+    const actor=window.abIdentity;
+    if(!actor||actor.role==='employee')return '';
+    return String(actor.user_id||actor.id||actor.email||'').trim().toLowerCase();
+  };
+  const recoveryKey=owner=>RECOVERY+encodeURIComponent(owner);
+  function recoveryFor(owner){
+    if(!owner)return null;
+    const raw=localStorage.getItem(recoveryKey(owner));
+    if(raw===null)return null;
+    try{const snapshot=JSON.parse(raw);return snapshot.owner===owner?snapshot:{owner,rawSnapshot:raw}}
+    catch{return {owner,rawSnapshot:raw}}
+  }
+  function preserveRecovery(error){
+    const owner=recoveryOwner();if(!owner)return null;
+    const existing=recoveryFor(owner);if(existing)return existing;
+    const actor=window.abIdentity;
+    const snapshot={format:'arbat-unsynced-recovery-v1',owner,identity:{user_id:actor.user_id||actor.id||'',email:actor.email||'',full_name:actor.full_name||''},createdAt:new Date().toISOString(),reason:error.message,revisions:{...rev},stores:{finance:load(K[0]),warehouse:load(K[1])},rawStorage:Object.fromEntries(K.map(key=>[key,localStorage.getItem(key)]))};
+    try{put(recoveryKey(owner),snapshot)}catch(error){snapshot.storageError=error.message}
+    return snapshot;
+  }
+  function showRecovery(snapshot){
+    if(!snapshot||snapshot.owner!==recoveryOwner())return;
+    const owner=snapshot.owner,key=recoveryKey(owner),auth=document.getElementById('ab-auth'),logout=document.getElementById('ab-logout');let discarded=false;
+    document.getElementById('ab-sync-recovery')?.remove();
+    auth?.classList.remove('ab-checking');
+    const form=document.getElementById('ab-form');if(form)form.hidden=true;
+    const box=document.createElement('div');box.id='ab-sync-recovery';
+    const note=document.createElement('p');note.textContent='Сохранена отдельная копия несинхронизированных данных. Скачайте её для сверки с администратором. Автоматическое сохранение остановлено.';
+    const download=document.createElement('button');download.id='ab-recovery-download';download.type='button';download.textContent='Скачать несохранённую копию';
+    download.onclick=()=>{
+      if(discarded||recoveryOwner()!==owner)return;
+      const current=recoveryFor(owner)||(snapshot.storageError?snapshot:null);if(!current)return;
+      const url=URL.createObjectURL(new Blob([JSON.stringify(current,null,2)],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download='arbat-unsynced-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+    };
+    const discard=document.createElement('button');discard.id='ab-recovery-discard';discard.type='button';discard.textContent='Отказаться от локальных изменений';discard.style.cssText='margin-top:10px';
+    discard.onclick=async()=>{
+      if(discarded||recoveryOwner()!==owner||(!recoveryFor(owner)&&!snapshot.storageError))return;
+      if(!confirm('Отказаться от несохранённых локальных изменений и загрузить серверную версию? Сначала скачайте копию, если она нужна для сверки.'))return;
+      discard.disabled=true;
+      try{
+        const fresh=await fetchAll();
+        if(recoveryOwner()!==owner)return;
+        applyRemote(fresh);localStorage.removeItem(key);discarded=true;pending={};box.remove();location.reload();
+      }catch(error){window.abMessage('Копия сохранена. Не удалось загрузить серверную версию: '+error.message);discard.disabled=false}
+    };
+    box.append(note,download,discard);
+    if(logout){logout.hidden=false;logout.style.position='static';logout.style.marginTop='10px';box.append(logout)}
+    (auth?.querySelector('.card')||document.body).append(box);
+  }
+
   function fail(error){
     active=false;
     halt=true;
     document.body.classList.remove('ab-ready');
-    window.abMessage('Синхронизация приостановлена: '+error.message+'. Ваши последние изменения сохранены локально. Не продолжайте работу до проверки конфликта.');
+    try{const snapshot=preserveRecovery(error);showRecovery(snapshot);window.abMessage('Синхронизация приостановлена: '+error.message+'. '+(snapshot?.storageError?'Отдельная копия не записана: '+snapshot.storageError+'. Скачайте её сейчас; не закрывайте и не обновляйте страницу.':'Скачайте несохранённую копию для проверки конфликта.'))}
+    catch(storageError){window.abMessage('Синхронизация приостановлена: '+error.message+'. Не удалось сохранить отдельную копию: '+storageError.message+'. Не закрывайте и не обновляйте страницу.')}
   }
 
-  function applyRemote(rows){
-    for(let i=0;i<K.length;i++){previous[i]=rows[i].payload;baseSet.call(localStorage,K[i],JSON.stringify(rows[i].payload))}
+  function applyRemote(rows,visible=rows.map(row=>row.payload)){
+    for(let i=0;i<K.length;i++){previous[i]=rows[i].payload;baseSet.call(localStorage,K[i],JSON.stringify(visible[i]))}
     rev=Object.fromEntries(T.map((table,i)=>[table,rows[i].revision]));
     put(B,rev);
-    window.dispatchEvent(new CustomEvent('arbat:cloud-update',{detail:{finance:rows[0].payload,warehouse:rows[1].payload,revisions:{...rev}}}));
+    window.dispatchEvent(new CustomEvent('arbat:cloud-update',{detail:{finance:visible[0],warehouse:visible[1],revisions:{...rev}}}));
     lastCloudCheck=Date.now();
   }
 
   function mergeShared(base,remote,local){
     if(!base||!remote||!local||typeof base!=='object'||typeof remote!=='object'||typeof local!=='object')return local;
     const merged={...remote};
+    const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    const conflict=key=>{throw Error('Конфликт документа: '+key+' одновременно изменён другим сотрудником. Сверьте обе версии перед повторным сохранением')};
     for(const key of new Set([...Object.keys(base),...Object.keys(local)])){
       const before=base[key],mine=local[key],theirs=remote[key];
       if(Array.isArray(mine)&&Array.isArray(theirs)){
         const identity=row=>String(row?._id||row?.id||'');
-        if(!mine.every(row=>identity(row))||!theirs.every(row=>identity(row))){if(JSON.stringify(mine)!==JSON.stringify(before))merged[key]=mine;continue}
+        if(!mine.every(row=>identity(row))||!theirs.every(row=>identity(row))){if(!same(mine,before)){if(!same(theirs,before)&&!same(mine,theirs))conflict(key);merged[key]=mine}continue}
         const result=new Map(theirs.map(row=>[identity(row),row])),baseMap=new Map((Array.isArray(before)?before:[]).map(row=>[identity(row),row]));
         if(key==='cash'){
           const mineMap=new Map(mine.map(row=>[identity(row),row]));
@@ -83,43 +139,47 @@
             if([old,localRow,remoteRow].some(row=>row?.supplierAllocations?.length)&&!same(localRow,old)&&!same(remoteRow,old)&&!same(localRow,remoteRow))throw Error('Конфликт привязки оплаты: платёж '+id+' одновременно изменён другим сотрудником. Сверьте связи перед повторным сохранением');
           }
         }
+        const mineRows=new Map(mine.map(row=>[identity(row),row]));
+        for(const id of new Set([...baseMap.keys(),...result.keys(),...mineRows.keys()])){
+          const old=baseMap.get(id),mineRow=mineRows.get(id),theirRow=result.get(id);
+          if(!same(mineRow,old)&&!same(theirRow,old)&&!same(mineRow,theirRow))conflict(key+' / '+id);
+        }
         for(const [id,row] of new Map(mine.map(row=>[identity(row),row]))){const old=baseMap.get(id);if(!old||JSON.stringify(row)!==JSON.stringify(old))result.set(id,row)}
         for(const [id,row] of baseMap)if(!mine.some(candidate=>identity(candidate)===id)&&JSON.stringify(result.get(id))===JSON.stringify(row))result.delete(id);
         merged[key]=[...result.values()];
-      }else if(JSON.stringify(mine)!==JSON.stringify(before))merged[key]=mine;
+      }else if(!same(mine,before)){if(!same(theirs,before)&&!same(mine,theirs))conflict(key);merged[key]=mine;}
     }
     return merged;
   }
 
   async function flush(){
-    if(!active||busy||halt)return;
+    if(!active||busy||halt||!Object.keys(pending).length)return;
     busy=true;
-    let failed=null;
+    const batch={...pending};pending={};
     try{
-      for(let i=0;i<K.length;i++){
-        const key=K[i];
-        if(!(key in pending))continue;
-        const value=pending[key];
-        delete pending[key];
-        failed={i,key,value};
-        const next=await api('rpc/update_shared_state',{
-          p_store:i===0?'finance':'warehouse',
-          p_payload:JSON.parse(value),
-          p_expected_revision:rev[T[i]]
-        });
-        previous[i]=JSON.parse(value);
-        rev[T[i]]=next;
-        put(B,rev);
-        failed=null;conflictRetries=0;
-      }
+      const changes=[];
+      for(let i=0;i<K.length;i++)if(K[i] in batch)changes.push({store:i===0?'finance':'warehouse',payload:JSON.parse(batch[K[i]]),expected_revision:rev[T[i]]});
+      const next=await api('rpc/update_shared_state_batch',{p_changes:changes});
+      for(const change of changes)if(!Number.isSafeInteger(next?.[change.store])||next[change.store]<=change.expected_revision)throw Error('Некорректный ответ сервера при сохранении общей версии');
+      for(let i=0;i<K.length;i++)if(K[i] in batch){previous[i]=JSON.parse(batch[K[i]]);rev[T[i]]=next[i===0?'finance':'warehouse']}
+      put(B,rev);conflictRetries=0;
     }catch(error){
-      if(failed&&conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
-        try{const fresh=await fetchAll(),local=JSON.parse(failed.value),merged=mergeShared(previous[failed.i],fresh[failed.i].payload,local);applyRemote(fresh);pending[failed.key]=JSON.stringify(merged);conflictRetries++;window.abMessage('Изменения коллеги объединены с вашими. Сохраняем общую версию…');}
+      if(conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
+        try{
+          const fresh=await fetchAll(),visible=fresh.map(row=>row.payload),recovered={...batch,...pending};
+          // Read pending after the fetch: the user may have saved again while it ran.
+          for(let i=0;i<K.length;i++)if(K[i] in recovered){
+            visible[i]=mergeShared(previous[i],fresh[i].payload,JSON.parse(recovered[K[i]]));
+            recovered[K[i]]=JSON.stringify(visible[i]);
+          }
+          pending=recovered;conflictRetries++;applyRemote(fresh,visible);
+          window.abMessage('Изменения коллеги объединены с вашими. Сохраняем общую версию…');
+        }
         catch(recoveryError){fail(recoveryError)}
       }else fail(error)
     }finally{
       busy=false;
-      if(active&&Object.keys(pending).length)flush();
+      if(active&&Object.keys(pending).length)queueMicrotask(flush);
     }
   }
 
@@ -128,11 +188,13 @@
       try{value=JSON.stringify(attributeDocuments(JSON.parse(value),previous[0]))}catch(error){console.error('Author metadata failed',error)}
     }
     const result=baseSet.call(this,key,value);
-    if(this===localStorage&&K.includes(key)&&active&&!halt){pending[key]=value;flush()}
+    if(this===localStorage&&K.includes(key)&&active&&!halt){writeVersion++;pending[key]=value;queueMicrotask(flush)}
     return result;
   };
 
   window.arbatCloudBoot=async()=>{
+    const recovery=recoveryFor(recoveryOwner());
+    if(recovery){active=false;halt=true;document.body.classList.remove('ab-ready');showRecovery(recovery);window.abMessage('Есть несохранённые изменения предыдущей сессии. Скачайте копию и сверьте данные перед продолжением.');return false}
     const rows=await fetchAll();
     const saved=load(B);
     if(!saved||T.some((table,i)=>Number(saved[table])!==Number(rows[i].revision))){
@@ -161,7 +223,8 @@
     const refresh=async()=>{
       if(!active||busy||Object.keys(pending).length)return;
       try{
-        const fresh=await fetchAll();
+        const version=writeVersion,fresh=await fetchAll();
+        if(busy||Object.keys(pending).length||version!==writeVersion)return;
         if(T.some((table,i)=>Number(fresh[i].revision)!==Number(rev[table])))applyRemote(fresh);else lastCloudCheck=Date.now();
       }catch(error){fail(error)}
     };
