@@ -56,7 +56,7 @@
   }catch(err){error(err)}};
  }
  function dashboard(){
-  const host=$('#overview');if(!host)return;let panel=$('#supplierObligations');if(!panel){panel=document.createElement('article');panel.id='supplierObligations';panel.className='card';host.prepend(panel)}
+  const host=$('#dashboardVisuals');if(!host)return;let panel=$('#supplierObligations');if(!panel){panel=document.createElement('article');panel.id='supplierObligations';panel.className='card';host.prepend(panel)}
   const org=$('#orgFilter')?.value||'',s=model.summary(db,wh(),org),html='<h2>Обязательства перед поставщиками</h2><div class="pay-summary"><div>Осталось оплатить<strong>'+fmt(s.remaining)+'</strong></div><div>Просрочено<strong>'+fmt(s.overdue)+'</strong></div><div>Документов к оплате<strong>'+s.open+'</strong></div></div><p>Текущий остаток по приходам на склад, расходам проектов и общим расходам за всё время · '+h(org||'Все организации')+'. Оплаты учитываются после привязки к ДДС.</p>'+(s.review?'<p class="pay-notice">Требуют сверки: '+s.review+'. Их суммы не включены в итог.</p>':'')+'<button type="button" data-pay-dashboard>Открыть обязательства и оплаты</button>';
   if(panel._payContent!==html){panel._payContent=html;panel.innerHTML=html;panel.querySelector('button').onclick=()=>{filter='open';query='';show()}}
  }
