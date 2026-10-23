@@ -6,6 +6,12 @@ body.ab-ready.ui-modern:not(.ab-profile-only) td .cell-text,.cell-text{display:i
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table.arbat-resizable{width:var(--arbat-table-width)!important;min-width:0!important;table-layout:fixed!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) table.arbat-resizable :is(th,td){overflow:hidden!important;text-overflow:ellipsis!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) table.arbat-resizable td .cell-text{max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;vertical-align:bottom}
+/* Saved desktop column widths must not survive the tablet/card presentation. */
+@media(max-width:1100px){
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table.arbat-resizable{width:100%!important;min-width:0!important;max-width:100%!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table.arbat-resizable>colgroup{display:none!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.scroll,.whtable,.ab-scroll) table.arbat-resizable :is(th,td),body.ab-ready.ui-modern:not(.ab-profile-only) table.arbat-resizable td .cell-text{white-space:normal!important;overflow-wrap:anywhere!important}
+}
 .arbat-sync-toast{position:fixed;right:18px;bottom:18px;z-index:2147483500;background:#17324d;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 28px #001a3344;font-size:13px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
 .arbat-sync-toast.show{opacity:1;transform:none}.arbat-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}.arbat-tools button{white-space:nowrap}
 .arbat-price-note{padding:10px 12px;background:#f4f8fc;border:1px solid #dce7f1;border-radius:10px;color:#50687f;font-size:12px;line-height:1.5}

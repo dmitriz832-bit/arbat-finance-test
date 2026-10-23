@@ -4,6 +4,7 @@ on:
     branches: [main, audit/finance-core-20261017]
   pull_request:
     paths:
+      - 'app/**'
       - 'app/finance-core.js'
       - 'app/payables*'
       - 'app/vat-forms.js'
@@ -29,6 +30,8 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-node@v4
@@ -36,9 +39,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --ignore-scripts
-      - run: npx playwright install --with-deps chromium webkit
-        timeout-minutes: 5
-      - run: timeout --kill-after=15s 180s node e2e/payables.cjs
       - run: timeout --kill-after=15s 300s npm run test:browser
       - uses: actions/upload-artifact@v4
         if: always()

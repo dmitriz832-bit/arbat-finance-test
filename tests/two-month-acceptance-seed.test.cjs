@@ -68,7 +68,7 @@ test('warehouse FIFO and the browser integrity audit reconcile the complete scen
 test('payment calendar counts only outflows as obligations and adds incoming cash to forecast',()=>{
   const dashboard=fs.readFileSync(require.resolve('../app/dashboard.js'),'utf8');
   const page=fs.readFileSync(require.resolve('../app/index.html'),'utf8');
-  assert.match(dashboard,/payments30=calendar\.filter\(item=>item\.days<=30&&!isCalendarIncome\(item\)\)/);
+  assert.match(dashboard,/payments30=forecast\.rows\.filter\(item=>item\.days!==null&&item\.days<30\)/);
   assert.match(page,/sum30=within30\.filter\(x=>!isIncome\(x\)\)/);
   assert.match(page,/f\(total\+income30-sum30\)/);
   assert.match(page,/rem\+=parseMoney\(x\.amount\)\*\(isIncome\(x\)\?1:-1\)/);

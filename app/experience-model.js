@@ -23,10 +23,11 @@
   const revenue=snapshot.revenueDocuments.map(source=>({source,collection:'realizations',id:source._id||source.id,date:source.date,label:'Реализация',amount:core.documentPnlAmount(source)}));
   const expenses=snapshot.rows.map(row=>({source:row.source,collection:kinds[row.kind]?.[0]||null,id:row.source?._id||row.source?.id,date:row.date,label:kinds[row.kind]?.[1]||row.kind,category:row.category,amount:row.amount}));
   if(metric==='revenue')return revenue;
-  if(metric==='direct')return expenses.filter(x=>['direct','production'].includes(x.category));
+  if(metric==='direct'){const rows=expenses.filter(x=>x.category==='direct');if(snapshot.deferredChange)rows.push({collection:null,id:null,date:'',label:'Изменение НЗП: уменьшение признанных затрат',amount:-snapshot.deferredChange});return rows;}
+  if(metric==='production')return expenses.filter(x=>x.category==='production');
   if(metric==='expenses')return expenses.filter(x=>x.category!=='belowIncome');
   if(metric==='cash')return snapshot.cash.rows.filter(x=>x.type!=='transfer').map(source=>({source,collection:'cash',id:source._id||source.id,date:source.date,label:source.type==='in'?'Поступление':'Платёж',amount:core.cents(source.amount)*(source.type==='out'?-1n:1n)}));
-  const filtered=metric==='gross'?expenses.filter(x=>['direct','production'].includes(x.category)):metric==='ebitda'?expenses.filter(x=>!['belowIncome','belowExpenses'].includes(x.category)):expenses;
+  const filtered=metric==='gross'?expenses.filter(x=>x.category==='direct'):metric==='ebitda'?expenses.filter(x=>!['belowIncome','belowExpenses'].includes(x.category)):expenses;
   const rows=revenue.concat(filtered.map(x=>({...x,amount:x.category==='belowIncome'?x.amount:-x.amount})));
   if(snapshot.deferredChange)rows.push({collection:null,id:null,date:'',label:'Корректировка признания затрат / НЗП',amount:snapshot.deferredChange,explanation:'Расчётная корректировка финансового ядра: изменение незавершённого производства за выбранный период. Отдельного первичного документа нет.'});
   return rows;

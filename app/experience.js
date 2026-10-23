@@ -48,7 +48,7 @@
  function refreshDetail(){
   if(!detailState)return;const data=window.arbatDashboardSnapshot(),{kind,value}=detailState;let title='',scope='',body='';
   if(kind==='metric'){
-   title=({revenue:'Реализации без НДС',direct:'Прямые затраты',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
+   title=({revenue:'Реализации без НДС',direct:'Признанные прямые затраты',production:'Общепроизводственные расходы',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
    const rows=model.financialRows(data.financial,value,core),total=rows.reduce((v,x)=>v+x.amount,0n);scope=data.bounds.label+' · '+(data.org||'Весь бизнес');
    body='<div class="ux-detail-summary"><strong>'+rub(total)+'</strong><p>Источник: документы выбранного периода. В результате расходы показаны со знаком минус, доходы — плюс. Корректировка НЗП выделена отдельно.</p></div>'+sourceRows(rows);
   }else if(kind==='report'){
@@ -72,11 +72,13 @@
    }
    body='<div class="ux-detail-summary"><strong>'+esc(displayed)+'</strong><p>Значение выбранной ячейки отчёта · '+esc(scope)+'</p></div><p class="ux-explanation">'+esc(explanation||'Состав показателя по данным финансового ядра. Нажмите документ для просмотра и изменения.')+'</p>'+sourceRows(rows);
   }else if(kind==='plan'){
-   const p=data.plans,rows=value==='overdue'?p.overdue:value==='month'?data.payments30:p.week.filter(x=>value==='forecast'||(value==='income'?(x.type==='in'||x.kind==='income'):!(x.type==='in'||x.kind==='income')));
-   title=({income:'План поступлений на 7 дней',outcome:'План платежей на 7 дней',forecast:'Прогноз свободного остатка',month:'План обязательств на 30 дней',overdue:'Плановые даты прошли'})[value];scope=(data.org||'Весь бизнес')+' · '+(value==='overdue'?'Ранее '+p.from:p.from+' — '+(value==='month'?model.iso(new Date(new Date(p.from+'T12:00:00').getTime()+30*86400000)):p.to));
-   body='<p class="ux-explanation">Источник — активные записи платёжного календаря и их даты. Система не выводит эти сроки из суммы сделки. Это план, а не подтверждение оплаты. Для повторяющейся записи прошедшая начальная дата означает необходимость проверки правила, а не сумму долга.</p>';
-   if(value==='forecast')body+='<p class="ux-detail-summary">Остаток сейчас '+rub(core.cents(data.totals.liquidity))+' + план поступлений − план платежей. Полнота прогноза зависит от заполнения календаря.</p>';
-   body+=sourceRows(rows.map(source=>({source,collection:'calendar',id:source.id,date:source.occurrence,label:source.type==='in'||source.kind==='income'?'План поступления':'План платежа',amount:core.cents(source.amount||0)*(value==='forecast'&&!(source.type==='in'||source.kind==='income')?-1n:1n)})))+'<button type="button" data-ux-new-plan>Добавить запись календаря</button>';
+   const p=data.forecast,isDue=(x,n)=>x.days!==null&&x.days<n;
+   const rows=value==='income'?p.incomeRows.filter(x=>x.days!==null&&x.days>=0&&x.days<7):value==='overdue'?p.rows.filter(x=>x.days!==null&&x.days<0):value==='month'?p.rows.filter(x=>isDue(x,30)):value==='forecast'?[...p.incomeRows.filter(x=>x.days!==null&&x.days>=0&&x.days<7),...p.rows.filter(x=>isDue(x,7))]:p.rows.filter(x=>isDue(x,7));
+   title=({income:'Поступления на 7 дней',outcome:'Платежи на 7 дней',forecast:'Остаток после планов',month:'Платежи на 30 дней',overdue:'Срок оплаты прошёл'})[value];scope=(data.org||'Весь бизнес')+' · от '+p.today;
+   body='<p class="ux-explanation">Источник: неоплаченные документы поставщиков с указанным сроком и самостоятельные планы календаря. Просроченные платежи включены в потребность в деньгах. Зарплатные и налоговые сроки автоматически не добавляются. План не подтверждает факт оплаты.</p>';
+   body+='<div class="ux-detail-summary"><strong>Платежи за 30 дней: '+rub(p.obligations30)+'</strong><p>Без срока оплаты: '+rub(p.combined.undated)+' · записей на сверке: '+p.review.length+'</p>'+(!p.forecastComplete?'<p>Прогноз неполный. Уточните сроки и документы.</p>':'')+'</div>';
+   if(value==='forecast')body+='<p>'+((p.forecastComplete&&data.quality.cashCertified)?'Расчётный остаток по внесённым планам: '+rub(data.liquidityCents+p.income.due7-p.obligations7):'Остаток после планов не определён: требуется уточнение сроков, документов или банковская сверка.')+'</p>';
+   body+=sourceRows(rows.map(x=>({source:x.rule||{name:x.name,org:x.org},collection:x.source==='supplier'?'payables':'calendar',id:x.documentKey||x.calendarId,date:x.occurrence,label:x.source==='supplier'?'Документ поставщика':p.incomeRows.includes(x)?'План поступления':'План платежа',amount:x.amount*(value==='forecast'&&!p.incomeRows.includes(x)?-1n:1n)})))+'<button type="button" data-ux-payables>Уточнить сроки и оплаты поставщикам</button> <button type="button" data-ux-new-plan>Добавить самостоятельный план</button> <button type="button" data-ux-plan="month">Показать платежи на 30 дней</button>';
   }else if(kind==='wallets'){
    title='Деньги по счетам и кассам';scope='На текущий момент · '+(data.org||'Весь бизнес');body='<p class="ux-explanation">Начальные остатки + движения денег. Статус сверки показан на главной. Нажмите счёт для просмотра реквизитов и параметров.</p>'+sourceRows(data.wallets.map(w=>({source:{name:w.name,org:w.org},id:w.walletId,collection:'wallets',label:w.kind,amount:core.cents(w.balance)})));
   }else if(kind==='stock'){
@@ -89,14 +91,16 @@
   $('uxDetailTitle').textContent=title;$('uxDetailScope').textContent=scope;$('uxDetailBody').innerHTML=body;
  }
  function openSource(collection,id){
+  if(collection==='payables')return window.arbatOpenPayables?.(id);
   if(collection==='calendar')return editCalendar(id);
   if(collection==='wallets')return showWallet(id);
   if(collection==='workActs')return openWorkEdit('act',id);
   if(['realizations','expenses','cash','materials','labor','costs','people'].includes(collection))return openRecord(collection,id);
  }
  document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-ux-metric],[data-ux-plan],[data-ux-source],[data-ux-project],[data-ux-projects],[data-ux-wallets],[data-ux-stock],[data-ux-tax],[data-ux-new-plan],[data-ux-route]');if(!b)return;
-  if(b.hasAttribute('data-ux-source'))openSource(b.dataset.uxSource,b.dataset.uxId);
+  const b=e.target.closest('[data-ux-payables],[data-ux-metric],[data-ux-plan],[data-ux-source],[data-ux-project],[data-ux-projects],[data-ux-wallets],[data-ux-stock],[data-ux-tax],[data-ux-new-plan],[data-ux-route]');if(!b)return;
+  if(b.hasAttribute('data-ux-payables'))window.arbatOpenPayables?.();
+  else if(b.hasAttribute('data-ux-source'))openSource(b.dataset.uxSource,b.dataset.uxId);
   else if(b.hasAttribute('data-ux-project'))showDealModal(b.dataset.uxProject);
   else if(b.hasAttribute('data-ux-projects'))window.arbatNavigate('deals');
   else if(b.hasAttribute('data-ux-new-plan'))window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'calendarForm'}}));
@@ -128,5 +132,7 @@
  const original=window.render;window.render=function(){const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{periodIds.forEach((id,i)=>$(id).value=good[i])}const result=original.apply(this,arguments);refreshDetail();return result};
  const routeScroll=new Map(),navigate=window.arbatNavigate;
  window.arbatNavigate=function(next){next=({reports:'reports:pnl',expenses:'expenses:project',costs:'expenses:general',materials:'materials:catalog'})[next]||next;const previous=route();routeScroll.set(previous,window.scrollY);if(detailState&&next!=='overview'){detailState=null;detail.hidden=true;visuals.hidden=false}const result=navigate.call(this,next);requestAnimationFrame(()=>window.scrollTo(0,routeScroll.get(next)||0));return result};
+ window.addEventListener('arbat-warehouse-changed',()=>requestAnimationFrame(refreshDetail));
+ window.addEventListener('arbat:cloud-update',()=>requestAnimationFrame(refreshDetail));
  updatePeriod();
 })();

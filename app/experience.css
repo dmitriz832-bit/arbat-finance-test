@@ -74,15 +74,22 @@ body.ux-app.ab-ready.ui-modern .dashboard-kpi-top{font-size:14px;color:#203b53;l
 body.ux-app.ab-ready.ui-modern .dashboard-kpi-top span,body.ux-app.ab-ready.ui-modern .dashboard-kpi>small{white-space:normal;overflow:visible;text-overflow:clip}
 body.ux-app.ab-ready.ui-modern .dashboard-kpi .ux-value{display:block;margin:12px 0}
 body.ux-app.ab-ready.ui-modern .dashboard-kpi>small{font-size:12px;color:#526e85}
-body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+/* Override the legacy dashboard's important three-column grid at every breakpoint. */
+body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px!important;align-items:start}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-column:auto!important;margin:0!important;min-width:0;overflow:hidden}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-project-panel,body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-tax-panel{grid-column:1/-1!important}
+@media(min-width:1101px){
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-finance-panel{grid-column:1!important;grid-row:span 2}
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-flow-panel,body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-spend-panel{grid-column:2!important}
+ body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-wallet-panel{grid-column:1/-1!important}
+ body.ux-app.ab-ready.ui-modern .dashboard-wallet-balances{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}
+}
 body.ux-app.ab-ready.ui-modern .dashboard-attention-panel{margin-bottom:20px!important}
 body.ux-app.ab-ready.ui-modern .dashboard-attention strong{font-size:14px;white-space:normal}
 body.ux-app.ab-ready.ui-modern .dashboard-attention small{font-size:12px;white-space:normal;color:#526e85}
 body.ux-app.ab-ready.ui-modern .dashboard-attention{padding:14px 2px;gap:12px}
 body.ux-app.ab-ready.ui-modern .dashboard-link{font-size:13px!important;min-height:36px;margin:0!important}
-body.ux-app.ab-ready.ui-modern .executive-finance-row{grid-template-columns:minmax(100px,1fr) minmax(100px,auto);gap:12px;align-items:center;padding:14px 0;font-size:14px;min-height:70px}
+body.ux-app.ab-ready.ui-modern .executive-finance-row{grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:4px 12px;align-items:center;padding:10px 0;font-size:14px;min-height:0}
 body.ux-app.ab-ready.ui-modern .executive-finance-row.head{display:none}
 body.ux-app.ab-ready.ui-modern .executive-finance-row>small{grid-column:1/-1;color:#526e85;font-size:12px}
 body.ux-app.ab-ready.ui-modern .executive-finance-row .ux-value{text-align:right}
@@ -115,7 +122,7 @@ body.ux-app.ab-ready.ui-modern .document-section legend{font-size:15px;color:#20
 body.ux-app.ab-ready.ui-modern .ui-sheet-header,body.ux-app.ab-ready.ui-modern .modal-head{border-bottom:1px solid #bfd3e2;background:#fff!important;padding:18px 22px}
 body.ux-app.ab-ready.ui-modern .modal-actions{border-top:1px solid #bfd3e2;background:#fff!important;padding-top:16px;gap:12px}
 body.ux-app.ab-ready.ui-modern .bank-review-card{border:1px solid #9cb8cc!important;background:#fff!important;margin:16px 0!important;box-shadow:0 2px 6px #24435a10}
-@media(max-width:1100px){body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{grid-template-columns:minmax(0,1fr)}body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-column:1!important}}
+@media(max-width:1100px){body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{grid-template-columns:minmax(0,1fr)!important}body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-column:1!important}}
 @media(max-width:700px){
  body.ux-app.ab-ready.ui-modern main{padding:16px 12px!important}body.ux-app.ab-ready.ui-modern #title{font-size:23px}
  body.ux-app.ab-ready.ui-modern .card,body.ux-app.ab-ready.ui-modern .dashboard-panel{padding:16px!important;border-radius:12px!important}
