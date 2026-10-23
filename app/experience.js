@@ -132,5 +132,7 @@
  const original=window.render;window.render=function(){const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{periodIds.forEach((id,i)=>$(id).value=good[i])}const result=original.apply(this,arguments);refreshDetail();return result};
  const routeScroll=new Map(),navigate=window.arbatNavigate;
  window.arbatNavigate=function(next){next=({reports:'reports:pnl',expenses:'expenses:project',costs:'expenses:general',materials:'materials:catalog'})[next]||next;const previous=route();routeScroll.set(previous,window.scrollY);if(detailState&&next!=='overview'){detailState=null;detail.hidden=true;visuals.hidden=false}const result=navigate.call(this,next);requestAnimationFrame(()=>window.scrollTo(0,routeScroll.get(next)||0));return result};
+ window.addEventListener('arbat-warehouse-changed',()=>requestAnimationFrame(refreshDetail));
+ window.addEventListener('arbat:cloud-update',()=>requestAnimationFrame(refreshDetail));
  updatePeriod();
 })();

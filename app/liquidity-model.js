@@ -22,12 +22,12 @@
    const calendarId=String(rule.id||rule._id||''),problem=message=>review.push({source:'calendar',calendarId,org:rule.org||'',amount:null,issues:[message]});
    if(rule.supplierDocumentKey){
     const doc=byKey.get(rule.supplierDocumentKey);
-    if(!doc||!doc.org||doc.org!==rule.org||rule.type==='in'||rule.frequency==='monthly')problem('Проверьте явную связь календаря с документом поставщика');
+    if(!doc||!doc.org||doc.org!==rule.org||(rule.type==='in'||rule.kind==='income')||rule.frequency==='monthly')problem('Проверьте явную связь календаря с документом поставщика');
     else linkedCalendar.push({calendarId,documentKey:doc.key});
     continue;
    }
    let amount;try{if(rule.amount==null||rule.amount==='')throw Error();amount=core.cents(rule.amount);if(amount<=0n)throw Error()}catch{problem('Уточните сумму плана');continue}
-   const start=date(rule.dueDate),income=rule.type==='in',target=income?incomeRows:manualRows;
+   const start=date(rule.dueDate),income=rule.type==='in'||rule.kind==='income',target=income?incomeRows:manualRows;
    const add=occurrence=>target.push({source:'calendar',calendarId,org:rule.org||'',name:rule.name||'',amount,dueDate:rule.dueDate,occurrence,days:days(occurrence),rule});
    if(start===null){add(null);continue}
    if(rule.frequency!=='monthly'){add(rule.dueDate);continue}

@@ -177,6 +177,10 @@
   }
   function render(){if(typeof db==='undefined'||!ensure())return;const data=snapshot();narrative(data);kpis(data);cashChart(data);attention(data);wallets(data);taxes(data);projects(data);executiveExtras(data)}
   window.arbatRenderDashboard=render;
+  let warehouseRefreshPending=false;
+  const refreshWarehouse=()=>{if(warehouseRefreshPending)return;warehouseRefreshPending=true;requestAnimationFrame(()=>{warehouseRefreshPending=false;render()})};
+  window.addEventListener('arbat-warehouse-changed',refreshWarehouse);
+  window.addEventListener('arbat:cloud-update',refreshWarehouse);
   const original=window.render;if(typeof original==='function')window.render=function(){const result=original.apply(this,arguments);render();return result};
   document.getElementById('orgFilter')?.addEventListener('change',()=>requestAnimationFrame(render));render();
 })();
