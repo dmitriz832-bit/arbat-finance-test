@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'app/finance-core.js'
+      - 'app/payables*'
       - 'app/vat-forms.js'
       - 'tests/vat*.cjs'
       - 'tests/finance*.cjs'
@@ -27,6 +28,7 @@ jobs:
       - run: node --test tests/*.cjs
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-node@v4
@@ -35,6 +37,7 @@ jobs:
           cache: 'npm'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 5
       - run: timeout --kill-after=15s 180s node e2e/payables.cjs
       - run: timeout --kill-after=15s 300s npm run test:browser
       - uses: actions/upload-artifact@v4
