@@ -76,6 +76,13 @@
         const identity=row=>String(row?._id||row?.id||'');
         if(!mine.every(row=>identity(row))||!theirs.every(row=>identity(row))){if(JSON.stringify(mine)!==JSON.stringify(before))merged[key]=mine;continue}
         const result=new Map(theirs.map(row=>[identity(row),row])),baseMap=new Map((Array.isArray(before)?before:[]).map(row=>[identity(row),row]));
+        if(key==='cash'){
+          const mineMap=new Map(mine.map(row=>[identity(row),row]));
+          for(const id of new Set([...baseMap.keys(),...result.keys(),...mineMap.keys()])){
+            const old=baseMap.get(id),localRow=mineMap.get(id),remoteRow=result.get(id),same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+            if([old,localRow,remoteRow].some(row=>row?.supplierAllocations?.length)&&!same(localRow,old)&&!same(remoteRow,old)&&!same(localRow,remoteRow))throw Error('Конфликт привязки оплаты: платёж '+id+' одновременно изменён другим сотрудником. Сверьте связи перед повторным сохранением');
+          }
+        }
         for(const [id,row] of new Map(mine.map(row=>[identity(row),row]))){const old=baseMap.get(id);if(!old||JSON.stringify(row)!==JSON.stringify(old))result.set(id,row)}
         for(const [id,row] of baseMap)if(!mine.some(candidate=>identity(candidate)===id)&&JSON.stringify(result.get(id))===JSON.stringify(row))result.delete(id);
         merged[key]=[...result.values()];
