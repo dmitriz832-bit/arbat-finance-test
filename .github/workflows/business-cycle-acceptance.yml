@@ -1,0 +1,31 @@
+name: Business cycle acceptance
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'acceptance/**'
+      - 'tests/helpers/business-cycle.cjs'
+      - '.github/workflows/business-cycle-acceptance.yml'
+      - 'package*.json'
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci --ignore-scripts
+      - run: timeout --kill-after=15s 240s node --test acceptance/*.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: business-cycle-screenshots
+          path: test-results/business-cycle*.png
+          if-no-files-found: ignore
