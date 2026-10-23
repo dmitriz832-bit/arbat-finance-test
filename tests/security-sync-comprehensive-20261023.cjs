@@ -179,7 +179,7 @@ test('batch transport failure preserves both latest local stores for recovery wi
  assert.equal(h.writes.length,1);assert.equal(h.writes[0].p_changes.length,2);assert.equal(h.getCloud(0).revision,1);assert.equal(h.getCloud(1).revision,1);assert.equal(h.read(F).deals[0]._id,'pending');assert.equal(h.read(W).items[0].id,'pending');
 });
 test('atomic batch SQL retains invoker privileges and deterministic guarded writes',()=>{
- const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261023170000_atomic_shared_state_batch.sql'),'utf8');
+ const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261023155814_atomic_shared_state_batch.sql'),'utf8');
  assert.match(sql,/security invoker set search_path=''/i);assert.match(sql,/next_revision:=public\.update_shared_state\(/);assert.match(sql,/count\(distinct value->>'store'\)/);assert.match(sql,/order by case value->>'store' when 'finance' then 0 else 1 end/);assert.match(sql,/revoke all.*from public,anon/i);assert.match(sql,/grant execute.*to authenticated/i);assert.doesNotMatch(sql,/exception when|security definer/i);
 });
 
