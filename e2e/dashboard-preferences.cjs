@@ -40,7 +40,7 @@ test('dashboard period dialog and personal wallet order work in the actual appli
   await page.evaluate(()=>window.arbatNavigate('deals'));
   await page.locator('#deals .ui-toolbar-actions').getByRole('button',{name:'Новая сделка',exact:true}).click();
   await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
-  assert.equal(await page.locator('#dealForm > fieldset').first().locator('legend').innerText(),'Основные данные');
+  assert.equal(await page.locator('#dealForm > fieldset').first().locator('legend').textContent(),'Основные данные');
   assert.ok(await page.locator('#dealForm').evaluate(f=>f.scrollWidth<=f.clientWidth+1),'real deal form fits the sheet');
   await page.screenshot({path:path.join(root,'test-results',`polish-${engine.name()}-${width}-deal.png`)});
   await page.locator('[data-sheet-cancel]').click();

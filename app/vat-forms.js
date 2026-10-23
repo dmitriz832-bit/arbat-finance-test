@@ -21,6 +21,8 @@
    wrapper.append(deductible);label.after(wrapper);
   }
   const note=document.createElement('label');note.className='document-form-summary';note.dataset.vatSummary=amountName;note.textContent='Укажите сумму и ставку НДС';label.after(note);
+  // Keep the legacy calculation target for existing handlers; show one explicit VAT summary.
+  if(id==='dealForm'){const legacy=form.querySelector('#dealCalc');if(legacy)legacy.hidden=true}
   const hidden={};for(const name of ['amountGross','vatAmount','amountNet','vatRateSource']){const element=document.createElement('input');element.type='hidden';element.name=name;form.append(element);hidden[name]=element}
   function refresh(){
    try{

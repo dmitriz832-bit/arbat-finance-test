@@ -15,3 +15,7 @@ body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHist
 button[data-pay-status="paid"]{color:#176744!important;background:#edf8f1!important;border-color:#91c6a6!important}
 button[data-pay-status="partial"]{color:#805700!important;background:#fff7e5!important;border-color:#dbbb76!important}
 button[data-pay-status="unpaid"],button[data-pay-status="review"]{color:#8e3029!important;background:#fff1ef!important;border-color:#dfaaa4!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-row]{grid-column:1/-1}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-status="paid"]{color:#176744!important;background:#edf8f1!important;border-color:#91c6a6!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button[data-pay-status="partial"]{color:#805700!important;background:#fff7e5!important;border-color:#dbbb76!important}
+body.ab-ready.ui-modern :is(#expensesTable,#costTable,#whMovements,#whImportHistory) button:is([data-pay-status="unpaid"],[data-pay-status="review"]){color:#8e3029!important;background:#fff1ef!important;border-color:#dfaaa4!important}

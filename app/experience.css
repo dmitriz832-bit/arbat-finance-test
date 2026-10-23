@@ -202,3 +202,4 @@ body.ux-app.ab-ready.ui-modern #overview .dashboard-project-row small{display:bl
 body.ux-app.ab-ready.ui-modern .ux-value.dashboard-negative,body.ux-app.ab-ready.ui-modern .dashboard-kpi.bad .ux-value{color:#b63545!important}
 body.ux-app.ab-ready.ui-modern .ux-value.dashboard-positive,body.ux-app.ab-ready.ui-modern .dashboard-kpi.good .ux-value{color:#147a4b!important}
 body.ux-app.ab-ready.ui-modern .dashboard-kpi.warn .ux-value{color:#9c6100!important}
+body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-sales-panel{grid-column:1/-1!important}
