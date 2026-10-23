@@ -14,10 +14,15 @@ function harness(finance={deals:[]},warehouse={items:[]},options={}){
  const writes=[];
  if(!options.data){localStorage.setItem(F,JSON.stringify(finance));localStorage.setItem(W,JSON.stringify(warehouse));localStorage.setItem(B,JSON.stringify({finance_state:1,warehouse_state:1}))}
  const window={abIdentity:options.identity,abGetToken:async()=> 'mock-token',abMessage:x=>messages.push(x),dispatchEvent:e=>events.push(e),addEventListener(){}};
- const context={Storage,localStorage,sessionStorage,window,document:{body:{classList:{remove(){}},append(){}},createElement:element,getElementById:id=>nodes.find(n=>n.id===id&&!n.removed)||null,addEventListener(){}},Blob,URL:{createObjectURL:blob=>{downloads.push(blob);return 'blob:mock'},revokeObjectURL(){}},setTimeout(){},confirm:()=>true,location:{reload(){}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail}},setInterval:fn=>intervals.push(fn),console,fetch:async(url,options)=>{
+ const context={Storage,localStorage,sessionStorage,window,document:{body:{classList:{remove(){}},append(){}},createElement:element,getElementById:id=>nodes.find(n=>n.id===id&&!n.removed)||null,addEventListener(){}},Blob,URL:{createObjectURL:blob=>{downloads.push(blob);return 'blob:mock'},revokeObjectURL(){}},setTimeout(){},confirm:()=>true,location:{reload(){}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail}},setInterval:fn=>intervals.push(fn),queueMicrotask,console,fetch:async(url,options)=>{
   const respond=x=>({ok:true,json:async()=>clone(x)});
   if(options.method==='GET'){const i=url.includes('warehouse_state')?1:0;const snapshot=clone(cloud[i]);if(getHook)await getHook(i);return respond([snapshot])}
   const body=JSON.parse(options.body);writes.push(body);if(postHook){const result=await postHook(body);if(result)return result}
+  if(url.endsWith('/rpc/update_shared_state_batch')){
+   const draft=clone(cloud),result={};
+   for(const change of body.p_changes){const i=change.store==='finance'?0:1;if(change.expected_revision!==draft[i].revision)return {ok:false,json:async()=>({message:'revision conflict'})};draft[i]={payload:clone(change.payload),revision:draft[i].revision+1};result[change.store]=draft[i].revision}
+   cloud=draft;return respond(result);
+  }
   const i=body.p_store==='finance'?0:1;
   if(body.p_expected_revision!==cloud[i].revision)return {ok:false,json:async()=>({message:'revision conflict'})};
   cloud[i]={payload:clone(body.p_payload),revision:cloud[i].revision+1};return respond(cloud[i].revision);
@@ -158,4 +163,28 @@ test('recovery remains downloadable with an explicit warning when browser storag
  const options={identity:{user_id:'quota-user',email:'quota@example.test'},failRecoveryWrites:true},h=harness({expenses:[{_id:'d',amount:10}]},{items:[]},options);
  await h.window.arbatCloudBoot();h.setCloud(0,{expenses:[{_id:'d',amount:20}]});h.save(F,{expenses:[{_id:'d',amount:30}]});await wait();await wait();
  assert.ok(h.messages.some(x=>x.includes('не закрывайте')));h.nodes.find(x=>x.id==='ab-recovery-download').onclick();assert.equal(JSON.parse(await h.downloads[0].text()).stores.finance.expenses[0].amount,30);
+});
+
+test('synchronous linked finance and warehouse saves use one atomic batch request',async()=>{
+ const h=harness();await h.window.arbatCloudBoot();h.save(F,{deals:[{_id:'linked-finance'}]});h.save(W,{items:[{id:'linked-warehouse'}]});await wait();await wait();
+ assert.equal(h.writes.length,1);assert.deepEqual(h.writes[0].p_changes.map(x=>x.store),['finance','warehouse']);assert.equal(h.getCloud(0).revision,2);assert.equal(h.getCloud(1).revision,2);
+});
+test('second-store conflict cannot commit the first store and queued pair remains recoverable',async()=>{
+ const h=harness({expenses:[{_id:'f',amount:10}]},{moves:[{id:'w',qty:1}]},{identity:{user_id:'atomic-owner',email:'atomic@example.test'}});await h.window.arbatCloudBoot();
+ h.setCloud(1,{moves:[{id:'w',qty:2}]});h.save(F,{expenses:[{_id:'f',amount:30}]});h.save(W,{moves:[{id:'w',qty:3}]});await wait();await wait();
+ assert.equal(h.getCloud(0).payload.expenses[0].amount,10,'first store must remain unchanged if second store conflicts');assert.equal(h.getCloud(0).revision,1);assert.equal(h.getCloud(1).payload.moves[0].qty,2);assert.equal(h.read(F).expenses[0].amount,30);assert.equal(h.read(W).moves[0].qty,3);assert.ok(h.messages.some(x=>x.includes('приостановлена')));
+});
+test('batch transport failure preserves both latest local stores for recovery without separate fallback writes',async()=>{
+ const h=harness();await h.window.arbatCloudBoot();h.post(async()=>{throw Error('Network unavailable')});h.save(F,{deals:[{_id:'pending'}]});h.save(W,{items:[{id:'pending'}]});await wait();await wait();
+ assert.equal(h.writes.length,1);assert.equal(h.writes[0].p_changes.length,2);assert.equal(h.getCloud(0).revision,1);assert.equal(h.getCloud(1).revision,1);assert.equal(h.read(F).deals[0]._id,'pending');assert.equal(h.read(W).items[0].id,'pending');
+});
+test('atomic batch SQL retains invoker privileges and deterministic guarded writes',()=>{
+ const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261023170000_atomic_shared_state_batch.sql'),'utf8');
+ assert.match(sql,/security invoker set search_path=''/i);assert.match(sql,/next_revision:=public\.update_shared_state\(/);assert.match(sql,/count\(distinct value->>'store'\)/);assert.match(sql,/order by case value->>'store' when 'finance' then 0 else 1 end/);assert.match(sql,/revoke all.*from public,anon/i);assert.match(sql,/grant execute.*to authenticated/i);assert.doesNotMatch(sql,/exception when|security definer/i);
+});
+
+test('newer queued pair while a successful batch is in flight is sent together after its acknowledgement',async()=>{
+ const h=harness(),gate=deferred();await h.window.arbatCloudBoot();let first=true;h.post(async()=>{if(first){first=false;await gate.promise}return null});
+ h.save(F,{deals:[{_id:'first'}]});h.save(W,{items:[{id:'first'}]});await wait();h.save(F,{deals:[{_id:'latest'}]});h.save(W,{items:[{id:'latest'}]});gate.resolve();await wait();await wait();
+ assert.equal(h.writes.length,2);assert.ok(h.writes.every(x=>x.p_changes.length===2));assert.equal(h.getCloud(0).payload.deals[0]._id,'latest');assert.equal(h.getCloud(1).payload.items[0].id,'latest');assert.equal(h.getCloud(0).revision,3);assert.equal(h.getCloud(1).revision,3);
 });

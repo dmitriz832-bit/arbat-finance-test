@@ -6,12 +6,13 @@ Scope: local source in `arbat-finance-ux-v3`; accountant/payroll and production 
 
 The audit executed the actual inline handlers in isolated Node VM contexts, using explicit document and employee fixtures. Monetary assertions use independent expected amounts in integer kopecks; they do not derive expected values from the implementation under test. DOM substitutes expose only the browser APIs needed to execute each handler. New failing tests were run before the corresponding fixes.
 
-New regressions: `tests/payroll-comprehensive-ui.cjs` (30 cases) and `tests/payroll-comprehensive-core.cjs` (6 cases). The core changes were coordinated with the finance-methodology owner.
+New regressions: `tests/payroll-comprehensive-ui.cjs` (33 cases) and `tests/payroll-comprehensive-core.cjs` (6 cases). The core changes were coordinated with the finance-methodology owner.
 
 ## Reproduced defects and corrections
 
 | Severity | Trigger and previous result | Correction |
 | --- | --- | --- |
+| High | A recovered legacy expense without `projectKey` crashed startup at `expenses.map(e=>[e.date,e.projectKey.split(...)]`. The same unguarded display pattern existed for realizations and production work. | All four project-label rendering paths tolerate an absent key and display “Без проекта · Требует сверки”. Three executable renderer regressions cover the missing-key cases. |
 | High | Bulk-delete an employee with salary accruals: both employee and accruals disappeared. Cash, allocation, work-act and settlement links also failed to prevent deletion. | Bulk deletion stops before confirmation, backup and mutation when employee history exists. The notice directs the operator to the inactive employment status. |
 | High | Delete an employee referenced only as historical work lead or in leave history: the person disappeared. | Single and bulk deletion protect lead-only work references and leave history as well as existing payroll links. Unused employees remain removable, and their crew references are cleared. |
 | High | Change only a work note after crew membership or price changed: historical participants and stored rate were overwritten. | Unchanged crew identity preserves the original member and lead snapshot. Unchanged price identity preserves stored price fields. Explicit selection of another crew or price still works. |
@@ -30,11 +31,11 @@ New regressions: `tests/payroll-comprehensive-ui.cjs` (30 cases) and `tests/payr
 
 ## Validation
 
-- New payroll suite: 36/36 passed.
-- Final combined payroll, leave, employee-history and payroll RPC regression run: 66/66 passed.
+- New payroll suite: 39/39 passed.
+- Final combined payroll, leave, employee-history and payroll RPC regression run: 69/69 passed.
 - `node --check app/business-system.js` passed.
 - All seven inline scripts parsed using `vm.Script`.
-- Full `npm test` during concurrent integration: 387 tests, 386 passed, one failure in the other audit owner's in-progress test `drilldown currency preserves every kopeck above Number safe range`. No payroll failures in that run. The parent integrator should rerun the final suite after all agents finish.
+- Full `npm test` after the first CI feedback corrections: 408/408 passed. Browser CI rerun remains required.
 
 ## Limits
 

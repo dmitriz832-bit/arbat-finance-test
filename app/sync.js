@@ -153,32 +153,21 @@
   }
 
   async function flush(){
-    if(!active||busy||halt)return;
+    if(!active||busy||halt||!Object.keys(pending).length)return;
     busy=true;
-    let failed=null;
+    const batch={...pending};pending={};
     try{
-      for(let i=0;i<K.length;i++){
-        const key=K[i];
-        if(!(key in pending))continue;
-        const value=pending[key];
-        delete pending[key];
-        failed={i,key,value};
-        const next=await api('rpc/update_shared_state',{
-          p_store:i===0?'finance':'warehouse',
-          p_payload:JSON.parse(value),
-          p_expected_revision:rev[T[i]]
-        });
-        previous[i]=JSON.parse(value);
-        rev[T[i]]=next;
-        put(B,rev);
-        failed=null;conflictRetries=0;
-      }
+      const changes=[];
+      for(let i=0;i<K.length;i++)if(K[i] in batch)changes.push({store:i===0?'finance':'warehouse',payload:JSON.parse(batch[K[i]]),expected_revision:rev[T[i]]});
+      const next=await api('rpc/update_shared_state_batch',{p_changes:changes});
+      for(const change of changes)if(!Number.isSafeInteger(next?.[change.store])||next[change.store]<=change.expected_revision)throw Error('Некорректный ответ сервера при сохранении общей версии');
+      for(let i=0;i<K.length;i++)if(K[i] in batch){previous[i]=JSON.parse(batch[K[i]]);rev[T[i]]=next[i===0?'finance':'warehouse']}
+      put(B,rev);conflictRetries=0;
     }catch(error){
-      if(failed&&conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
+      if(conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
         try{
-          const fresh=await fetchAll(),visible=fresh.map(row=>row.payload),recovered={...pending};
+          const fresh=await fetchAll(),visible=fresh.map(row=>row.payload),recovered={...batch,...pending};
           // Read pending after the fetch: the user may have saved again while it ran.
-          recovered[failed.key]=pending[failed.key]??failed.value;
           for(let i=0;i<K.length;i++)if(K[i] in recovered){
             visible[i]=mergeShared(previous[i],fresh[i].payload,JSON.parse(recovered[K[i]]));
             recovered[K[i]]=JSON.stringify(visible[i]);
@@ -190,7 +179,7 @@
       }else fail(error)
     }finally{
       busy=false;
-      if(active&&Object.keys(pending).length)flush();
+      if(active&&Object.keys(pending).length)queueMicrotask(flush);
     }
   }
 
@@ -199,7 +188,7 @@
       try{value=JSON.stringify(attributeDocuments(JSON.parse(value),previous[0]))}catch(error){console.error('Author metadata failed',error)}
     }
     const result=baseSet.call(this,key,value);
-    if(this===localStorage&&K.includes(key)&&active&&!halt){writeVersion++;pending[key]=value;flush()}
+    if(this===localStorage&&K.includes(key)&&active&&!halt){writeVersion++;pending[key]=value;queueMicrotask(flush)}
     return result;
   };
 

@@ -51,13 +51,13 @@ test('real payroll workflow preserves historical work snapshots and blocks emplo
      db.priceCatalog.find(price=>price.id==='payroll-price').rate=250;
      const crew=db.crews.find(crew=>crew.id==='payroll-crew');
      crew.memberIds=['person-current'];crew.leadId='person-current';
-     window.render();window.arbatNavigate('work');
+     window.render();window.arbatNavigate('expenses:project');
     });
-    await page.locator('#work [role=tab][data-pane=work]').click();
-    await page.locator('#work details > summary').click();
-    const work=page.locator('#workActsList tbody tr[data-arbat-work-id="payroll-work"]');
+    // Approved production work appears as an editable expense row. The old single-work
+    // form lives in intentionally hidden legacy details and is not a user entry point.
+    const work=page.locator('#expensesTable tbody tr[title="Открыть начисление монтажных работ"]').filter({hasText:'PAYROLL выполненная работа'});
     await work.waitFor({state:'visible'});
-    await work.getByText('PAYROLL выполненная работа',{exact:true}).click();
+    await work.getByText('Монтажные работы · PAYROLL Бригада',{exact:true}).click();
     const editor=page.locator('#workEditModal.open');
     await editor.waitFor({state:'visible'});
     assert.equal(await editor.locator('[name=note]').inputValue(),'Исходное примечание',label+': actual work row opens its stored document');
