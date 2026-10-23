@@ -16,7 +16,7 @@ async function move(p,s,kind,lines,note,reject=false){
  if(kind==='receipt')await choose(p,'#whDlgForm [name=to]',s.id+'-store');
  else{await choose(p,'#whDlgForm [name=from]',s.id+'-store');await choose(p,'#whDlgForm [name=dealId]',s.id)}
  await p.locator('#whDlgForm [name=note]').fill(note);
- for(let i=0;i<lines.length;i++){if(i)await p.locator('#whDlgForm [data-add-line]').click();const row=p.locator('#whDlgForm .wh-document-line').nth(i);await row.locator('[data-line-item]').selectOption(lines[i][0],{force:true});await row.locator('[data-line-qty]').fill(String(lines[i][1]));await row.locator('[data-line-price]').fill(String(lines[i][2]||0))}
+ for(let i=0;i<lines.length;i++){if(i)await p.locator('#whDlgForm [data-add-line]').click();const row=p.locator('#whDlgForm .wh-document-line').nth(i);await row.locator('[data-line-item]').selectOption(lines[i][0],{force:true});await row.locator('[data-line-qty]').fill(String(lines[i][1]));if(kind==='receipt')await row.locator('[data-line-price]').fill(String(lines[i][2]||0))}
  await p.locator('#whDlgForm button[type=submit]').click();if(reject){assert.equal(await p.locator('#whDialog.open').count(),1);await p.locator('#whCancel').click();return}await p.locator('#whDialog.open').waitFor({state:'hidden'});if(kind==='receipt')await p.locator('#payablesDialog[open]').waitFor();await closePay(p);
 }
 async function cash(p,s,amount,note,date,incoming=false){
