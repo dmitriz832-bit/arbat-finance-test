@@ -32,8 +32,38 @@
   const enhanceAll=root=>{if(root.matches?.('select'))enhanceSelect(root);root.querySelectorAll?.('select').forEach(enhanceSelect)};enhanceAll(document);new MutationObserver(records=>{if(opened&&!opened.isConnected)close(opened);records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)enhanceAll(node)}))}).observe(document.body,{childList:true,subtree:true});document.addEventListener('pointerdown',event=>{if(opened&&!opened.contains(event.target)&&!opened.list.contains(event.target))close(opened)},true);
   function viewportChanged(){const view=window.visualViewport;document.documentElement.style.setProperty('--document-view-height',(view?.height||innerHeight)+'px');document.documentElement.style.setProperty('--document-view-top',(view?.offsetTop||0)+'px');if(opened)positionList(opened)}
   window.visualViewport?.addEventListener('resize',viewportChanged);window.visualViewport?.addEventListener('scroll',viewportChanged);window.addEventListener('resize',viewportChanged);document.addEventListener('scroll',()=>{if(opened)positionList(opened)},true);viewportChanged();
-  const formGroups={cashForm:[['Документ',['date','org','type','walletId','toWalletId']],['Участники и аналитика',['partyRef','articleId','projectKey']],['Сумма и основание',['amount','note']]],dealForm:[['Основные данные',['name','order1c','customerSearch','org','dir']],['Условия договора',['contractTotal','cost','dealStage','projectStatus','taxMode']]],realizationForm:[['Основание реализации',['projectKey','date','document']],['Сумма документа',['amount','vatRate','vatDeductible']]],expenseForm:[['Документ расхода',['projectKey','date','category','note']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],costForm:[['Классификация',['date','name','org','dir','allocationPercentages']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],laborForm:[['Кому и за что',['date','personId','org','projectKey','pnlArticleId']],['Расчёт начисления',['ndfl','otherDeductions','employerContributions','amount']]],editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','cost','dealStage','projectStatus','taxMode']]]};
-  function organizeForm(form){if(!form||form.dataset.documentOrganized==='1')return;const spec=formGroups[form.id];if(!spec)return;form.dataset.documentOrganized='1';form.classList.add('document-form');for(const [title,names] of spec){const section=document.createElement('fieldset');section.className='document-section';const legend=document.createElement('legend');legend.textContent=title;section.append(legend);for(const name of names){const field=form.elements.namedItem(name),label=field?.closest('label');if(label&&label.parentElement===form)section.append(label)}if(section.children.length>1)form.insertBefore(section,form.firstElementChild)}}
+  const formGroups={
+    cashForm:[['Документ',['date','org','type','walletId','toWalletId']],['Участники и аналитика',['partyRef','articleId','projectKey','payrollPurpose','payrollAllocatedAmount','payrollDistribution']],['Сумма и основание',['amount','note']]],
+    dealForm:[['Основные данные',['name','order1c','customerSearch','org','dir']],['Условия договора',['contractTotal','vatRate','cost','dealStage','projectStatus','taxMode']]],
+    realizationForm:[['Основание реализации',['projectKey','date','document']],['Сумма документа',['amount','vatRate','vatDeductible']]],
+    expenseForm:[['Документ расхода',['projectKey','date','category','note']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],
+    costForm:[['Классификация',['date','name','org','dir','allocationPercentages']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],
+    laborForm:[['Кому и за что',['date','personId','org','projectKey','pnlArticleId']],['Расчёт начисления',['ndfl','otherDeductions','employerContributions','amount']]],
+    calendarForm:[['Обязательство',['org','articleId','payee','name']],['Сумма и график',['amount','dueDate','frequency','active']]],
+    editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','cost','dealStage','projectStatus','taxMode']]]
+  };
+  function organizeForm(form){
+    if(!form||form.dataset.documentOrganized==='1')return;
+    const spec=formGroups[form.id];if(!spec)return;
+    form.dataset.documentOrganized='1';form.classList.add('document-form');
+    const sections=[];
+    for(const [title,names] of spec){
+      const section=document.createElement('fieldset');section.className='document-section';
+      const legend=document.createElement('legend');legend.textContent=title;section.append(legend);
+      for(const name of names){
+        const field=form.elements.namedItem(name),label=field?.closest('label');
+        if(label&&label.parentElement===form)section.append(label);
+      }
+      if(section.children.length>1)sections.push(section);
+    }
+    // Insert once in reading order; repeatedly prepending reverses the groups.
+    form.prepend(...sections);
+    for(const note of form.querySelectorAll('[data-vat-summary],#dealCalc,#articleDescription,#realDetails')){
+      const fieldName=note.dataset.vatSummary||({dealCalc:'contractTotal',articleDescription:'articleId',realDetails:'projectKey'})[note.id];
+      const section=form.elements.namedItem(fieldName)?.closest('fieldset');
+      if(section){note.classList.add('document-form-summary');section.append(note)}
+    }
+  }
   Object.keys(formGroups).forEach(id=>organizeForm(document.getElementById(id)));new MutationObserver(()=>Object.keys(formGroups).forEach(id=>organizeForm(document.getElementById(id)))).observe(document.body,{childList:true,subtree:true});document.querySelectorAll('.card').forEach(card=>{if(card.querySelector('table,.scroll,.whtable'))card.classList.add('document-register')});
   const dealModal=document.getElementById('dealModal');if(dealModal){const actions=dealModal.querySelector('#editDealForm .modal-actions'),button=document.createElement('button');button.type='button';button.id='createRealizationFromDeal';button.className='deal-realization-action';button.textContent='+ Создать реализацию';actions?.prepend(button);button.addEventListener('click',()=>{const deal=(db.deals||[]).find(row=>row._id===modalDealId);if(!deal)return alert('Сначала откройте сохранённую сделку');const key=window.arbatDealKey(deal);document.getElementById('closeDealModal')?.click();window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'realizationForm',values:{projectKey:key}}}))})}
 })();

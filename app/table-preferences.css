@@ -1,0 +1,35 @@
+/* Last layer: natural financial widths replace legacy fixed-colgroup clipping. */
+body.ab-ready.ui-modern .tp-viewport{max-width:100%!important;min-width:0!important;overflow:auto!important;overscroll-behavior:contain}
+body.ab-ready.ui-modern .tp-toolbar{display:flex;justify-content:flex-end;margin:8px 0;gap:8px}
+body.ab-ready.ui-modern .tp-settings{background:#fff!important;color:#345770!important;border:1px solid #cddae6!important;font-size:12px!important;padding:7px 12px!important;min-height:36px!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table{display:block!important;width:100%!important;min-width:var(--tp-min-width)!important;max-width:none!important;table-layout:auto!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>colgroup{display:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot){display:block!important;position:static!important;width:auto!important;height:auto!important;clip:auto!important;margin:0!important;overflow:visible!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr{display:grid!important;grid-template-columns:var(--tp-columns)!important;width:100%!important;min-width:0!important;gap:0!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td){display:block!important;position:static!important;width:auto!important;min-width:0!important;max-width:none!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important;box-sizing:border-box;grid-column:auto!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td)::before{content:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>.tp-span{grid-column:1/-1!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>.tp-hidden{display:none!important}
+.tp-table .arbat-col-resizer{display:none!important}
+.tp-dialog{border:1px solid #d7e2ec;border-radius:16px;padding:24px;width:min(510px,calc(100vw - 28px));max-height:85dvh;overflow:auto;color:#233e53;background:white;box-sizing:border-box}
+.tp-dialog::backdrop{background:rgb(17 37 55 / .35)}.tp-dialog h2{margin:0 0 8px;font-size:20px}.tp-dialog p{font-size:13px;line-height:1.5;color:#63798d}.tp-columns{list-style:none;padding:0;margin:18px 0}.tp-columns li{display:flex;align-items:center;gap:8px;border-bottom:1px solid #e5edf3;padding:7px 0}.tp-columns label{display:flex!important;flex:1;align-items:center;gap:10px;font-size:14px}.tp-columns input[type=checkbox]{appearance:auto!important;width:18px!important;height:18px!important;min-height:18px!important;flex:none;margin:0}.tp-columns button{width:38px;min-height:38px!important;padding:4px!important}.tp-columns button:disabled{opacity:.3}.tp-actions{display:flex;justify-content:space-between;gap:12px}
+@media(max-width:700px){
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table{min-width:0!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>thead{display:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(tbody,tfoot)>tr{grid-template-columns:minmax(0,1fr)!important;margin-bottom:10px;border:1px solid #dce6f0;border-radius:8px}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(tbody,tfoot)>tr>:is(td,th):not(.tp-hidden){display:grid!important;grid-template-columns:minmax(90px,38%) minmax(0,1fr)!important;gap:10px!important;text-align:left!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(tbody,tfoot)>tr>:is(td,th):not(.tp-span)::before{content:attr(data-tp-label)!important;font-size:11px;color:#63798d;font-weight:600}
+}
+
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr[hidden]{display:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table .cell-text{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-height:none!important;-webkit-line-clamp:unset!important;overflow-wrap:anywhere!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>thead>tr>th{position:relative!important}
+.tp-resizer{position:absolute;right:0;top:0;height:100%;width:10px;cursor:col-resize;touch-action:none;border-right:1px solid #c7d6e3}
+@media(max-width:700px){
+/* Financial reports keep the existing single-month reader and its selector. */
+body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>thead{display:block!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr{grid-template-columns:minmax(0,1fr) minmax(100px,42%)!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th){display:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th).ux-report-selected:not(.tp-hidden){display:block!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th)::before{content:none!important}
+}

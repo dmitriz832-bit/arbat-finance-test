@@ -23,11 +23,18 @@
  const period=$('ownerPeriodMode').closest('.card');period.classList.add('ux-period');period.querySelector('h2').textContent='Период финансового результата';visuals.prepend(period);
  const note=document.createElement('p');note.className='ux-help';note.textContent='Применяется к финансовому результату и его расшифровкам. Прогноз календаря — от сегодняшней даты; налоги имеют свой квартал.';period.querySelector('h2').after(note);
  const controls=document.createElement('div');controls.className='ux-period-actions';controls.innerHTML='<button type="button" data-ux-period-step="-1" aria-label="Предыдущий период">←</button><button type="button" data-ux-period-step="1" aria-label="Следующий период">→</button><button type="button" data-ux-period-current>Текущий</button><span id="uxPeriodError" role="alert"></span>';period.append(controls);
+ const periodDialog=document.createElement('dialog');periodDialog.className='ux-preferences-dialog';periodDialog.setAttribute('aria-labelledby','uxPeriodDialogTitle');
+ const periodTitle=period.querySelector('h2');periodTitle.id='uxPeriodDialogTitle';
+ const periodBar=document.createElement('div');periodBar.className='ux-period-bar';
+ const periodTrigger=document.createElement('button');periodTrigger.type='button';periodTrigger.id='uxPeriodTrigger';periodTrigger.setAttribute('aria-haspopup','dialog');
+ const periodDone=document.createElement('button');periodDone.type='button';periodDone.className='primary';periodDone.textContent='Готово';periodDone.onclick=()=>periodDialog.close();
+ period.before(periodBar);periodBar.append(periodTrigger,controls);document.body.append(periodDialog);periodDialog.append(period,periodDone);
+ periodTrigger.onclick=()=>periodDialog.showModal();periodDialog.addEventListener('click',e=>{if(e.target===periodDialog){const r=periodDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)periodDialog.close()}});
  const periodIds=['ownerPeriodMode','ownerPeriodReference','ownerPeriodFrom','ownerPeriodTo'];let good=periodIds.map(id=>$(id).value);
  try{const saved=JSON.parse(sessionStorage.getItem('arbat-financial-period')||'null');if(saved&&saved.length===4){core.ownerPeriodBounds(...saved);periodIds.forEach((id,i)=>$(id).value=saved[i]);good=saved}}catch{}
  function updatePeriod(){
   const values=periodIds.map(id=>$(id).value);try{core.ownerPeriodBounds(...values)}catch{$('uxPeriodError').textContent='Укажите корректный период: дата начала не позже даты окончания.';return false}
-  good=values;$('uxPeriodError').textContent='';try{sessionStorage.setItem('arbat-financial-period',JSON.stringify(values))}catch{}
+  good=values;periodTrigger.textContent='Период: '+core.ownerPeriodBounds(...values).label+' ▾';$('uxPeriodError').textContent='';try{sessionStorage.setItem('arbat-financial-period',JSON.stringify(values))}catch{}
   const range=values[0]==='range',all=values[0]==='all';$('ownerPeriodReference').closest('label').hidden=range||all;for(const id of ['ownerPeriodFrom','ownerPeriodTo'])$(id).closest('label').hidden=!range;
   controls.querySelectorAll('[data-ux-period-step]').forEach(b=>b.disabled=range||all);window.render();return true;
  }

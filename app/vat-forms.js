@@ -20,7 +20,7 @@
    for(const [value,title] of [['','Выберите'],['true','Да'],['false','Нет']]){const option=document.createElement('option');option.value=value;option.textContent=title;deductible.append(option)}
    wrapper.append(deductible);label.after(wrapper);
   }
-  const note=document.createElement('label');note.className='deal-create-calc';note.textContent='Укажите сумму и ставку НДС';label.after(note);
+  const note=document.createElement('label');note.className='document-form-summary';note.dataset.vatSummary=amountName;note.textContent='Укажите сумму и ставку НДС';label.after(note);
   const hidden={};for(const name of ['amountGross','vatAmount','amountNet','vatRateSource']){const element=document.createElement('input');element.type='hidden';element.name=name;form.append(element);hidden[name]=element}
   function refresh(){
    try{

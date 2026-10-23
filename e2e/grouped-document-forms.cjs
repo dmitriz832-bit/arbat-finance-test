@@ -1,0 +1,68 @@
+/* Real form markup + production cascade, independent of auth/network data. */
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium,webkit}=require('playwright');
+const app=path.resolve(__dirname,'../app'),html=fs.readFileSync(path.join(app,'index.html'),'utf8');
+const styles=[...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>|<link\b[^>]*rel="stylesheet"[^>]*href="([^"?]+)[^"]*"[^>]*>/g)].map(m=>m[1]??fs.readFileSync(path.resolve(app,m[2]),'utf8')).join('\n');
+const scripts=['finance-core.js','vat-forms.js','document-ux.js'].map(file=>fs.readFileSync(path.join(app,file),'utf8'));
+const screenshotDir=path.resolve(__dirname,'../test-results');fs.mkdirSync(screenshotDir,{recursive:true});
+const ids=['dealForm','editDealForm','cashForm','realizationForm','expenseForm','costForm','laborForm','calendarForm'];
+test('grouped document forms fill the sheet in reading order without implicit columns',async()=>{
+ for(const engine of [chromium,webkit]){
+  const browser=await engine.launch();
+  try{for(const width of [390,768,1440]){
+   const page=await browser.newPage({viewport:{width,height:950}});
+   for(const id of ids){
+    const markup=html.match(new RegExp('<form\\b[^>]*id="'+id+'"[^>]*>[\\s\\S]*?</form>'))?.[0];assert.ok(markup,id+' fixture exists');
+    await page.setContent(`<style>${styles}</style><body class="ab-ready ui-modern ux-app"><div class="ui-sheet"><div class="ui-sheet-body">${markup}</div></div></body>`);
+    await page.locator('form').evaluate(form=>{form.classList.add('ui-sheet-content');window.originalControls=[...form.elements];window.controlChanges=0;form.addEventListener('change',()=>window.controlChanges++);});
+    for(const script of scripts)await page.addScriptTag({content:script});
+    const layout=await page.locator('form').evaluate(form=>{
+     const r=form.getBoundingClientRect(),groups=[...form.querySelectorAll(':scope > fieldset')];
+     return {width:r.width,scroll:form.scrollWidth,columns:getComputedStyle(form).gridTemplateColumns.split(' ').length,groups:groups.map(g=>({title:g.querySelector('legend').textContent,width:g.getBoundingClientRect().width,top:g.getBoundingClientRect().top,bottom:g.getBoundingClientRect().bottom,columns:getComputedStyle(g).gridTemplateColumns.split(' ').length})),sameControls:window.originalControls.every(c=>c.form===form),orphanFields:form.querySelectorAll(':scope > label input,:scope > label select,:scope > label textarea').length};
+    });
+    assert.equal(layout.columns,1,`${engine.name()} ${width} ${id}: outer form has one track`);
+    assert.ok(layout.scroll<=layout.width+2,`${id}: no horizontal overflow`);
+    assert.equal(layout.sameControls,true,'accounting handlers keep original control nodes');
+    assert.equal(layout.orphanFields,0,`${id}: all labelled fields are grouped`);
+    assert.equal(layout.groups.length,2,id+' has two logical groups');
+    for(const g of layout.groups){assert.ok(Math.abs(g.width-layout.width)<=2,`${id}: ${g.title} spans the sheet`);assert.equal(g.columns,width<=700?1:2);}
+    assert.ok(layout.groups[1].top>=layout.groups[0].bottom&&layout.groups[1].top-layout.groups[0].bottom<45,`${id}: ordered groups without empty rows`);
+    if(id==='dealForm'){
+     assert.equal(layout.groups[0].title,'Основные данные');
+     assert.equal(await page.locator('[name=vatRate]').evaluate(el=>el.closest('fieldset')===document.querySelector('[name=contractTotal]').closest('fieldset')),true);
+     await page.locator('[name=contractTotal]').fill('1220');
+     await page.locator('[name=vatRate]').evaluate(el=>{el.value='22';el.dispatchEvent(new Event('change',{bubbles:true}));});
+     assert.equal(await page.locator('[name=vatAmount]').inputValue(),'220.00');
+     assert.ok(await page.evaluate(()=>window.controlChanges>0));
+     await page.screenshot({path:path.join(screenshotDir,`grouped-deal-${engine.name()}-${width}.png`),fullPage:true});
+    }
+   }
+   await page.close();
+  }}finally{await browser.close()}
+ }
+});
+
+const interfaceSource=fs.readFileSync(path.join(app,'interface.js'),'utf8');
+const warehouseRoutine=interfaceSource.slice(interfaceSource.indexOf(' function warehouseViews(){'),interfaceSource.indexOf(' const names={'));
+test('warehouse receipt actions share a compact toolbar and retain click handlers',async()=>{
+ for(const engine of [chromium,webkit]){
+  const browser=await engine.launch();
+  try{for(const width of [390,768,1440]){
+   const page=await browser.newPage({viewport:{width,height:950}});
+   await page.setContent(`<style>${styles}</style><body class="ab-ready ui-modern ux-app"><section id="materials" class="active"><div id="warehouseApp"><div class="card" id="arbatWarehouseIntro"><h2>Поступления</h2><p>Загрузка УПД, накладных и заказов, а также ручное оформление поступления.</p><div class="whbar"><button id="receipt" class="primary">+ Оформить приход</button></div><button id="obligations">Обязательства / оплаты</button></div></div></section></body>`);
+   await page.evaluate(routine=>{
+    const $=id=>document.getElementById(id),warehouse=$('warehouseApp'),sessionStorage={getItem:()=> 'materials:receipt'};let warehouseMode='';
+    window.actionClicks=0;$('receipt').onclick=$('obligations').onclick=()=>window.actionClicks++;
+    eval(routine+';warehouseViews();warehouseViews();');
+   },warehouseRoutine);
+   assert.equal(await page.locator('#arbatWarehouseIntro .ui-toolbar-actions>button').count(),2);
+   const first=await page.locator('#receipt').boundingBox(),second=await page.locator('#obligations').boundingBox();
+   if(width>=768)assert.ok(Math.abs(first.y-second.y)<2,'desktop and tablet actions stay in one row');
+   assert.ok(second.x+second.width<=width+1,'actions remain inside viewport');
+   await page.locator('#receipt').click();await page.locator('#obligations').click();
+   assert.equal(await page.evaluate(()=>window.actionClicks),2);
+   await page.screenshot({path:path.join(screenshotDir,`warehouse-toolbar-${engine.name()}-${width}.png`),fullPage:true});
+   await page.close();
+  }}finally{await browser.close()}
+ }
+});
