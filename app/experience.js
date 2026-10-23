@@ -24,7 +24,7 @@
  const note=document.createElement('p');note.className='ux-help';note.textContent='Применяется к финансовому результату и его расшифровкам. Прогноз календаря — от сегодняшней даты; налоги имеют свой квартал.';period.querySelector('h2').after(note);
  const controls=document.createElement('div');controls.className='ux-period-actions';controls.innerHTML='<button type="button" data-ux-period-step="-1" aria-label="Предыдущий период">←</button><button type="button" data-ux-period-step="1" aria-label="Следующий период">→</button><button type="button" data-ux-period-current>Текущий</button><span id="uxPeriodError" role="alert"></span>';period.append(controls);
  const periodDialog=document.createElement('dialog');periodDialog.className='ux-preferences-dialog';periodDialog.setAttribute('aria-labelledby','uxPeriodDialogTitle');
- const periodTitle=period.querySelector('h2');periodTitle.id='uxPeriodDialogTitle';
+ const periodTitle=period.querySelector('h2');periodTitle.id='uxPeriodDialogTitle';periodTitle.tabIndex=-1;periodTitle.setAttribute('autofocus','');
  const periodBar=document.createElement('div');periodBar.className='ux-period-bar';
  const periodTrigger=document.createElement('button');periodTrigger.type='button';periodTrigger.id='uxPeriodTrigger';periodTrigger.setAttribute('aria-haspopup','dialog');
  const periodDone=document.createElement('button');periodDone.type='button';periodDone.className='primary';periodDone.textContent='Готово';periodDone.onclick=()=>periodDialog.close();

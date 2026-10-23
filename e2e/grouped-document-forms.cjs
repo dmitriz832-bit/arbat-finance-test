@@ -30,7 +30,7 @@ test('grouped document forms fill the sheet in reading order without implicit co
     await page.evaluate(()=>Promise.all(document.getAnimations().map(animation=>animation.finished.catch(()=>{}))));
     const layout=await page.locator('form').evaluate(form=>{
      const r=form.getBoundingClientRect(),groups=[...form.querySelectorAll(':scope > fieldset')];
-     return {width:r.width,client:form.clientWidth,scroll:form.scrollWidth,overflowing:[...form.querySelectorAll('*')].filter(el=>el.getClientRects().length&&el.getBoundingClientRect().right>r.right+2).map(el=>({tag:el.tagName,id:el.id,className:el.className,name:el.name,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right-r.right})),columns:getComputedStyle(form).gridTemplateColumns.split(' ').length,groups:groups.map(g=>({title:g.querySelector('legend').textContent,width:g.getBoundingClientRect().width,top:g.getBoundingClientRect().top,bottom:g.getBoundingClientRect().bottom,columns:getComputedStyle(g).gridTemplateColumns.split(' ').length})),sameControls:window.originalControls.every(c=>c.form===form),orphanFields:form.querySelectorAll(':scope > label input,:scope > label select,:scope > label textarea').length};
+     return {width:r.width,client:form.clientWidth,scroll:form.scrollWidth,overflowing:[...form.querySelectorAll('*')].filter(el=>el.getClientRects().length&&el.getBoundingClientRect().right>r.right+2).map(el=>({tag:el.tagName,id:el.id,className:el.className,name:el.name,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right-r.right})),columns:getComputedStyle(form).gridTemplateColumns.split(' ').length,groups:groups.map(g=>{const css=getComputedStyle(g),rect=g.getBoundingClientRect();return {title:g.querySelector('legend').textContent,width:rect.width,top:rect.top,bottom:rect.bottom,display:css.display,template:css.gridTemplateColumns,contentWidth:g.clientWidth-parseFloat(css.paddingLeft)-parseFloat(css.paddingRight),gap:parseFloat(css.columnGap),fields:[...g.children].filter(el=>el.matches('label')&&el.querySelector('input,select')&&!el.querySelector('textarea')&&el.getClientRects().length).map(el=>({name:el.querySelector('input[name],select[name]')?.name,width:el.getBoundingClientRect().width,left:el.getBoundingClientRect().left,top:el.getBoundingClientRect().top}))}}),sameControls:window.originalControls.every(c=>c.form===form),orphanFields:form.querySelectorAll(':scope > label input,:scope > label select,:scope > label textarea').length};
     });
     if(id==='editDealForm'||layout.scroll>layout.client+2)await page.screenshot({path:path.join(screenshotDir,`grouped-${id}-${engine.name()}-${width}.png`),fullPage:true});
     if(layout.scroll>layout.client+2)console.log('Grouped form overflow diagnostics',JSON.stringify({engine:engine.name(),viewport:width,id,...layout}));
@@ -39,7 +39,18 @@ test('grouped document forms fill the sheet in reading order without implicit co
     assert.equal(layout.sameControls,true,'accounting handlers keep original control nodes');
     assert.equal(layout.orphanFields,0,`${id}: all labelled fields are grouped`);
     assert.deepEqual(layout.groups.map(g=>g.title),expectedGroups[id],id+' has the intended logical group order');
-    for(const g of layout.groups){assert.ok(Math.abs(g.width-layout.width)<=2,`${id}: ${g.title} spans the sheet`);assert.equal(g.columns,width<=700?1:2);}
+    for(const g of layout.groups){
+     const context=`${engine.name()} viewport=${width} form=${id} group=${g.title}`;
+     assert.ok(Math.abs(g.width-layout.width)<=2,`${context}: spans the sheet`);
+     // Fieldsets may serialize repeat() instead of resolved tracks: measure their actual fields.
+     const columns=width<=700?1:2,expectedFieldWidth=(g.contentWidth-g.gap*(columns-1))/columns;
+     const field=g.fields[0];assert.ok(field,`${context}: has an editable field`);
+     if(Math.abs(field.width-expectedFieldWidth)>2){
+      console.log('Grouped field geometry diagnostics',JSON.stringify({context,expectedFieldWidth,...g}));
+      await page.screenshot({path:path.join(screenshotDir,`grouped-columns-${id}-${engine.name()}-${width}.png`),fullPage:true});
+     }
+     assert.ok(Math.abs(field.width-expectedFieldWidth)<=2,`${context}: expected ${columns} columns, field=${field.width}, expected=${expectedFieldWidth}, template=${g.template}`);
+    }
     for(let i=1;i<layout.groups.length;i++)assert.ok(layout.groups[i].top>=layout.groups[i-1].bottom&&layout.groups[i].top-layout.groups[i-1].bottom<45,`${id}: ordered groups without empty rows`);
     if(id==='dealForm'){
      assert.equal(layout.groups[0].title,'Основные данные');

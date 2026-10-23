@@ -14,7 +14,7 @@
  // Pack natural-height panels; avoid large empty grid tracks when neighbours differ in height.
  const grid=document.querySelector('.dashboard-layout');if(!grid)return;
  const panels=[...grid.children];let scheduled=false;
- function pack(){scheduled=false;const narrow=innerWidth<=1100;for(const panel of panels){if(!panel.getClientRects().length)continue;const span=Math.ceil((panel.getBoundingClientRect().height+16)/24);panel.style.gridRowEnd=narrow?'auto':'span '+span}}
+ function pack(){scheduled=false;const narrow=innerWidth<=1100;for(const panel of panels){if(!panel.getClientRects().length)continue;const span=Math.ceil((panel.getBoundingClientRect().height+16)/24);panel.style.gridRowEnd=narrow?'auto':'span '+span}grid.classList.toggle('is-packed',!narrow)}
  const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(pack)}};
  const observer=new ResizeObserver(schedule);panels.forEach(p=>observer.observe(p));window.addEventListener('resize',schedule);window.arbatRenderDashboard?.();schedule();
 })();

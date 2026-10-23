@@ -166,7 +166,7 @@ body.ux-app.ab-ready.ui-modern .ux-preferences-dialog .ux-period{display:block!i
 .ux-preferences-dialog h2{font-size:20px;margin:0 0 12px}.ux-preferences-dialog p{font-size:14px}
 .ux-preferences-dialog footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:20px}
 .wallet-order-list>div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #dce6ed}.wallet-order-list span{overflow-wrap:anywhere}
-body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{grid-auto-rows:8px;grid-auto-flow:row dense;gap:16px!important;align-items:start}
+body.ux-app.ab-ready.ui-modern #overview .dashboard-layout{grid-auto-rows:auto;grid-auto-flow:row dense;gap:16px!important;align-items:start}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-panel{grid-column:auto!important;grid-row-start:auto!important;height:max-content;overflow:visible}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-project-panel{grid-column:1/-1!important}
 body.ux-app.ab-ready.ui-modern #overview .dashboard-panel{padding:18px!important;container-type:inline-size}
@@ -190,3 +190,7 @@ body.ux-app.ab-ready.ui-modern .executive-note{margin-top:12px;padding:10px;font
 body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-tax-panel{grid-column:1/-1!important}
 .dashboard-tax-details{margin:12px 0}.dashboard-tax-details summary{cursor:pointer;color:#086da7;font-size:14px;padding:8px 0;font-weight:650}.dashboard-tax-details summary:focus-visible{outline:3px solid #63b9ef;outline-offset:2px}
 body.ux-app.ab-ready.ui-modern .dashboard-tax-company{padding:14px!important}
+
+body.ux-app.ab-ready.ui-modern .dashboard-tax-due{background:transparent!important;padding:10px 0!important}
+
+@media(min-width:1101px){body.ux-app.ab-ready.ui-modern #overview .dashboard-layout.is-packed{grid-auto-rows:8px}}
