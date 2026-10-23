@@ -75,6 +75,6 @@
  const originalRender=window.render;window.render=function(){const result=originalRender.apply(this,arguments);schedule();return result};
  window.addEventListener('arbat-warehouse-changed',schedule);window.addEventListener('arbat:cloud-update',schedule);
  new MutationObserver(schedule).observe(document.querySelector('.content')||document.body,{childList:true,subtree:true});
- document.addEventListener('click',e=>{if(e.target.closest('button,input,a,select'))return;const row=e.target.closest('[data-wh-move],[data-import-id]');if(!row)return;const d=state().documents.find(d=>d.collection==='receipt'&&d.sources.some(m=>row.dataset.whMove?model.id(m)===row.dataset.whMove:m.importId===row.dataset.importId));if(d){e.preventDefault();e.stopImmediatePropagation();receipt(d.key)}},true);
+ document.addEventListener('click',e=>{if(e.target.closest('button,input,a,select'))return;const row=e.target.closest('[data-wh-move],[data-import-id]');if(!row)return;if(row.dataset.importId&&row.lastElementChild?.contains(e.target))return;const d=state().documents.find(d=>d.collection==='receipt'&&d.sources.some(m=>row.dataset.whMove?model.id(m)===row.dataset.whMove:m.importId===row.dataset.importId));if(d){e.preventDefault();e.stopImmediatePropagation();receipt(d.key)}},true);
  window.arbatOpenReceipt=receipt;window.arbatOpenPayables=show;refresh();
 })();
