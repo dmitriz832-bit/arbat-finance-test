@@ -194,3 +194,11 @@ body.ux-app.ab-ready.ui-modern .dashboard-tax-company{padding:14px!important}
 body.ux-app.ab-ready.ui-modern .dashboard-tax-due{background:transparent!important;padding:10px 0!important}
 
 @media(min-width:1101px){body.ux-app.ab-ready.ui-modern #overview .dashboard-layout.is-packed{grid-auto-rows:8px}}
+
+@container(max-width:600px){body.ux-app.ab-ready.ui-modern .dashboard-wallet-balances{grid-template-columns:minmax(0,1fr)!important}}
+body.ux-app.ab-ready.ui-modern #overview .dashboard-layout>.dashboard-warehouse-panel{grid-column:1/-1!important}
+body.ux-app.ab-ready.ui-modern #overview .dashboard-project-row{font-size:14px!important}
+body.ux-app.ab-ready.ui-modern #overview .dashboard-project-row small{display:block;font-size:12px!important;margin-top:4px}
+body.ux-app.ab-ready.ui-modern .ux-value.dashboard-negative,body.ux-app.ab-ready.ui-modern .dashboard-kpi.bad .ux-value{color:#b63545!important}
+body.ux-app.ab-ready.ui-modern .ux-value.dashboard-positive,body.ux-app.ab-ready.ui-modern .dashboard-kpi.good .ux-value{color:#147a4b!important}
+body.ux-app.ab-ready.ui-modern .dashboard-kpi.warn .ux-value{color:#9c6100!important}

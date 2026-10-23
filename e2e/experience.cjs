@@ -36,7 +36,7 @@ test('approved navigation, periods, source documents and every section fit all s
   assert.equal(await page.locator('#realizationForm [name=projectKey]').inputValue(),'АИР-КЛИМАТ::1C#UX-1');
   await page.locator('[data-sheet-cancel]').click();
   await page.locator('[data-ux-plan="income"]').click();assert.match(await page.locator('#uxDetail').innerText(),/Оплата по договору UX-1/);
-  await page.locator('#uxDetail [data-ux-source="calendar"]').click();await page.locator('#calendarModal.open').waitFor();await page.keyboard.press('Escape');await page.locator('#uxDetailBack').click();
+  await page.locator('#uxDetail [data-ux-source="calendar"]').click();await page.locator('#calendarModal.open').waitFor();assert.equal(await page.locator('#calendarEditForm [name=name]').inputValue(),'Оплата по договору UX-1');assert.equal(await page.locator('#calendarEditForm [name=org]').inputValue(),'АИР-КЛИМАТ');await page.keyboard.press('Escape');await page.locator('#uxDetailBack').click();
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results',`rollout-home-${engine.name()}-${width}.png`),fullPage:true});
   for(const route of ['deals','realizations','expenses','cash','calendar','materials:catalog','labor','costs','work','reports','settings']){
    await page.evaluate(route=>window.arbatNavigate(route),route);

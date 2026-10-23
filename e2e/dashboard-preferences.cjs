@@ -35,7 +35,15 @@ test('dashboard period dialog and personal wallet order work in the actual appli
   await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
   const geometry=await page.evaluate(()=>{const panels=[...document.querySelectorAll('.dashboard-layout>.dashboard-panel')].filter(e=>e.getClientRects().length).map(e=>({name:e.className,r:e.getBoundingClientRect().toJSON()}));const overlap=[];for(let i=0;i<panels.length;i++)for(let j=i+1;j<panels.length;j++){const a=panels[i].r,b=panels[j].r;if(a.left<b.right-2&&a.right>b.left+2&&a.top<b.bottom-2&&a.bottom>b.top+2)overlap.push([panels[i].name,panels[j].name])}return {overlap,underlines:[...document.querySelectorAll('#overview button')].filter(e=>e.getClientRects().length&&getComputedStyle(e).textDecorationLine.includes('underline')).length}});
   assert.deepEqual(geometry.overlap,[],engine.name()+' '+width+': dashboard panels do not overlap');assert.equal(geometry.underlines,0);
+  await page.evaluate(()=>scrollTo(0,0));
   await page.screenshot({path:path.join(root,'test-results',`polish-${engine.name()}-${width}-overview.png`),fullPage:true});
+  await page.evaluate(()=>window.arbatNavigate('deals'));
+  await page.locator('#deals .ui-toolbar-actions').getByRole('button',{name:'Новая сделка',exact:true}).click();
+  await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{}))));
+  assert.equal(await page.locator('#dealForm > fieldset').first().locator('legend').innerText(),'Основные данные');
+  assert.ok(await page.locator('#dealForm').evaluate(f=>f.scrollWidth<=f.clientWidth+1),'real deal form fits the sheet');
+  await page.screenshot({path:path.join(root,'test-results',`polish-${engine.name()}-${width}-deal.png`)});
+  await page.locator('[data-sheet-cancel]').click();
   assert.deepEqual(errors,[]);await context.close();
  }}finally{await browser.close()}}}finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
