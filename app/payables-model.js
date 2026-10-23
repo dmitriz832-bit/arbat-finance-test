@@ -69,7 +69,7 @@
    if(line.id)seen.add(line.id);
    const qty=Number(String(line.qty).replace(',','.')),price=Number(String(line.price).replace(',','.'));
    if(!(warehouse.items||[]).some(x=>x.id===line.itemId)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0)throw Error('Проверьте товар, количество и цену каждой строки');
-   return {...(previous||first),id:previous?.id||uuid(),documentId:first.documentId||(!first.importId?id(first):undefined),itemId:line.itemId,qty,price,note,documentLine:i+1,documentLines:lines.length,correctedAt:now,correctionHistory:[...(previous?.correctionHistory||[]),{at:now,previous:previous?{itemId:previous.itemId,qty:previous.qty,price:previous.price,note:previous.note}:null}]};
+   return {...(previous||first),id:previous?.id||uuid(),n:previous?.n||Math.max(0,...warehouse.moves.map(m=>Number(m.n)||0))+i+1,documentId:first.documentId||(!first.importId?id(first):undefined),itemId:line.itemId,qty,price,note,documentLine:i+1,documentLines:lines.length,correctedAt:now,correctionHistory:[...(previous?.correctionHistory||[]),{at:now,previous:previous?{itemId:previous.itemId,qty:previous.qty,price:previous.price,note:previous.note}:null}]};
   });
   const byId=new Map(result.filter(m=>original.some(o=>id(o)===id(m))).map(m=>[id(m),m])),last=id(original.at(-1)),moves=[];
   for(const m of warehouse.moves){if(m.kind==='receipt'&&receiptKey(m)===key){if(byId.has(id(m)))moves.push(byId.get(id(m)));if(id(m)===last)moves.push(...result.filter(r=>!byId.has(id(r))))}else moves.push({...m})}
