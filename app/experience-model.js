@@ -19,9 +19,13 @@
   return {from:today,to,future,week:future.filter(x=>x.occurrence<=to),overdue};
  }
  const kinds={'project-expense':['expenses','Расход проекта'],'general-expense':['costs','Общий расход'],'work-act':['workActs','Выполненная работа'],payroll:['labor','Начисление']};
+ function expenseSourceRow(row){
+  const calculated=row.calculated===true;
+  return {source:row.source,collection:calculated?null:kinds[row.kind]?.[0]||null,id:calculated?null:row.source?._id||row.source?.id,date:row.date,label:row.label||kinds[row.kind]?.[1]||row.kind,category:row.category,amount:row.amount,calculated,adjustment:row.adjustment||null,explanation:row.explanation||(calculated?'Расчётная корректировка финансового ядра за выбранный период. Отдельного первичного документа нет; исходное начисление не изменяется.':'')};
+ }
  function financialRows(snapshot,metric,core){
   const revenue=snapshot.revenueDocuments.map(source=>({source,collection:'realizations',id:source._id||source.id,date:source.date,label:'Реализация',amount:core.documentPnlAmount(source)}));
-  const expenses=snapshot.rows.map(row=>({source:row.source,collection:kinds[row.kind]?.[0]||null,id:row.source?._id||row.source?.id,date:row.date,label:kinds[row.kind]?.[1]||row.kind,category:row.category,amount:row.amount}));
+  const expenses=snapshot.rows.map(expenseSourceRow);
   if(metric==='revenue')return revenue;
   if(metric==='direct'){const rows=expenses.filter(x=>x.category==='direct');if(snapshot.deferredChange)rows.push({collection:null,id:null,date:'',label:'Изменение НЗП: уменьшение признанных затрат',amount:-snapshot.deferredChange});return rows;}
   if(metric==='production')return expenses.filter(x=>x.category==='production');
@@ -52,7 +56,7 @@
    'Расходы ниже EBITDA':x=>x.category==='belowExpenses'
   };
   if(!filters[label])return null;
-  return snapshot.rows.filter(filters[label]).map(row=>({source:row.source,collection:kinds[row.kind]?.[0]||null,id:row.source?._id||row.source?.id,date:row.date,label:kinds[row.kind]?.[1]||row.kind,amount:row.amount}));
+  return snapshot.rows.filter(filters[label]).map(expenseSourceRow);
  }
  return Object.freeze({iso,shiftPeriod,plans,financialRows,reportRows});
 });

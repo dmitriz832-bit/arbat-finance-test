@@ -15,6 +15,8 @@ test('dashboard period dialog and personal wallet order work in the actual appli
    localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[{id:'layout-item',name:'Материал для проверки длинного наименования в журнале движений',unit:'шт'}],places:[{id:'layout-store',name:'Основной склад',org}],moves:[{id:'layout-move',n:1,date,org,kind:'receipt',importId:'layout-import',itemId:'layout-item',to:'layout-store',qty:2,price:30,note:'Приходная накладная'}],imports:[{id:'layout-import',mode:'receipt',count:1,filename:'Приходная накладная.pdf',date,org}],projectIssues:[],plans:[],folders:[]}));
   });
   await page.goto(origin+'/app/');
+  const type=await page.evaluate(()=>({title:getComputedStyle(document.querySelector('#title')).fontWeight,body:getComputedStyle(document.body).fontWeight,kpi:getComputedStyle(document.querySelector('.dashboard-kpi strong')).fontWeight,button:getComputedStyle(document.querySelector('#uxPeriodTrigger')).fontWeight}));
+  assert.deepEqual(type,{title:'600',body:'400',kpi:'600',button:'500'},'typography uses a consistent regular/medium/semibold hierarchy');
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});
   // Disable only animation for deterministic geometry; retain all production sizing rules.
   await page.addStyleTag({content:'#layout{transition:none!important}'});
