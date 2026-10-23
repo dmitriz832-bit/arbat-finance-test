@@ -24,7 +24,7 @@ begin
 end $$;
 revoke all on function public.update_shared_state(text,jsonb,bigint) from public,anon;
 grant execute on function public.update_shared_state(text,jsonb,bigint) to authenticated;
-\ir ../supabase/migrations/20261023170000_atomic_shared_state_batch.sql
+\ir ../supabase/migrations/20261023155814_atomic_shared_state_batch.sql
 set local test.active='true';
 set local test.role='accountant';
 set local role authenticated;
