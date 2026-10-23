@@ -10,14 +10,14 @@ async function controls(p,s,expected,period='2026-10'){
  for(const [key,value] of Object.entries(expected))assert.equal(actual[key],String(value*100),s.org+' '+period+' '+key);
  assert.equal(actual.result,actual.ownerResult);assert.deepEqual(actual.wipIssues,[]);assert.equal(actual.audit,0);return actual;
 }
-async function move(p,s,kind,lines,note){
+async function move(p,s,kind,lines,note,reject=false){
  await navigate(p,'materials:receipt');await p.locator('#arbatWarehouseIntro').getByRole('button',{name:/Оформить приход/i}).click();await p.locator('#whDialog.open').waitFor();
  await choose(p,'#whDlgForm [name=kind]',kind);await choose(p,'#whDlgForm [name=org]',s.org);
  if(kind==='receipt')await choose(p,'#whDlgForm [name=to]',s.id+'-store');
  else{await choose(p,'#whDlgForm [name=from]',s.id+'-store');await choose(p,'#whDlgForm [name=dealId]',s.id)}
  await p.locator('#whDlgForm [name=note]').fill(note);
  for(let i=0;i<lines.length;i++){if(i)await p.locator('#whDlgForm [data-add-line]').click();const row=p.locator('#whDlgForm .wh-document-line').nth(i);await row.locator('[data-line-item]').selectOption(lines[i][0],{force:true});await row.locator('[data-line-qty]').fill(String(lines[i][1]));await row.locator('[data-line-price]').fill(String(lines[i][2]||0))}
- await p.locator('#whDlgForm button[type=submit]').click();await p.locator('#whDialog.open').waitFor({state:'hidden'});if(kind==='receipt')await p.locator('#payablesDialog [data-receipt-form]').waitFor();await closePay(p);
+ await p.locator('#whDlgForm button[type=submit]').click();if(reject){assert.equal(await p.locator('#whDialog.open').count(),1);await p.locator('#whCancel').click();return}await p.locator('#whDialog.open').waitFor({state:'hidden'});if(kind==='receipt')await p.locator('#payablesDialog [data-receipt-form]').waitFor();await closePay(p);
 }
 async function cash(p,s,amount,note,date,incoming=false){
  await openForm(p,'cashForm');await choose(p,'#cashForm [name=org]',s.org);await choose(p,'#cashForm [name=type]',incoming?'in':'out');await choose(p,'#cashForm [name=walletId]',s.id);await choose(p,'#cashForm [name=partyRef]',incoming?'cp:customer':'cp:supplier');await choose(p,'#cashForm [name=articleId]',incoming?'in':'out');await p.locator('#cashForm [name=date]').fill(date);await p.locator('#cashForm [name=amount]').fill(String(amount));await p.locator('#cashForm [name=note]').fill(note);await p.locator('#cashForm button[type=submit]').click();
@@ -34,11 +34,13 @@ test('full receipt-to-profit cycle through actual forms for two organizations an
   await p.clock.setFixedTime(new Date('2026-10-01T10:00:00Z'));
   try{await p.goto(origin+'/app/');await p.waitForFunction(()=>typeof window.arbatOpenPayables==='function');
    for(const s of specs){
+    await p.clock.setFixedTime(new Date('2026-10-01T10:00:00Z'));
     console.log('business cycle',engine.name(),width,s.org);
     await controls(p,s,{cash:100000,supplier:0,stock:0,result:0});
     await move(p,s,'receipt',[['unit',10,1000],['pipe',20,100]],'УПД цикл '+s.id);
     const key=await p.evaluate(org=>{const w=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));return window.ArbatPayables.receiptKey(w.moves.find(x=>x.org===org&&x.kind==='receipt'))},s.org);
     await controls(p,s,{cash:100000,supplier:12000,stock:12000,result:0});
+    await move(p,s,'consume',[['unit',6],['unit',6]],'Недопустимое повторное списание',true);assert.match(errors.pop()||'',/Недостаточно остатка/);await controls(p,s,{stock:12000,accrued:0,supplier:12000});
     const partial=await cash(p,s,5000,'Частичная оплата '+s.id,'2026-10-03');await link(p,key,partial._id,5000);
     await controls(p,s,{cash:95000,supplier:7000,stock:12000,result:0});
     await p.clock.setFixedTime(new Date('2026-10-04T10:00:00Z'));await move(p,s,'receipt',[['unit',5,1200]],'Вторая партия '+s.id);
