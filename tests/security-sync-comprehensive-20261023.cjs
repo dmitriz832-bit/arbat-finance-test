@@ -204,3 +204,14 @@ test('temporary server failure is retried but access rejection still halts and p
   h.get(null);h.setCloud(0,{deals:[{_id:'next'}]});await h.intervals[0]();assert.equal(h.read(F).deals.length,status===503?1:0);
  }
 });
+
+test('failed write can be explicitly retried against fresh cloud state without losing independent colleague edits',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async()=>{throw new TypeError('Failed to fetch')});h.save(F,{deals:[{_id:'mine'}]});await wait();await wait();
+ const retry=h.nodes.find(n=>n.id==='ab-recovery-retry');assert.ok(retry,'recovery must offer a safe retry');h.setCloud(0,{deals:[{_id:'colleague'}]});h.post(null);await retry.onclick();
+ assert.deepEqual(h.getCloud(0).payload.deals.map(x=>x._id).sort(),['colleague','mine']);assert.deepEqual(h.read(F),h.getCloud(0).payload);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),false,'recovery removed only after acknowledgement');
+});
+test('retry of an actual same-document conflict preserves both versions and the recovery snapshot',async()=>{
+ const h=harness({expenses:[{_id:'x',amount:10}]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.setCloud(0,{expenses:[{_id:'x',amount:20}]});h.save(F,{expenses:[{_id:'x',amount:30}]});await wait();await wait();
+ const retry=h.nodes.find(n=>n.id==='ab-recovery-retry');assert.ok(retry);await retry.onclick();assert.equal(h.getCloud(0).payload.expenses[0].amount,20);assert.equal(h.read(F).expenses[0].amount,30);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),true);
+ const calls=h.writes.length;h.window.abIdentity={user_id:'other',role:'admin'};await retry.onclick();assert.equal(h.writes.length,calls,'another user cannot replay the snapshot');
+});

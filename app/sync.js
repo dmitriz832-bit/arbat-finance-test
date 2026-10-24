@@ -70,13 +70,13 @@
     const owner=recoveryOwner();if(!owner)return null;
     const existing=recoveryFor(owner);if(existing)return existing;
     const actor=window.abIdentity;
-    const snapshot={format:'arbat-unsynced-recovery-v1',owner,identity:{user_id:actor.user_id||actor.id||'',email:actor.email||'',full_name:actor.full_name||''},createdAt:new Date().toISOString(),reason:error.message,revisions:{...rev},stores:{finance:load(K[0]),warehouse:load(K[1])},rawStorage:Object.fromEntries(K.map(key=>[key,localStorage.getItem(key)]))};
+    const snapshot={format:'arbat-unsynced-recovery-v1',owner,identity:{user_id:actor.user_id||actor.id||'',email:actor.email||'',full_name:actor.full_name||''},createdAt:new Date().toISOString(),reason:error.message,revisions:{...rev},base:{finance:previous[0],warehouse:previous[1]},stores:{finance:load(K[0]),warehouse:load(K[1])},rawStorage:Object.fromEntries(K.map(key=>[key,localStorage.getItem(key)]))};
     try{put(recoveryKey(owner),snapshot)}catch(error){snapshot.storageError=error.message}
     return snapshot;
   }
   function showRecovery(snapshot){
     if(!snapshot||snapshot.owner!==recoveryOwner())return;
-    const owner=snapshot.owner,key=recoveryKey(owner),auth=document.getElementById('ab-auth'),logout=document.getElementById('ab-logout');let discarded=false;
+    const owner=snapshot.owner,key=recoveryKey(owner),auth=document.getElementById('ab-auth'),logout=document.getElementById('ab-logout');let discarded=false,retrying=false;
     document.getElementById('ab-sync-recovery')?.remove();
     auth?.classList.remove('ab-checking');
     const form=document.getElementById('ab-form');if(form)form.hidden=true;
@@ -91,7 +91,7 @@
     };
     const discard=document.createElement('button');discard.id='ab-recovery-discard';discard.type='button';discard.textContent='Отказаться от локальных изменений';discard.style.cssText='margin-top:10px';
     discard.onclick=async()=>{
-      if(discarded||recoveryOwner()!==owner||(!recoveryFor(owner)&&!snapshot.storageError))return;
+      if(discarded||retrying||recoveryOwner()!==owner||(!recoveryFor(owner)&&!snapshot.storageError))return;
       if(!confirm('Отказаться от несохранённых локальных изменений и загрузить серверную версию? Сначала скачайте копию, если она нужна для сверки.'))return;
       discard.disabled=true;
       try{
@@ -100,7 +100,27 @@
         applyRemote(fresh);localStorage.removeItem(key);discarded=true;pending={};box.remove();location.reload();
       }catch(error){window.abMessage('Копия сохранена. Не удалось загрузить серверную версию: '+error.message);discard.disabled=false}
     };
-    box.append(note,download,discard);
+    box.append(note,download);
+    if(snapshot.base?.finance&&snapshot.base?.warehouse){
+      const retry=document.createElement('button');retry.id='ab-recovery-retry';retry.type='button';retry.textContent='Повторить синхронизацию';
+      retry.onclick=async()=>{
+        if(discarded||retrying||recoveryOwner()!==owner)return;
+        const current=recoveryFor(owner)||(snapshot.storageError?snapshot:null);if(!current?.base?.finance||!current.base.warehouse)return;
+        retrying=true;retry.disabled=true;discard.disabled=true;
+        try{
+          const fresh=await fetchAll();if(discarded||recoveryOwner()!==owner)return;
+          const stores=['finance','warehouse'],visible=stores.map((store,i)=>mergeShared(current.base[store],fresh[i].payload,current.stores[store]));
+          const result=await api('rpc/update_shared_state_batch',{p_changes:stores.map((store,i)=>({store,payload:visible[i],expected_revision:fresh[i].revision}))});
+          if(discarded||recoveryOwner()!==owner)return;
+          for(let i=0;i<stores.length;i++)if(!Number.isSafeInteger(result?.[stores[i]])||result[stores[i]]<=fresh[i].revision)throw Error('Некорректное подтверждение общей версии');
+          applyRemote(visible.map((payload,i)=>({payload,revision:result[stores[i]]})));
+          localStorage.removeItem(key);discarded=true;box.remove();location.reload();
+        }catch(error){window.abMessage('Копия сохранена. Синхронизация не завершена: '+error.message)}
+        finally{retrying=false;retry.disabled=false;discard.disabled=false}
+      };
+      box.append(retry);
+    }
+    box.append(discard);
     if(logout){logout.hidden=false;logout.style.position='static';logout.style.marginTop='10px';box.append(logout)}
     (auth?.querySelector('.card')||document.body).append(box);
   }

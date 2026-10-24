@@ -24,7 +24,7 @@ test('two independent application clients share documents, merge independent edi
      }
      return route.abort();
     });
-    await context.addInitScript(({initial,F,W,B})=>{localStorage.setItem(F,JSON.stringify(initial.finance));localStorage.setItem(W,JSON.stringify(initial.warehouse));localStorage.setItem(B,JSON.stringify({finance_state:1,warehouse_state:1}))},{initial,F,W,B});
+    await context.addInitScript(({initial,F,W,B})=>{if(localStorage.getItem('multiuser-seeded'))return;localStorage.setItem('multiuser-seeded','1');localStorage.setItem(F,JSON.stringify(initial.finance));localStorage.setItem(W,JSON.stringify(initial.warehouse));localStorage.setItem(B,JSON.stringify({finance_state:1,warehouse_state:1}))},{initial,F,W,B});
     await page.clock.setFixedTime(new Date('2026-10-24T10:00:00Z'));await page.goto(origin+'/app/');assert.equal(await page.evaluate(()=>window.arbatCloudBoot()),true);await page.evaluate(()=>window.arbatNavigate('expenses'));
    }
    const [admin,accountant]=pages;
@@ -32,14 +32,19 @@ test('two independent application clients share documents, merge independent edi
    const seen=async(page,id)=>{await page.waitForFunction(id=>JSON.parse(localStorage.getItem('arbat-finance-demo-live')).expenses.some(x=>x._id===id),id);await page.locator('#expensesTable').getByText('Документ '+id,{exact:true}).waitFor()};
    await create(accountant,'accountant-document');await seen(admin,'accountant-document');assert.equal(cloud.finance.expenses.find(x=>x._id==='accountant-document').createdBy.email,'accountant@example.test');
    offline.add('admin');await pause(5200);assert.equal(await admin.locator('#ab-sync-recovery').count(),0,'read outage keeps app open');await create(accountant,'offline-colleague');offline.delete('admin');await seen(admin,'offline-colleague');assert.equal(await admin.locator('#ab-sync-recovery').count(),0,'polling recovers without reload');
-   await seen(accountant,'offline-colleague');await Promise.all([create(admin,'parallel-admin'),create(accountant,'parallel-accountant')]);
+   await seen(accountant,'offline-colleague');
+   offline.add('admin');await create(admin,'offline-write');await admin.locator('#ab-sync-recovery').waitFor();offline.delete('admin');await create(accountant,'online-during-outage');
+   await Promise.all([admin.waitForEvent('load'),admin.locator('#ab-recovery-retry').click()]);await admin.waitForFunction(()=>typeof window.arbatCloudBoot==='function');assert.equal(await admin.evaluate(()=>window.arbatCloudBoot()),true);await admin.evaluate(()=>window.arbatNavigate('expenses'));
+   for(const page of pages){await seen(page,'offline-write');await seen(page,'online-during-outage')}
+   assert.equal(await admin.locator('#ab-sync-recovery').count(),0,'acknowledged retry removes the recovery gate');
+   await Promise.all([create(admin,'parallel-admin'),create(accountant,'parallel-accountant')]);
    for(const page of pages){await seen(page,'parallel-admin');await seen(page,'parallel-accountant')}
-   assert.equal(new Set(cloud.finance.expenses.map(x=>x._id)).size,4,'independent writes are conserved');
+   assert.equal(new Set(cloud.finance.expenses.map(x=>x._id)).size,6,'independent writes are conserved');
    await Promise.all(pages.map((page,i)=>page.evaluate(amount=>{db.expenses.find(x=>x._id==='accountant-document').amount=amount;save()},100+i*100)));
    let loser=-1;for(let i=0;i<100&&loser<0;i++){for(let n=0;n<pages.length;n++)if(await pages[n].locator('#ab-sync-recovery').count())loser=n;if(loser<0)await pause(100)}assert.notEqual(loser,-1,'same document conflict must stop a client');
    const saved=cloud.finance.expenses.find(x=>x._id==='accountant-document').amount;assert.ok([100,200].includes(saved));
    const recovery=await pages[loser].evaluate(()=>{const key=Object.keys(localStorage).find(k=>k.startsWith('arbat-unsynced-recovery-v1:'));return JSON.parse(localStorage.getItem(key))});assert.equal(recovery.stores.finance.expenses.find(x=>x._id==='accountant-document').amount,loser===0?100:200);assert.notEqual(saved,loser===0?100:200,'server and recoverable local version remain distinct');
-   const winner=1-loser;blocked.add(winner===0?'admin':'accountant');await pages[winner].locator('#ab-sync-recovery').waitFor();assert.equal(cloud.finance.expenses.length,4,'access rejection writes no documents');assert.deepEqual(errors,[]);
+   const winner=1-loser;blocked.add(winner===0?'admin':'accountant');await pages[winner].locator('#ab-sync-recovery').waitFor();assert.equal(cloud.finance.expenses.length,6,'access rejection writes no documents');assert.deepEqual(errors,[]);
    await fs.mkdir(path.join(root,'test-results'),{recursive:true});for(let n=0;n<pages.length;n++)await pages[n].screenshot({path:path.join(root,'test-results',`multiuser-${engine.name()}-${n}.png`)});
   }finally{for(const context of contexts)await context.close();await browser.close()}
  }}finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
