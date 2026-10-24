@@ -37,6 +37,7 @@
   if(e.key==='Tab')trap(e,sheet);
  },true);
  document.addEventListener('submit',e=>{if(!active||e.target!==active.form)return;const state=active,keys=['arbat-finance-demo-live','arbat-warehouse-v1'],before=keys.map(k=>localStorage.getItem(k));queueMicrotask(()=>{if(active===state&&before.some((v,i)=>v!==localStorage.getItem(keys[i])))close();});},true);
+ window.addEventListener('arbat:document-saved',e=>{if(active?.form?.id===e.detail?.formId)close();});
  function button(text,callback,primary=false){const b=document.createElement('button');b.type='button';b.textContent=text;if(primary)b.className='primary';b.onclick=callback;return b;}
  function toolbar(section,description){section.querySelectorAll(':scope > .hv-workspace-header,:scope > .hv-actionbar').forEach(n=>n.remove());const bar=document.createElement('div');bar.className='ui-page-toolbar';const note=document.createElement('p');note.textContent=description;bar.append(note);const actions=document.createElement('div');actions.className='ui-toolbar-actions';bar.append(actions);section.prepend(bar);return actions;}
  function prepareForm(id,name,actions,label,primary=true){
