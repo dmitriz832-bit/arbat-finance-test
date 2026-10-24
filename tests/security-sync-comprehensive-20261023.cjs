@@ -7,6 +7,7 @@ const wait=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};
 function harness(finance={deals:[]},warehouse={items:[]},options={}){
  class Storage{constructor(data){this.data=data||new Map()}getItem(k){return this.data.has(k)?this.data.get(k):null}setItem(k,v){if(options.failRecoveryWrites&&String(k).startsWith('arbat-unsynced-recovery-v1:'))throw Error('Storage quota exceeded');this.data.set(k,String(v))}removeItem(k){this.data.delete(k)}}
+ const periodRows=options.periods||[];
  const localStorage=new Storage(options.data),sessionStorage=new Storage(),events=[],messages=[],intervals=[],nodes=[],downloads=[];
  const element=()=>{const n={children:[],style:{},classList:{remove(){}},append(...children){this.children.push(...children)},remove(){this.removed=true},click(){this.onclick?.()}};nodes.push(n);return n};
  const card=element(),auth=element();auth.id='ab-auth';auth.querySelector=()=>card;
@@ -16,6 +17,7 @@ function harness(finance={deals:[]},warehouse={items:[]},options={}){
  const window={abIdentity:options.identity,abGetToken:async()=> 'mock-token',abMessage:x=>messages.push(x),dispatchEvent:e=>events.push(e),addEventListener(){}};
  const context={Storage,localStorage,sessionStorage,window,document:{body:{classList:{remove(){}},append(){}},createElement:element,getElementById:id=>nodes.find(n=>n.id===id&&!n.removed)||null,addEventListener(){}},Blob,URL:{createObjectURL:blob=>{downloads.push(blob);return 'blob:mock'},revokeObjectURL(){}},setTimeout(){},confirm:()=>true,location:{reload(){}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail}},setInterval:fn=>intervals.push(fn),queueMicrotask,console,fetch:async(url,options)=>{
   const respond=x=>({ok:true,json:async()=>clone(x)});
+  if(options.method==='GET'&&url.includes('/finance_periods?'))return respond(periodRows);
   if(options.method==='GET'){const i=url.includes('warehouse_state')?1:0;const snapshot=clone(cloud[i]);if(getHook)await getHook(i);return respond([snapshot])}
   const body=JSON.parse(options.body);writes.push(body);if(postHook){const result=await postHook(body);if(result)return result}
   if(url.endsWith('/rpc/update_shared_state_batch')){
@@ -231,4 +233,25 @@ test('visible cloud model mutations cannot alter the three-way merge baseline',a
 test('editing the emitted UI model retains the original baseline and detects another edit of that document',async()=>{
  const h=harness({expenses:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.setCloud(0,{expenses:[{_id:'x',amount:10}]});await h.intervals[0]();
  const visible=h.events.at(-1).detail.finance;visible.expenses[0].amount=30;h.setCloud(0,{expenses:[{_id:'x',amount:20}]});h.save(F,visible);await wait();await wait();assert.equal(h.getCloud(0).payload.expenses[0].amount,20);assert.equal(h.read(F).expenses[0].amount,30);assert.ok(h.messages.some(x=>x.includes('Конфликт')));
+});
+
+test('realization preflight rejects both old and new closed dates before any save',async()=>{
+ const h=harness({}, {}, {periods:[{period:'2026-09',status:'closed'}]});
+ await assert.rejects(()=>h.window.arbatEnsureOpenPeriods(['2026-09-12','2026-10-24']),/2026-09.*закрыт/);
+ await assert.rejects(()=>h.window.arbatEnsureOpenPeriods(['2026-10-24','2026-09-12']),/2026-09.*закрыт/);
+ await h.window.arbatEnsureOpenPeriods(['2026-10-24']);assert.equal(h.writes.length,0);
+});
+test('closed-period recovery explains the rejection and lets an admin reopen with an audited reason without discarding the draft',async()=>{
+ const h=harness({realizations:[{_id:'act',date:'2026-09-12',amount:10}]},{},{identity:{user_id:'a',email:'a@example.test',role:'admin'}});await h.window.arbatCloudBoot();
+ h.post(async()=>({ok:false,status:400,json:async()=>({message:'Financial period 2026-09 is closed: realizations cannot be changed. Use a subsequent-period correction referencing the original document.'})}));
+ h.save(F,{realizations:[{_id:'act',date:'2026-09-12',amount:20}]});await wait();await wait();
+ assert.match(h.messages.at(-1),/2026-09.*закрыт/);assert.doesNotMatch(h.messages.at(-1),/Financial period/);
+ const button=h.nodes.find(n=>n.id==='ab-recovery-open-period'),reason=h.nodes.find(n=>n.id==='ab-recovery-period-reason');assert.ok(button);assert.ok(reason);
+ const before=h.writes.length;reason.value='short';await button.onclick();assert.equal(h.writes.length,before);
+ reason.value='Исправление суммы акта реализации';h.post(async body=>body.p_period?{ok:true,json:async()=>null}:null);await button.onclick();
+ assert.equal(h.writes.at(-1).p_period,'2026-09');assert.equal(h.writes.at(-1).p_status,'open');assert.equal(h.writes.at(-1).p_reason,reason.value);
+ assert.equal(h.read(F).realizations[0].amount,20);assert.equal(h.getCloud(0).payload.realizations[0].amount,10);assert.ok(h.localStorage.getItem('arbat-unsynced-recovery-v1:a'));
+});
+test('accountant cannot reopen a closed period from recovery',async()=>{
+ const h=harness({},{},{identity:{user_id:'b',email:'b@example.test',role:'accountant'}});await h.window.arbatCloudBoot();h.post(async()=>({ok:false,status:400,json:async()=>({message:'Financial period 2026-09 is closed: realizations cannot be changed.'})}));h.save(F,{realizations:[{_id:'act',date:'2026-09-12'}]});await wait();await wait();assert.equal(h.nodes.some(n=>n.id==='ab-recovery-open-period'),false);
 });
