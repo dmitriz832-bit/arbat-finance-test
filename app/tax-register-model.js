@@ -10,15 +10,15 @@ function basic(e){if(!id(e))throw Error('Нет идентификатора с�
 function duplicateIds(events){const counts=new Map();for(const e of events)counts.set(id(e),(counts.get(id(e))||0)+1);return new Set([...counts].filter(([k,n])=>!k||n>1).map(([k])=>k))}
 function reference(rows,key,e,type){const matches=(rows||[]).filter(x=>id(x)===text(key));if(matches.length!==1)throw Error('Документ-источник отсутствует или неоднозначен');const r=matches[0];if(r.org!==e.org||type&&r.type!==type)throw Error('Организация или вид платежа не совпадают');if(!validDate(r.date)||e.date<r.date)throw Error('Событие не может быть раньше документа-источника');return r}
 function reserve(map,key,n,cap){const used=(map.get(key)||0n)+n;if(used>cap)throw Error('Сумма событий превышает сумму документа');map.set(key,used)}
-function advances(data={},filters={}){
- const all=data.vatAdvanceEvents||[],dups=duplicateIds(all),issues=[],rows=[],balances=[],cashUsed=new Map(),saleUsed=new Map(),acceptedCash=new Map(),byId=new Map();
+function calculateAdvances(data={},filters={},reservations=new Map()){
+ const all=data.vatAdvanceEvents||[],dups=duplicateIds(all),issues=[],rows=[],balances=[],cashUsed=new Map(reservations),saleUsed=new Map(),acceptedCash=new Map(),byId=new Map();
  const inPeriod=e=>(!filters.org||e.org===filters.org)&&(!filters.from||e.date>=filters.from)&&(!filters.to||e.date<=filters.to);
  const until=e=>!filters.to||e.date<=filters.to;
  const sorted=[...all].sort((a,b)=>text(a.date).localeCompare(text(b.date))||((a.kind==='received'?0:1)-(b.kind==='received'?0:1))||id(a).localeCompare(id(b)));
  for(const e of sorted){if(!until(e))continue;try{
   basic(e);if(dups.has(id(e)))throw Error('Повторяющийся идентификатор события');const n=money(e.amount);let vat=0n,source,collection;
   if(e.kind==='received'){
-   source=reference(data.cash,e.cashId,e,'in');collection='cash';if(e.date!==source.date)throw Error('НДС с аванса начисляется на дату получения платежа');
+   source=reference(data.cash,e.cashId,e,'in');collection='cash';if(source.org==='АИР-КЛИМАТ'&&(source.usnTaxable===false||source.usnTaxable==='false'))throw Error('Поступление исключено из доходов УСН: проверьте классификацию аванса');if(e.date!==source.date)throw Error('НДС с аванса начисляется на дату получения платежа');
    if(![0,5,7,10,20,22].includes(Number(e.vatRate))||text(e.vatRate)==='')throw Error('Укажите подтверждённую ставку НДС');
    // Net rounding matches the shared document VAT primitive, including historical rates.
    vat=core.documentVat(e.amount,e.vatRate,false).vatAmount;reserve(cashUsed,id(source),n,money(source.amount));
@@ -39,12 +39,13 @@ function advances(data={},filters={}){
  const selected=rows.filter(r=>inPeriod(r)),sum=kind=>selected.filter(x=>kind?x.kind===kind:x.kind!=='received').reduce((s,x)=>s+x.vat,0n);
  return {rows:selected,balances:balances.filter(x=>!filters.org||x.org===filters.org),issues:issues.filter(x=>!filters.org||x.event.org===filters.org),accrued:sum('received'),deducted:sum(),coveredCash:[...acceptedCash].filter(([key,n])=>{const r=(data.cash||[]).find(x=>id(x)===key);return r&&n===core.cents(r.amount)}).map(([key])=>key)};
 }
-function obligations(data={},filters={}){
- const all=data.taxObligationEvents||[],dups=duplicateIds(all),issues=[],groups=new Map(),ens=new Map(),cashUsed=new Map(),events=[];
+function calculateObligations(data={},filters={},reservations=new Map()){
+ const all=data.taxObligationEvents||[],dups=duplicateIds(all),issues=[],groups=new Map(),ens=new Map(),cashUsed=new Map(reservations),events=[];
+ const ensValues=new Map();for(const e of all){try{if(e.kind!=='ensBalance'||!yes(e.confirmed)||filters.to&&e.date>filters.to)continue;basic(e);const key=e.org+'|'+e.date,n=money(e.amount,true).toString();if(!ensValues.has(key))ensValues.set(key,new Set());ensValues.get(key).add(n)}catch{}}
  for(const e of [...all].sort((a,b)=>text(a.date).localeCompare(text(b.date))||id(a).localeCompare(id(b)))){
   if(filters.to&&e.date>filters.to||filters.org&&e.org!==filters.org)continue;
   try{basic(e);if(dups.has(id(e)))throw Error('Повторяющийся идентификатор события');if(!yes(e.confirmed))throw Error('Налоговое событие не подтверждено');const n=money(e.amount,e.kind==='ensBalance');
-   if(e.kind==='ensBalance'){ens.set(e.org,{org:e.org,date:e.date,balance:n,document:e.document});events.push(e);continue}
+   if(e.kind==='ensBalance'){if(ensValues.get(e.org+'|'+e.date)?.size>1){ens.delete(e.org);throw Error('Разные подтверждённые сальдо ЕНС на одну дату: уточните выписки')}ens.set(e.org,{org:e.org,date:e.date,balance:n,document:e.document});events.push(e);continue}
    if(!taxes.includes(e.tax)||!period(e.period))throw Error('Укажите налог и налоговый период');
    if(!['openingDebt','openingCredit','accrual','payment','offset','refund'].includes(e.kind))throw Error('Неизвестный вид налогового события');
    if(e.kind==='offset'&&!yes(e.ensConfirmed))throw Error('Для зачёта нужны подтверждённые данные ЕНС');
@@ -55,6 +56,18 @@ function obligations(data={},filters={}){
  }
  const rows=[...groups.values()].map(r=>{const balance=r.openingDebt-r.openingCredit+r.accrued-r.paid-r.offset+r.refund;return {...r,balance,debt:balance>0n?balance:0n,overpayment:balance<0n?-balance:0n}});
  return {rows,ens:[...ens.values()],issues,events};
+}
+// Cross-register reservations use only records accepted by a complete own-register pass.
+// Neither pass invokes the other; invalid sources or over-refunds cannot reserve money.
+function advances(data={},filters={}){
+ const accepted=calculateObligations(data,{to:filters.to}),reservations=new Map();
+ for(const e of accepted.events)if(e.kind==='payment'||e.kind==='refund')reservations.set(e.cashId,(reservations.get(e.cashId)||0n)+core.cents(e.amount));
+ return calculateAdvances(data,filters,reservations);
+}
+function obligations(data={},filters={}){
+ const accepted=calculateAdvances(data,{to:filters.to}),reservations=new Map();
+ for(const r of accepted.rows)if(r.collection==='cash')reservations.set(r.id,(reservations.get(r.id)||0n)+r.amount);
+ return calculateObligations(data,filters,reservations);
 }
 return Object.freeze({advances,obligations,validDate,organizations,taxes});
 });

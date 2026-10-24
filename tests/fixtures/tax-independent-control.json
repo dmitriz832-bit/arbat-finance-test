@@ -1,0 +1,775 @@
+{
+  "vatCases": [
+    {
+      "gross": "0",
+      "rate": 0,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 0,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 0,
+      "vat": 0,
+      "net": 3
+    },
+    {
+      "gross": "0.61",
+      "rate": 0,
+      "vat": 0,
+      "net": 61
+    },
+    {
+      "gross": "1.05",
+      "rate": 0,
+      "vat": 0,
+      "net": 105
+    },
+    {
+      "gross": "1.07",
+      "rate": 0,
+      "vat": 0,
+      "net": 107
+    },
+    {
+      "gross": "1.10",
+      "rate": 0,
+      "vat": 0,
+      "net": 110
+    },
+    {
+      "gross": "1.20",
+      "rate": 0,
+      "vat": 0,
+      "net": 120
+    },
+    {
+      "gross": "1.22",
+      "rate": 0,
+      "vat": 0,
+      "net": 122
+    },
+    {
+      "gross": "100.01",
+      "rate": 0,
+      "vat": 0,
+      "net": 10001
+    },
+    {
+      "gross": "100000.99",
+      "rate": 0,
+      "vat": 0,
+      "net": 10000099
+    },
+    {
+      "gross": "12345.67",
+      "rate": 0,
+      "vat": 0,
+      "net": 1234567
+    },
+    {
+      "gross": "-0.03",
+      "rate": 0,
+      "vat": 0,
+      "net": -3
+    },
+    {
+      "gross": "-1.22",
+      "rate": 0,
+      "vat": 0,
+      "net": -122
+    },
+    {
+      "gross": "0",
+      "rate": 5,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 5,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 5,
+      "vat": 0,
+      "net": 3
+    },
+    {
+      "gross": "0.61",
+      "rate": 5,
+      "vat": 3,
+      "net": 58
+    },
+    {
+      "gross": "1.05",
+      "rate": 5,
+      "vat": 5,
+      "net": 100
+    },
+    {
+      "gross": "1.07",
+      "rate": 5,
+      "vat": 5,
+      "net": 102
+    },
+    {
+      "gross": "1.10",
+      "rate": 5,
+      "vat": 5,
+      "net": 105
+    },
+    {
+      "gross": "1.20",
+      "rate": 5,
+      "vat": 6,
+      "net": 114
+    },
+    {
+      "gross": "1.22",
+      "rate": 5,
+      "vat": 6,
+      "net": 116
+    },
+    {
+      "gross": "100.01",
+      "rate": 5,
+      "vat": 476,
+      "net": 9525
+    },
+    {
+      "gross": "100000.99",
+      "rate": 5,
+      "vat": 476195,
+      "net": 9523904
+    },
+    {
+      "gross": "12345.67",
+      "rate": 5,
+      "vat": 58789,
+      "net": 1175778
+    },
+    {
+      "gross": "-0.03",
+      "rate": 5,
+      "vat": 0,
+      "net": -3
+    },
+    {
+      "gross": "-1.22",
+      "rate": 5,
+      "vat": -6,
+      "net": -116
+    },
+    {
+      "gross": "0",
+      "rate": 7,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 7,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 7,
+      "vat": 0,
+      "net": 3
+    },
+    {
+      "gross": "0.61",
+      "rate": 7,
+      "vat": 4,
+      "net": 57
+    },
+    {
+      "gross": "1.05",
+      "rate": 7,
+      "vat": 7,
+      "net": 98
+    },
+    {
+      "gross": "1.07",
+      "rate": 7,
+      "vat": 7,
+      "net": 100
+    },
+    {
+      "gross": "1.10",
+      "rate": 7,
+      "vat": 7,
+      "net": 103
+    },
+    {
+      "gross": "1.20",
+      "rate": 7,
+      "vat": 8,
+      "net": 112
+    },
+    {
+      "gross": "1.22",
+      "rate": 7,
+      "vat": 8,
+      "net": 114
+    },
+    {
+      "gross": "100.01",
+      "rate": 7,
+      "vat": 654,
+      "net": 9347
+    },
+    {
+      "gross": "100000.99",
+      "rate": 7,
+      "vat": 654212,
+      "net": 9345887
+    },
+    {
+      "gross": "12345.67",
+      "rate": 7,
+      "vat": 80766,
+      "net": 1153801
+    },
+    {
+      "gross": "-0.03",
+      "rate": 7,
+      "vat": 0,
+      "net": -3
+    },
+    {
+      "gross": "-1.22",
+      "rate": 7,
+      "vat": -8,
+      "net": -114
+    },
+    {
+      "gross": "0",
+      "rate": 10,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 10,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 10,
+      "vat": 0,
+      "net": 3
+    },
+    {
+      "gross": "0.61",
+      "rate": 10,
+      "vat": 6,
+      "net": 55
+    },
+    {
+      "gross": "1.05",
+      "rate": 10,
+      "vat": 10,
+      "net": 95
+    },
+    {
+      "gross": "1.07",
+      "rate": 10,
+      "vat": 10,
+      "net": 97
+    },
+    {
+      "gross": "1.10",
+      "rate": 10,
+      "vat": 10,
+      "net": 100
+    },
+    {
+      "gross": "1.20",
+      "rate": 10,
+      "vat": 11,
+      "net": 109
+    },
+    {
+      "gross": "1.22",
+      "rate": 10,
+      "vat": 11,
+      "net": 111
+    },
+    {
+      "gross": "100.01",
+      "rate": 10,
+      "vat": 909,
+      "net": 9092
+    },
+    {
+      "gross": "100000.99",
+      "rate": 10,
+      "vat": 909100,
+      "net": 9090999
+    },
+    {
+      "gross": "12345.67",
+      "rate": 10,
+      "vat": 112233,
+      "net": 1122334
+    },
+    {
+      "gross": "-0.03",
+      "rate": 10,
+      "vat": 0,
+      "net": -3
+    },
+    {
+      "gross": "-1.22",
+      "rate": 10,
+      "vat": -11,
+      "net": -111
+    },
+    {
+      "gross": "0",
+      "rate": 20,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 20,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 20,
+      "vat": 1,
+      "net": 2
+    },
+    {
+      "gross": "0.61",
+      "rate": 20,
+      "vat": 10,
+      "net": 51
+    },
+    {
+      "gross": "1.05",
+      "rate": 20,
+      "vat": 18,
+      "net": 87
+    },
+    {
+      "gross": "1.07",
+      "rate": 20,
+      "vat": 18,
+      "net": 89
+    },
+    {
+      "gross": "1.10",
+      "rate": 20,
+      "vat": 18,
+      "net": 92
+    },
+    {
+      "gross": "1.20",
+      "rate": 20,
+      "vat": 20,
+      "net": 100
+    },
+    {
+      "gross": "1.22",
+      "rate": 20,
+      "vat": 20,
+      "net": 102
+    },
+    {
+      "gross": "100.01",
+      "rate": 20,
+      "vat": 1667,
+      "net": 8334
+    },
+    {
+      "gross": "100000.99",
+      "rate": 20,
+      "vat": 1666683,
+      "net": 8333416
+    },
+    {
+      "gross": "12345.67",
+      "rate": 20,
+      "vat": 205761,
+      "net": 1028806
+    },
+    {
+      "gross": "-0.03",
+      "rate": 20,
+      "vat": -1,
+      "net": -2
+    },
+    {
+      "gross": "-1.22",
+      "rate": 20,
+      "vat": -20,
+      "net": -102
+    },
+    {
+      "gross": "0",
+      "rate": 22,
+      "vat": 0,
+      "net": 0
+    },
+    {
+      "gross": "0.01",
+      "rate": 22,
+      "vat": 0,
+      "net": 1
+    },
+    {
+      "gross": "0.03",
+      "rate": 22,
+      "vat": 1,
+      "net": 2
+    },
+    {
+      "gross": "0.61",
+      "rate": 22,
+      "vat": 11,
+      "net": 50
+    },
+    {
+      "gross": "1.05",
+      "rate": 22,
+      "vat": 19,
+      "net": 86
+    },
+    {
+      "gross": "1.07",
+      "rate": 22,
+      "vat": 19,
+      "net": 88
+    },
+    {
+      "gross": "1.10",
+      "rate": 22,
+      "vat": 20,
+      "net": 90
+    },
+    {
+      "gross": "1.20",
+      "rate": 22,
+      "vat": 22,
+      "net": 98
+    },
+    {
+      "gross": "1.22",
+      "rate": 22,
+      "vat": 22,
+      "net": 100
+    },
+    {
+      "gross": "100.01",
+      "rate": 22,
+      "vat": 1803,
+      "net": 8198
+    },
+    {
+      "gross": "100000.99",
+      "rate": 22,
+      "vat": 1803297,
+      "net": 8196802
+    },
+    {
+      "gross": "12345.67",
+      "rate": 22,
+      "vat": 222627,
+      "net": 1011940
+    },
+    {
+      "gross": "-0.03",
+      "rate": 22,
+      "vat": -1,
+      "net": -2
+    },
+    {
+      "gross": "-1.22",
+      "rate": 22,
+      "vat": -22,
+      "net": -100
+    }
+  ],
+  "oracle": "Python Decimal ROUND_HALF_UP; independent of application modules",
+  "data": {
+    "cash": [
+      {
+        "_id": "adv-old",
+        "org": "АРБАТ.ГК",
+        "date": "2025-12-15",
+        "type": "in",
+        "amount": "120000"
+      },
+      {
+        "_id": "adv-return",
+        "org": "АРБАТ.ГК",
+        "date": "2026-05-15",
+        "type": "out",
+        "amount": "30000"
+      },
+      {
+        "_id": "air-in-1",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-01-10",
+        "type": "in",
+        "amount": "1000000",
+        "usnTaxable": true
+      },
+      {
+        "_id": "air-out-1",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-01-10",
+        "type": "out",
+        "amount": "800000",
+        "usnDeductible": true,
+        "usnRecognitionEvents": [
+          {
+            "id": "e1",
+            "date": "2026-01-10",
+            "amount": "800000",
+            "document": "Основание 1"
+          }
+        ]
+      },
+      {
+        "_id": "air-in-2",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-04-10",
+        "type": "in",
+        "amount": "1000000",
+        "usnTaxable": true
+      },
+      {
+        "_id": "air-out-2",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-04-10",
+        "type": "out",
+        "amount": "1200000",
+        "usnDeductible": true,
+        "usnRecognitionEvents": [
+          {
+            "id": "e2",
+            "date": "2026-04-10",
+            "amount": "1200000",
+            "document": "Основание 2"
+          }
+        ]
+      },
+      {
+        "_id": "air-in-3",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-07-10",
+        "type": "in",
+        "amount": "500000",
+        "usnTaxable": true
+      },
+      {
+        "_id": "air-out-3",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-07-10",
+        "type": "out",
+        "amount": "400000",
+        "usnDeductible": true,
+        "usnRecognitionEvents": [
+          {
+            "id": "e3",
+            "date": "2026-07-10",
+            "amount": "400000",
+            "document": "Основание 3"
+          }
+        ]
+      },
+      {
+        "_id": "air-out-4",
+        "org": "АИР-КЛИМАТ",
+        "date": "2026-10-10",
+        "type": "out",
+        "amount": "100000",
+        "usnDeductible": true,
+        "usnRecognitionEvents": [
+          {
+            "id": "e4",
+            "date": "2026-10-10",
+            "amount": "100000",
+            "document": "Основание 4"
+          }
+        ]
+      }
+    ],
+    "realizations": [
+      {
+        "_id": "q1-sale",
+        "org": "АРБАТ.ГК",
+        "date": "2026-03-15",
+        "amount": "61000",
+        "vatRate": 22
+      },
+      {
+        "_id": "q2-sale",
+        "org": "АРБАТ.ГК",
+        "date": "2026-04-15",
+        "amount": "61000",
+        "vatRate": 22
+      }
+    ],
+    "vatAdvanceEvents": [
+      {
+        "_id": "a",
+        "kind": "received",
+        "org": "АРБАТ.ГК",
+        "date": "2025-12-15",
+        "cashId": "adv-old",
+        "amount": "120000",
+        "vatRate": 20,
+        "document": "СФ 2025"
+      },
+      {
+        "_id": "s1",
+        "kind": "offset",
+        "org": "АРБАТ.ГК",
+        "date": "2026-03-15",
+        "advanceId": "a",
+        "realizationId": "q1-sale",
+        "amount": "60000",
+        "document": "Зачёт Q1"
+      },
+      {
+        "_id": "s2",
+        "kind": "offset",
+        "org": "АРБАТ.ГК",
+        "date": "2026-04-15",
+        "advanceId": "a",
+        "realizationId": "q2-sale",
+        "amount": "30000",
+        "document": "Зачёт Q2"
+      },
+      {
+        "_id": "r",
+        "kind": "refund",
+        "org": "АРБАТ.ГК",
+        "date": "2026-05-15",
+        "advanceId": "a",
+        "cashId": "adv-return",
+        "amount": "30000",
+        "document": "Расторжение"
+      }
+    ],
+    "expenses": [
+      {
+        "_id": "exp-1",
+        "org": "АРБАТ.ГК",
+        "date": "2026-03-01",
+        "amount": "24400",
+        "vatRate": 22,
+        "vatDeductible": true,
+        "vatDeductionDate": "2026-03-01",
+        "vatInvoice": "УПД 1",
+        "profitTaxDeductible": true,
+        "profitTaxRecognitionDate": "2026-03-01",
+        "profitTaxDocument": "Расход 1"
+      },
+      {
+        "_id": "exp-2",
+        "org": "АРБАТ.ГК",
+        "date": "2026-05-01",
+        "amount": "12200",
+        "vatRate": 22,
+        "vatDeductible": true,
+        "vatDeductionDate": "2026-05-01",
+        "vatInvoice": "УПД 2",
+        "profitTaxDeductible": true,
+        "profitTaxRecognitionDate": "2026-05-01",
+        "profitTaxDocument": "Расход 2"
+      }
+    ],
+    "labor": [
+      {
+        "_id": "w",
+        "org": "АРБАТ.ГК",
+        "date": "2026-02-01",
+        "amount": "10000",
+        "employerContributions": "3000",
+        "profitTaxDeductible": true,
+        "profitTaxRecognitionDate": "2026-02-01",
+        "profitTaxDocument": "Начисление"
+      }
+    ]
+  },
+  "expected": [
+    {
+      "reference": "2026-03-01",
+      "quarter": 1,
+      "airIncome": 100000000,
+      "airExpenses": 80000000,
+      "airRegular": 3000000,
+      "airMinimum": 1000000,
+      "airAccrued": 3000000,
+      "outputVat": 1100000,
+      "inputVat": 1440000,
+      "vatBalance": -340000,
+      "profitRevenue": 5000000,
+      "profitExpenses": 3300000,
+      "profitTax": 425000
+    },
+    {
+      "reference": "2026-06-01",
+      "quarter": 2,
+      "airIncome": 200000000,
+      "airExpenses": 200000000,
+      "airRegular": 0,
+      "airMinimum": 2000000,
+      "airAccrued": 0,
+      "outputVat": 1100000,
+      "inputVat": 1220000,
+      "vatBalance": -120000,
+      "profitRevenue": 10000000,
+      "profitExpenses": 4300000,
+      "profitTax": 1425000
+    },
+    {
+      "reference": "2026-09-01",
+      "quarter": 3,
+      "airIncome": 250000000,
+      "airExpenses": 240000000,
+      "airRegular": 1500000,
+      "airMinimum": 2500000,
+      "airAccrued": 1500000,
+      "outputVat": 0,
+      "inputVat": 0,
+      "vatBalance": 0,
+      "profitRevenue": 10000000,
+      "profitExpenses": 4300000,
+      "profitTax": 1425000
+    },
+    {
+      "reference": "2026-12-01",
+      "quarter": 4,
+      "airIncome": 250000000,
+      "airExpenses": 250000000,
+      "airRegular": 0,
+      "airMinimum": 2500000,
+      "airAccrued": 2500000,
+      "outputVat": 0,
+      "inputVat": 0,
+      "vatBalance": 0,
+      "profitRevenue": 10000000,
+      "profitExpenses": 4300000,
+      "profitTax": 1425000
+    }
+  ]
+}

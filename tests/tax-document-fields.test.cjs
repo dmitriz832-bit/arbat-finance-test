@@ -32,3 +32,4 @@ test('impossible dates return an error without throwing; partial zero is support
  const m=model(),row={org:'АИР-КЛИМАТ',date:'2026-10-01',type:'out',amount:'100',usnDeductible:'true',usnDocument:'Акт',usnRecognitionDate:'9999-99-99'};
  assert.match(m.validate(row,'cash'),/дат/i);assert.equal(m.validate({...row,usnRecognitionDate:'2026-10-02',usnRecognizedAmount:'0'},'cash'),null);
 });
+test('USN customer receipt VAT requires an explicit bounded amount and documentary basis',()=>{const m=model(),row={org:'АИР-КЛИМАТ',type:'in',date:'2026-10-01',amount:105,usnTaxable:true,usnVatAmount:'5',usnVatDocument:'СФ 5%'};assert.equal(m.validate(row,'cash'),null);assert.match(m.validate({...row,usnVatAmount:'106'},'cash'),/НДС/);assert.match(m.validate({...row,usnVatDocument:''},'cash'),/основан/);assert.equal(m.validate({...row,usnVatAmount:'0'},'cash'),null)});

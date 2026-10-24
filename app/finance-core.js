@@ -260,6 +260,7 @@
     const messages={
       'invalid-tax-date':'Проверьте дату операции', 'invalid-tax-amount':'Проверьте сумму операции',
       'tax-exclusion-without-reason':'Исключение из налоговой базы не имеет основания',
+      'usn-income-vat-unconfirmed':'Подтвердите сумму НДС в поступлении и документ-основание; без них доход УСН требует сверки',
       'usn-income-unconfirmed':'Уточните налоговую классификацию поступления: продажа, аванс, заём или другое основание',
       'usn-expense-unconfirmed':'Расход УСН не подтверждён: нужны сумма, дата признания и основание; одной оплаты недостаточно',
       'vat-metadata-invalid':'Не указана ставка НДС либо суммы НДС и документа не совпадают',
@@ -326,7 +327,15 @@
       const d=readDate(source,'cash','usn');if(!d)continue;
       if(source.type==='in'){
         if(d<`${year-1}-01-01`||d>bounds.to)continue;
-        let n=amount(source.amount,source,'cash','usn');if(n===null)continue;n-=airAdvanceVat.get(String(source._id||source.id))||0n;
+        let n=amount(source.amount,source,'cash','usn');if(n===null)continue;
+        const knownAdvanceVat=airAdvanceVat.get(String(source._id||source.id))||0n;
+        let receivedVat=knownAdvanceVat;
+        if(text(source.usnVatAmount)||text(source.usnVatDocument)){
+          const explicit=amount(source.usnVatAmount,source,'cash','usn');
+          if(explicit===null||explicit<knownAdvanceVat||explicit>n||!text(source.usnVatDocument))issue('usn-income-vat-unconfirmed','usn','cash',source);
+          else receivedVat=explicit;
+        }
+        n-=receivedVat;
         if(n<0n){issue('invalid-tax-amount','usn','cash',source);continue}
         if(excluded(source,'usnTaxable','usn','cash'))continue;
         if(!yes(source.usnTaxable)&&between(d,yearBounds))issue('usn-income-unconfirmed','usn','cash',source);
@@ -411,7 +420,7 @@
     }
     if(advanceRegister){
       for(const r of advanceRegister.rows){if(r.org===ARBAT){if(r.kind==='received')outputVat+=r.vat;else inputVat+=r.vat}else if(r.org===AIR){if(r.kind==='received')airOutputVat+=r.vat;else airInputVat+=r.vat}entry(r.org===AIR?'airVat':'vat',r.collection,r.source,r.date,r.kind==='received'?r.vat:-r.vat,r.label+' · '+r.event.document)}
-      for(const problem of advanceRegister.issues)if(problem.event.org===ARBAT)issues.push({code:'vat-advance-review',scope:'vat',collection:'organization',source:{org:ARBAT,name:problem.event.document||'Событие НДС'},message:problem.message});
+      for(const problem of advanceRegister.issues)if([AIR,ARBAT].includes(problem.event.org))issues.push({code:'vat-advance-review',scope:problem.event.org===AIR?'usn':'vat',collection:'organization',source:{org:problem.event.org,name:problem.event.document||'Событие НДС'},message:problem.message});
     }
     for(const source of data.cash||[])if(source.org===ARBAT&&source.type!=='transfer'){
       const d=date(source.date);if(!valid(d))issue('invalid-tax-date','vat','cash',source);
@@ -430,6 +439,8 @@
     const limit=limitRub===null?null:cents(limitRub);
     if(limit!==null&&previousIncome>limit)effectiveFrom=year+'-01-01';
     for(const e of events){observedIncome+=e.amount;if(limit!==null&&!exceededOn&&observedIncome>limit){exceededOn=e.date;if(!effectiveFrom){const dt=new Date(e.date+'T00:00:00Z');dt.setUTCDate(1);dt.setUTCMonth(dt.getUTCMonth()+1);effectiveFrom=dt.toISOString().slice(0,10)}}}
+    const knownAirVatDates=[...(data.realizations||[]).filter(x=>x.org===AIR&&Number(x.vatRate)>0).map(x=>date(x.date)),...(annualAdvances?.rows||[]).filter(x=>x.kind==='received'&&x.vat>0n).map(x=>x.date),effectiveFrom].filter(valid).sort();
+    for(const source of data.cash||[])if(source.org===AIR&&source.type==='in'&&between(date(source.date),yearBounds)&&!no(source.usnTaxable)&&knownAirVatDates.some(d=>d<=date(source.date))&&!annualAdvances?.coveredCash.includes(String(source._id||source.id))&&!text(source.usnVatAmount))issue('usn-income-vat-unconfirmed','usn','cash',source);
     if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
     if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
     const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
