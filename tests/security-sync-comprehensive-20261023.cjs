@@ -215,3 +215,10 @@ test('retry of an actual same-document conflict preserves both versions and the 
  const retry=h.nodes.find(n=>n.id==='ab-recovery-retry');assert.ok(retry);await retry.onclick();assert.equal(h.getCloud(0).payload.expenses[0].amount,20);assert.equal(h.read(F).expenses[0].amount,30);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),true);
  const calls=h.writes.length;h.window.abIdentity={user_id:'other',role:'admin'};await retry.onclick();assert.equal(h.writes.length,calls,'another user cannot replay the snapshot');
 });
+
+test('retry is idempotent when the original save committed but its response was lost',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async body=>{for(const c of body.p_changes)h.setCloud(c.store==='finance'?0:1,c.payload);throw new TypeError('Response lost')});h.save(F,{deals:[{_id:'once'}]});await wait();await wait();h.post(null);await h.nodes.find(n=>n.id==='ab-recovery-retry').onclick();assert.equal(h.getCloud(0).payload.deals.length,1);assert.equal(h.getCloud(0).payload.deals[0]._id,'once');
+});
+test('changing recovery owner during the fresh-state fetch prevents retry writes',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async()=>{throw new TypeError('Offline')});h.save(F,{deals:[{_id:'private'}]});await wait();await wait();const gate=deferred();h.post(null);h.get(async()=>gate.promise);const count=h.writes.length,attempt=h.nodes.find(n=>n.id==='ab-recovery-retry').onclick();await wait();h.window.abIdentity={user_id:'other',role:'admin'};gate.resolve();await attempt;assert.equal(h.writes.length,count);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),true);
+});
