@@ -45,6 +45,18 @@
     return result;
   }
 
+  const closedPeriod=message=>String(message||'').match(/Financial period (\d{4}-\d{2}) is closed/i)?.[1]||'';
+  const periodMessage=period=>'Финансовый период '+period+' закрыт. Изменение документа не сохранено. Администратор может открыть период с указанием причины в настройках «Закрытие периода». После исправления период следует закрыть снова.';
+  const syncError=error=>closedPeriod(error.message)?periodMessage(closedPeriod(error.message)):error.message;
+  window.arbatEnsureOpenPeriods=async dates=>{
+    const periods=new Set(dates.filter(Boolean).map(date=>String(date).slice(0,7)));
+    if(!periods.size)return;
+    const rows=await api('finance_periods?select=period,status&status=eq.closed');
+    if(!Array.isArray(rows))throw Error('Не удалось проверить статус финансового периода. Документ не сохранён.');
+    const locked=rows.find(row=>row.status==='closed'&&periods.has(row.period));
+    if(locked)throw Error(periodMessage(locked.period));
+  };
+
   async function fetchAll(){
     return Promise.all(T.map(async table=>{
       const rows=await api(table+'?select=payload,revision&id=eq.main');
@@ -81,7 +93,8 @@
     auth?.classList.remove('ab-checking');
     const form=document.getElementById('ab-form');if(form)form.hidden=true;
     const box=document.createElement('div');box.id='ab-sync-recovery';
-    const note=document.createElement('p');note.textContent='Сохранена отдельная копия несинхронизированных данных. Скачайте её для сверки с администратором. Автоматическое сохранение остановлено.';
+    const period=closedPeriod(snapshot.reason);
+    const note=document.createElement('p');note.textContent=period?periodMessage(period)+' Ваши изменения сохранены в отдельной копии. После открытия периода нажмите «Повторить синхронизацию». ' + (window.abIdentity?.role==='admin'?'':'Обратитесь к администратору. '):'Сохранена отдельная копия несинхронизированных данных. Скачайте её для сверки с администратором. Автоматическое сохранение остановлено.';
     const download=document.createElement('button');download.id='ab-recovery-download';download.type='button';download.textContent='Скачать несохранённую копию';
     download.onclick=()=>{
       if(discarded||recoveryOwner()!==owner)return;
@@ -115,10 +128,29 @@
           for(let i=0;i<stores.length;i++)if(!Number.isSafeInteger(result?.[stores[i]])||result[stores[i]]<=fresh[i].revision)throw Error('Некорректное подтверждение общей версии');
           applyRemote(visible.map((payload,i)=>({payload,revision:result[stores[i]]})));
           localStorage.removeItem(key);discarded=true;box.remove();location.reload();
-        }catch(error){window.abMessage('Копия сохранена. Синхронизация не завершена: '+error.message)}
+        }catch(error){window.abMessage('Копия сохранена. Синхронизация не завершена: '+syncError(error))}
         finally{retrying=false;retry.disabled=false;discard.disabled=false}
       };
       box.append(retry);
+    }
+    if(period&&window.abIdentity?.role==='admin'){
+      const label=document.createElement('label');label.textContent='Причина открытия периода '+period;
+      const reason=document.createElement('input');reason.id='ab-recovery-period-reason';reason.type='text';reason.placeholder='Не менее 10 символов';label.append(reason);
+      const reopen=document.createElement('button');reopen.id='ab-recovery-open-period';reopen.type='button';reopen.textContent='Открыть период '+period;
+      reopen.onclick=async()=>{
+        if(discarded||retrying||recoveryOwner()!==owner||window.abIdentity?.role!=='admin')return;
+        const explanation=String(reason.value||'').trim();
+        if(explanation.length<10){window.abMessage('Укажите причину открытия периода: не менее 10 символов.');return;}
+        if(!confirm('Открыть финансовый период '+period+' для исправления? Причина будет записана в журнале.'))return;
+        retrying=true;reopen.disabled=true;discard.disabled=true;
+        try{
+          await api('rpc/set_finance_period_status',{p_period:period,p_status:'open',p_reason:explanation});
+          if(recoveryOwner()!==owner)return;
+          window.abMessage('Период '+period+' открыт. Нажмите «Повторить синхронизацию», чтобы сохранить вашу копию с проверкой изменений коллег. После исправления закройте период в настройках.');
+        }catch(error){window.abMessage('Период не открыт. Копия сохранена: '+syncError(error));}
+        finally{retrying=false;reopen.disabled=false;discard.disabled=false;}
+      };
+      box.append(label,reopen);
     }
     box.append(discard);
     if(logout){logout.hidden=false;logout.style.position='static';logout.style.marginTop='10px';box.append(logout)}
@@ -129,8 +161,8 @@
     active=false;
     halt=true;
     document.body.classList.remove('ab-ready');
-    try{const snapshot=preserveRecovery(error);showRecovery(snapshot);window.abMessage('Синхронизация приостановлена: '+error.message+'. '+(snapshot?.storageError?'Отдельная копия не записана: '+snapshot.storageError+'. Скачайте её сейчас; не закрывайте и не обновляйте страницу.':'Скачайте несохранённую копию для проверки конфликта.'))}
-    catch(storageError){window.abMessage('Синхронизация приостановлена: '+error.message+'. Не удалось сохранить отдельную копию: '+storageError.message+'. Не закрывайте и не обновляйте страницу.')}
+    try{const snapshot=preserveRecovery(error);showRecovery(snapshot);window.abMessage('Синхронизация приостановлена: '+syncError(error)+'. '+(snapshot?.storageError?'Отдельная копия не записана: '+snapshot.storageError+'. Скачайте её сейчас; не закрывайте и не обновляйте страницу.':'Скачайте несохранённую копию для проверки конфликта.'))}
+    catch(storageError){window.abMessage('Синхронизация приостановлена: '+syncError(error)+'. Не удалось сохранить отдельную копию: '+storageError.message+'. Не закрывайте и не обновляйте страницу.')}
   }
 
   function applyRemote(rows,visible=rows.map(row=>row.payload)){
