@@ -7,7 +7,7 @@ create function auth.uid() returns uuid language sql as $$select null::uuid$$;
 create table public.finance_periods(period text,status text);
 create table public.finance_state(payload jsonb,revision bigint);
 create table public.staff_activity(user_id uuid,email text,event text,details jsonb);
-\ir ../supabase/migrations/20261024173546_tax_event_registers.sql
+\ir ../supabase/migrations/20261024180337_tax_event_registers.sql
 insert into public.finance_state values('{"vatAdvanceEvents":[],"taxObligationEvents":[]}',1);
 insert into public.finance_periods values('2026-01','closed');
 do $$ declare section text; begin
