@@ -39,6 +39,27 @@ do $$ declare field text; begin
   update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents,0,date}','"2026-11-03"');
   raise exception 'Expected event moved into closed month rejection';
  exception when others then if sqlerrm not like 'Financial period 2026-11 is closed:%' then raise;end if;end;
+ -- Once a month is closed, old event dates protect edits, deletion and moving out.
+ insert into public.finance_periods values('2026-10','closed');
+ foreach field in array array['usnRecognitionEvents','profitTaxRecognitionEvents'] loop
+  -- Both event kinds use the same guard; seed a fixture without changing real documents.
+  alter table public.finance_state disable trigger finance_tax_period_guard;
+  update public.finance_state set payload=jsonb_build_object('cash',jsonb_build_array(jsonb_build_object('_id','event','date','2026-09-01',field,jsonb_build_array(jsonb_build_object('id','a','date','2026-10-02','amount',10,'document','Act')))));
+  alter table public.finance_state enable trigger finance_tax_period_guard;
+  begin
+   update public.finance_state set payload=jsonb_set(payload,array['cash','0',field,'0','amount'],'20');
+   raise exception 'Expected closed event edit rejection';
+  exception when others then if sqlerrm not like 'Financial period 2026-10 is closed:%' then raise;end if;end;
+  begin
+   update public.finance_state set payload=jsonb_set(payload,array['cash','0',field],'[]');
+   raise exception 'Expected closed event removal rejection';
+  exception when others then if sqlerrm not like 'Financial period 2026-10 is closed:%' then raise;end if;end;
+  begin
+   update public.finance_state set payload=jsonb_set(payload,array['cash','0',field,'0','date'],'"2026-12-01"');
+   raise exception 'Expected closed event move rejection';
+  exception when others then if sqlerrm not like 'Financial period 2026-10 is closed:%' then raise;end if;end;
+ end loop;
+ delete from public.finance_periods where period='2026-10';
  -- An unchanged closed record does not prevent an independent open record edit.
  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionDate}','"2026-10-02"');
  update public.finance_state set payload=payload;
