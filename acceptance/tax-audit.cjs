@@ -44,7 +44,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await form.locator('[name=usnRecognizedAmount]').inputValue(),'60000');
   assert.equal(await form.locator('[name=usnDocument]').inputValue(),'УПД 42, товар принят и оплачен');await page.locator('#genericClose').click();
   await page.locator('[data-tax-issues] [data-ux-source=payables]').first().click();
-  const receipt=page.locator('#payablesDialog');await receipt.locator('[data-receipt-tax] summary').click();
+  const receipt=page.locator('#payablesDialog');await receipt.locator('[data-receipt-open]').click();await receipt.locator('[data-receipt-form]').waitFor();await receipt.locator('[data-receipt-tax] summary').click();
   await receipt.locator('[data-receipt-tax] [name=vatRate]').selectOption('22');
   await receipt.locator('[data-receipt-tax] [name=vatDeductible]').selectOption('true');
   await receipt.locator('[data-receipt-tax] [name=vatInvoice]').fill('УПД TAX-1');
