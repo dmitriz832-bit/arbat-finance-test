@@ -43,6 +43,23 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
   assert.equal(await form.locator('[name=usnRecognizedAmount]').inputValue(),'60000');
   assert.equal(await form.locator('[name=usnDocument]').inputValue(),'УПД 42, товар принят и оплачен');await page.locator('#genericClose').click();
+  // Split one documented tax deduction into two dated recognition events.
+  await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
+  await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
+  await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
+  const events=form.locator('[data-tax-event-editor=usn] .tax-event-row');
+  await events.nth(0).locator('[data-event-date]').fill('2026-10-04');
+  await events.nth(0).locator('[data-event-amount]').fill('10000');
+  await events.nth(0).locator('[data-event-document]').fill('Акт частичного признания 1');
+  await events.nth(1).locator('[data-event-date]').fill('2026-10-05');
+  await events.nth(1).locator('[data-event-amount]').fill('20000');
+  await events.nth(1).locator('[data-event-document]').fill('Акт частичного признания 2');
+  await form.locator('button[type=submit]').click();
+  await page.locator('#genericModal.open').waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'3000000');
+  await page.locator('[data-tax-register=usn] [data-ux-id=advance]').first().click();
+  assert.equal(await form.locator('[data-tax-event-editor=usn] .tax-event-row').count(),2);
+  await page.locator('#genericClose').click();
   await page.locator('[data-tax-issues] [data-ux-source=payables]').first().click();
   const receipt=page.locator('#payablesDialog');await receipt.locator('[data-receipt-open]').click();await receipt.locator('[data-receipt-form]').waitFor();await receipt.locator('[data-receipt-tax] summary').click();
   await receipt.locator('[data-receipt-tax] [name=vatRate]').selectOption('22');
@@ -54,7 +71,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await receipt.locator('[data-receipt-tax] [name=vatInvoice]').inputValue(),'УПД TAX-1');
   await page.keyboard.press('Escape');
   await page.reload();await page.locator('#dashboardTaxes').waitFor();
-  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnDocument),'УПД 42, товар принят и оплачен');
+  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnDocument),'УПД 42, товар принят и оплачен');assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents.length),2);
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().arbat.inputVat.toString()),'22000');
   await page.evaluate(()=>{db.expenses.push({_id:'invalid-vat',org:'АРБАТ.ГК',date:'2026-10-01',amountGross:'1220',vatRate:18,note:'Повреждённые реквизиты НДС'});window.render()});
   assert.match(await page.locator('#dashboardTaxes').innerText(),/Требует проверки/);assert.equal(await page.locator('#dashboardVisuals').evaluate(el=>el.classList.contains('dashboard-calculation-error')),true);
