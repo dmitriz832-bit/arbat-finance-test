@@ -249,44 +249,153 @@
     scan(data.realizations,'realization');scan(data.expenses,'project-expense');scan(data.costs,'general-entry');
     return {count:issues.length,issues};
   }
+  // Tax recognition is independent of P&L and bank categories. Missing evidence is
+  // a review item, never permission to invent a deduction or infer a VAT rate.
   function quarterTaxSnapshot(data={},reference=''){
-    const bounds=ownerPeriodBounds('quarter',reference),inRange=item=>{const date=String(item.date||item.dt||'').slice(0,10);return Boolean(date)&&date>=bounds.from&&date<=bounds.to};
-    const cash=(data.cash||[]).filter(item=>item.org==='АИР-КЛИМАТ'&&inRange(item)&&item.type!=='transfer');
-    const usnIncome=cash.filter(item=>item.type==='in'&&item.usnTaxable!==false).reduce((total,item)=>total+cents(item.amount||0),0n);
-    const usnExpenses=cash.filter(item=>item.type==='out'&&item.articleId&&item.usnDeductible!==false).reduce((total,item)=>total+cents(item.amount||0),0n);
-    const usnBase=usnIncome>usnExpenses?usnIncome-usnExpenses:0n;
-    const usnAccrued=(usnBase*15n+50n)/100n;
-    const usnUnclassified=cash.filter(item=>item.type==='out'&&!item.articleId).length;
-    // General entries may be other income: use the same article metadata as P&L.
+    const bounds=ownerPeriodBounds('quarter',reference),year=Number(bounds.from.slice(0,4)),yearBounds={from:year+'-01-01',to:bounds.to};
+    const AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК',issues=[],rows=[];
+    const yes=x=>x===true||x==='true',no=x=>x===false||x==='false',text=x=>String(x??'').trim();
+    const date=x=>String(x||'').slice(0,10),valid=x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x+'T00:00:00Z'))&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
+    const between=(d,b)=>valid(d)&&d>=b.from&&d<=b.to,positive=x=>x>0n?x:0n,pct=(x,n)=>(positive(x)*BigInt(n)+50n)/100n;
+    const messages={
+      'invalid-tax-date':'Проверьте дату операции', 'invalid-tax-amount':'Проверьте сумму операции',
+      'tax-exclusion-without-reason':'Исключение из налоговой базы не имеет основания',
+      'usn-income-unconfirmed':'Уточните налоговую классификацию поступления: продажа, аванс, заём или другое основание',
+      'usn-expense-unconfirmed':'Расход УСН не подтверждён: нужны сумма, дата признания и основание; одной оплаты недостаточно',
+      'vat-metadata-invalid':'Не указана ставка НДС либо суммы НДС и документа не совпадают',
+      'vat-output-rate-review':'Ставка исходящего НДС не соответствует основному режиму ОСНО: проверьте документ и основание ставки',
+      'vat-deduction-unconfirmed':'Для вычета НДС нужны подтверждение права, документ и дата выполнения условий вычета',
+      'vat-cash-review':'Проверьте авансы, их зачёт и возвраты: полный регистр НДС по оплатам ещё не сформирован',
+      'profit-expense-unconfirmed':'Подтвердите сумму и дату налогового расхода, включая прямые расходы и НЗП',
+      'warehouse-tax-basis':'Сверьте входящий НДС и стоимость складской партии; складская себестоимость не заменяет налоговый регистр',
+      'unsupported-tax-year':'Правила этого года требуют отдельной проверки',
+      'air-vat-required':'По внесённым доходам возникает обязанность по НДС; подтвердите дату и выбранную ставку',
+      'air-vat-document':'У АИР-КЛИМАТ есть документ с НДС: требуется сверка режима и отдельного расчёта НДС'
+    };
+    function issue(code,scope,collection,source){
+      if(!issues.some(x=>x.code===code&&x.scope===scope&&x.source===source))issues.push({code,scope,collection,kind:collection,source,message:messages[code]});
+    }
+    function readDate(source,collection,scope,field='date'){
+      const d=date(source[field]||field==='date'&&source.dt);
+      if(!valid(d)){issue('invalid-tax-date',scope,collection,source);return null}return d;
+    }
+    function amount(value,source,collection,scope){try{if(value==null||text(value)==='')throw Error('Missing amount');return cents(value)}catch{issue('invalid-tax-amount',scope,collection,source);return null}}
+    function excluded(source,field,scope,collection){
+      if(!no(source[field]))return false;
+      if(text(source.taxExclusionReason))return true;
+      issue('tax-exclusion-without-reason',scope,collection,source);return false;
+    }
+    function entry(scope,collection,source,d,value,label){rows.push({scope,collection,source,id:source._id||source.id,date:d,amount:value,label})}
+    function vat(source,collection,scope,gross=source.amountGross??source.amount){
+      try{
+        if(gross==null||text(gross)==='')throw Error('Missing amount');
+        const v=documentVat(gross,source.vatRate,yes(source.vatDeductible));
+        if(source.vatAmount!=null&&cents(source.vatAmount)!==v.vatAmount||source.amountNet!=null&&cents(source.amountNet)!==v.amountNet)throw Error('VAT mismatch');
+        return v;
+      }catch{issue('vat-metadata-invalid',scope,collection,source);return null}
+    }
+    let usnIncome=0n,usnExpenses=0n;
+    const incomeEvents=[];
+    for(const source of data.cash||[]){
+      if(source.org!==AIR||source.type==='transfer')continue;
+      const d=readDate(source,'cash','usn');if(!d)continue;
+      if(source.type==='in'){
+        if(d<`${year-1}-01-01`||d>bounds.to)continue;
+        const n=amount(source.amount,source,'cash','usn');if(n===null)continue;
+        if(n<0n){issue('invalid-tax-amount','usn','cash',source);continue}
+        if(excluded(source,'usnTaxable','usn','cash'))continue;
+        if(!yes(source.usnTaxable)&&between(d,yearBounds))issue('usn-income-unconfirmed','usn','cash',source);
+        incomeEvents.push({date:d,amount:n});
+        if(between(d,yearBounds)){usnIncome+=n;entry('usn','cash',source,d,n,'Доход УСН')}
+      }else if(source.type==='out'){
+        const recognized=date(source.usnRecognitionDate);
+        if(d>bounds.to||recognized&&valid(recognized)&&recognized>bounds.to)continue;
+        if(d<yearBounds.from&&!between(recognized,yearBounds))continue;
+        if(excluded(source,'usnDeductible','usn','cash'))continue;
+        const n=amount(source.amount,source,'cash','usn'),accepted=amount(source.usnRecognizedAmount??source.amount,source,'cash','usn');
+        if(!yes(source.usnDeductible)||!valid(recognized)||recognized<d||!text(source.usnDocument)||n===null||accepted===null||n<0n||accepted<0n||accepted>n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        if(between(recognized,yearBounds)){usnExpenses+=accepted;entry('usn','cash',source,recognized,-accepted,'Признанный расход УСН')}
+      }
+    }
+    const usnBase=positive(usnIncome-usnExpenses),regularTax=pct(usnBase,15),minimumTax=pct(usnIncome,1),minimumApplicable=bounds.to===year+'-12-31';
+    const usnAccrued=minimumApplicable&&minimumTax>regularTax?minimumTax:regularTax;
     const incomeCosts=(data.costs||[]).filter(item=>{
       const article=(data.pnlArticles||[]).find(a=>a.id===item.pnlArticleId)||(data.pnlArticles||[]).find(a=>a.name===item.name);
       return String(item.pnlType||article?.type||'expense').toLowerCase()==='income';
-    });
-    const expenseCosts=(data.costs||[]).filter(item=>!incomeCosts.includes(item));
-    const output=[],input=[],unconfirmed=[];
-    for(const [kind,rows] of [['realization',data.realizations||[]],['general-income',incomeCosts]])for(const item of rows){
-      if(item.org!=='АРБАТ.ГК'||!inRange(item))continue;
-      if(item.vatRate==null||String(item.vatRate).trim()===''){unconfirmed.push({kind,source:item});continue}
-      output.push(documentVat(item.amountGross??item.amount??0,item.vatRate).vatAmount);
+    }),expenseCosts=(data.costs||[]).filter(x=>!incomeCosts.includes(x));
+    let outputVat=0n,inputVat=0n,profitRevenue=0n,profitExpenses=0n;
+    for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items){
+      if(source.org!==ARBAT)continue;const d=readDate(source,collection,'profit');if(!d){issue('invalid-tax-date','vat',collection,source);continue}
+      if(!between(d,yearBounds))continue;
+      const v=vat(source,collection,'profit');
+      if(v&&year>=2026&&![0,10,22].includes(v.vatRate)){issue('vat-output-rate-review','profit',collection,source);if(between(d,bounds))issue('vat-output-rate-review','vat',collection,source)}
+      if(between(d,bounds)){if(v){outputVat+=v.vatAmount;entry('vat',collection,source,d,v.vatAmount,'Исходящий НДС')}else issue('vat-metadata-invalid','vat',collection,source)}
+      if(v&&!excluded(source,'profitTaxable','profit',collection)){profitRevenue+=v.amountNet;entry('profit',collection,source,d,v.amountNet,'Налоговый доход без НДС')}
     }
-    for(const [kind,rows] of [['project-expense',data.expenses||[]],['general-expense',expenseCosts]])for(const item of rows){
-      if(item.org!=='АРБАТ.ГК'||!inRange(item)||item.vatDeductible!==true&&item.vatDeductible!=='true')continue;
-      if(item.vatRate==null||String(item.vatRate).trim()===''){unconfirmed.push({kind,source:item});continue}
-      input.push(documentVat(item.amountGross??item.amount??0,item.vatRate,true).vatAmount);
+    function inputDocument(source,collection,gross){
+      const d=readDate(source,collection,'vat');if(!d||d>bounds.to)return;
+      const deduction=date(source.vatDeductionDate),inDocumentQuarter=between(d,bounds),inDeductionQuarter=between(deduction,bounds);
+      if(!inDocumentQuarter&&!inDeductionQuarter)return;
+      const v=vat(source,collection,'vat',gross);if(!v)return;
+      if(v.vatAmount===0n||no(source.vatDeductible))return;
+      if(!yes(source.vatDeductible)||!valid(deduction)||deduction<d||!text(source.vatInvoice)){issue('vat-deduction-unconfirmed','vat',collection,source);return}
+      if(inDeductionQuarter){inputVat+=v.vatAmount;entry('vat',collection,source,deduction,-v.vatAmount,'Входящий НДС по подтверждённым данным')}
     }
-    const outputVat=output.reduce((total,value)=>total+value,0n),inputVat=input.reduce((total,value)=>total+value,0n),difference=outputVat-inputVat;
-    const arbatRevenue=[...(data.realizations||[]),...incomeCosts].filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxable!==false).reduce((total,item)=>total+documentPnlAmount(item),0n);
-    const deductibleDocument=(item,kind)=>{
-      if(item.org!=='АРБАТ.ГК'||!inRange(item)||item.profitTaxDeductible===false)return 0n;
-      try{return documentPnlAmount(item,true)}catch(_){unconfirmed.push({kind,source:item});return 0n}
-    };
-    const arbatProjectExpenses=(data.expenses||[]).reduce((total,item)=>total+deductibleDocument(item,'profit-project-expense'),0n);
-    const arbatGeneralExpenses=expenseCosts.reduce((total,item)=>total+deductibleDocument(item,'profit-general-expense'),0n);
-    const arbatPayroll=(data.labor||[]).filter(item=>item.org==='АРБАТ.ГК'&&inRange(item)&&item.profitTaxDeductible!==false).reduce((total,item)=>total+cents(item.amount||0)+cents(item.employerContributions||0),0n);
-    const profitExpenses=arbatProjectExpenses+arbatGeneralExpenses+arbatPayroll;
-    const profitBase=arbatRevenue>profitExpenses?arbatRevenue-profitExpenses:0n;
-    const profitTax=(profitBase*25n+50n)/100n;
-    return {bounds,air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,unclassified:usnUnclassified},arbat:{outputVat,inputVat,payable:difference>0n?difference:0n,recoverable:difference<0n?-difference:0n,unconfirmed:unconfirmed.length,profitRevenue:arbatRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25},issues:unconfirmed};
+    function profitExpense(source,collection){
+      const d=readDate(source,collection,'profit');if(!d||d>bounds.to)return;
+      const recognized=date(source.profitTaxRecognitionDate);
+      if(recognized&&valid(recognized)&&recognized>bounds.to)return;
+      if(d<yearBounds.from&&!between(recognized,yearBounds))return;
+      if(excluded(source,'profitTaxDeductible','profit',collection))return;
+      if(!yes(source.profitTaxDeductible)||!valid(recognized)||recognized<d||!text(source.profitTaxDocument)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      let max;
+      if(collection==='labor'){
+        const wages=amount(source.amount,source,collection,'profit'),contributions=amount(source.employerContributions||0,source,collection,'profit');if(wages===null||contributions===null)return;max=wages+contributions;
+      }else{const v=vat(source,collection,'profit');if(!v)return;if(v.vatAmount!==0n&&!yes(source.vatDeductible)&&!no(source.vatDeductible)){issue('profit-expense-unconfirmed','profit',collection,source);return}max=yes(source.vatDeductible)?v.amountNet:v.amountGross}
+      const n=source.profitTaxRecognizedAmount==null||text(source.profitTaxRecognizedAmount)===''?max:amount(source.profitTaxRecognizedAmount,source,collection,'profit');
+      if(n===null||max>=0n&&(n<0n||n>max)||max<0n&&(n>0n||n<max)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      if(between(recognized,yearBounds)){profitExpenses+=n;entry('profit',collection,source,recognized,-n,'Признанный налоговый расход')}
+    }
+    for(const [collection,items] of [['expenses',data.expenses||[]],['costs',expenseCosts],['labor',data.labor||[]]])for(const source of items){
+      if(source.org!==ARBAT)continue;
+      if(collection!=='labor'&&!source.warehouseMoveId)inputDocument(source,collection,source.amountGross??source.amount);
+      profitExpense(source,collection);
+    }
+    // Receipt prices in the current warehouse schema are supplier gross amounts.
+    // Consumption is not a new purchase and must not repeat its VAT deduction.
+    for(const source of data.warehouse?.moves||[]){
+      if(source.org!==ARBAT||source.kind!=='receipt')continue;
+      const d=date(source.date);if(valid(d)&&d>bounds.to)continue;
+      let gross;try{
+        const decimal=x=>{const s=String(x??'').trim().replace(',','.');if(!/^\d+(?:\.\d+)?$/.test(s))throw Error('decimal');const [a,b='']=s.split('.');return {n:BigInt(a+b),s:10n**BigInt(b.length)}};
+        const q=decimal(source.qty),p=decimal(source.price),scale=q.s*p.s;gross=rubles((q.n*p.n*100n+scale/2n)/scale);
+      }catch{issue('invalid-tax-amount','vat','warehouse',source);continue}
+      inputDocument(source,'warehouse',gross);
+      if(between(d,yearBounds))issue('warehouse-tax-basis','profit','warehouse',source);
+    }
+    for(const source of data.cash||[])if(source.org===ARBAT&&source.type!=='transfer'){
+      const d=date(source.date);if(!valid(d))issue('invalid-tax-date','vat','cash',source);
+      else if(between(d,bounds))issue('vat-cash-review','vat','cash',source);
+    }
+    // Work acts can overlap payroll; until reconciled in a tax register they
+    // must be visible as a source, not silently omitted or deducted twice.
+    for(const source of data.workActs||[])if(source.org===ARBAT&&source.status==='approved'){
+      const d=readDate(source,'workActs','profit');if(d&&between(d,yearBounds))issue('profit-expense-unconfirmed','profit','workActs',source);
+    }
+    for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items)if(source.org===AIR&&between(date(source.date),yearBounds)&&Number(source.vatRate)>0)issue('air-vat-document','usn',collection,source);
+    const cutoff=valid(date(reference))?date(reference):bounds.to,limitRub=year===2025?60000000:year===2026?20000000:year===2027?15000000:year===2028?10000000:null;
+    const previousIncome=incomeEvents.filter(x=>x.date.startsWith(String(year-1))).reduce((n,x)=>n+x.amount,0n),events=incomeEvents.filter(x=>x.date>=yearBounds.from&&x.date<=cutoff).sort((a,b)=>a.date.localeCompare(b.date));
+    let observedIncome=0n,exceededOn=null,effectiveFrom=null;
+    const limit=limitRub===null?null:cents(limitRub);
+    if(limit!==null&&previousIncome>limit)effectiveFrom=year+'-01-01';
+    for(const e of events){observedIncome+=e.amount;if(limit!==null&&!exceededOn&&observedIncome>limit){exceededOn=e.date;if(!effectiveFrom){const dt=new Date(e.date+'T00:00:00Z');dt.setUTCDate(1);dt.setUTCMonth(dt.getUTCMonth()+1);effectiveFrom=dt.toISOString().slice(0,10)}}}
+    if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
+    if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
+    const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
+    return {bounds,yearBounds,rows,issues,
+      air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold:{limit,observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:cutoff,coverageConfirmed:false}},
+      arbat:{outputVat,inputVat,payable:positive(difference),recoverable:positive(-difference),unconfirmed:issues.filter(x=>x.scope==='vat').length,profitRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25,vatReady:!issues.some(x=>x.scope==='vat'),profitReady:!issues.some(x=>x.scope==='profit')},
+      limitations:['Расчёт по внесённым данным. Полнота года и начальные налоговые остатки не подтверждены.','Не учтены зачёт налоговых авансов, ЕНС, перенос убытков и специальные налоговые корректировки.','НДС с авансов, восстановление и корректировки требуют отдельного регистра.']};
   }
   function netAmount(gross,org,vatRate){const rate=vatRate==null?(org==='АРБАТ.ГК'?22:0):Number(vatRate);if(!Number.isInteger(rate)||rate<0||rate>100)throw new RangeError('Invalid VAT rate');const d=BigInt(100+rate),v=cents(gross||0),sign=v<0n?-1n:1n,abs=v<0n?-v:v;return sign*((abs*100n+d/2n)/d)}
   function wipCheckPending(data,deal,key,period=''){const until=x=>!period||String(x.date||x.dt||'').slice(0,period.length===10?10:7)<=period;return (data.expenses||[]).some(x=>x.projectKey===key&&until(x)&&x.valuationStatus==='requires-review')||(data.warehouse?.moves||[]).some(x=>x.dealId===deal._id&&until(x)&&x.kind==='consume'&&(x.projectIssueId||x.dealId)&&!data.fifo);}

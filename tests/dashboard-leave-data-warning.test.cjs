@@ -6,5 +6,5 @@ test('owner dashboard exposes incomplete leave source data',()=>{
   assert.match(js,/staffMissingLeaveNorm=activePeople\.filter/);
   assert.match(js,/Отпуска нельзя подтвердить/);
   assert.match(js,/сотрудников без даты приёма/);
-  assert.match(html,/dashboard\.js\?v=19/);
+  assert.ok(Number(html.match(/dashboard\.js\?v=(\d+)/)?.[1])>=19);
 });

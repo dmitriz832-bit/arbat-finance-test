@@ -3,14 +3,14 @@ const test=require('node:test'),assert=require('node:assert/strict'),f=require('
 test('quarter tax snapshot separates AIR USN 15% and ARBAT VAT 22%',()=>{
  const data={
   cash:[
-   {org:'АИР-КЛИМАТ',date:'2026-10-02',type:'in',articleId:'sales',amount:'100000'},
-   {org:'АИР-КЛИМАТ',date:'2026-11-02',type:'out',articleId:'materials',amount:'40000'},
+   {org:'АИР-КЛИМАТ',date:'2026-10-02',type:'in',articleId:'sales',amount:'100000',usnTaxable:true},
+   {org:'АИР-КЛИМАТ',date:'2026-11-02',type:'out',articleId:'materials',amount:'40000',usnDeductible:true,usnRecognitionDate:'2026-11-02',usnDocument:'Получение и оплата материалов подтверждены'},
    {org:'АИР-КЛИМАТ',date:'2026-12-02',type:'transfer',amount:'500000'},
    {org:'АИР-КЛИМАТ',date:'2027-01-02',type:'in',articleId:'sales',amount:'900000'}
   ],
   realizations:[{org:'АРБАТ.ГК',date:'2026-10-10',amountGross:'122000',vatRate:22}],
-  expenses:[{org:'АРБАТ.ГК',date:'2026-11-10',amountGross:'24400',vatRate:22,vatDeductible:true}],
-  costs:[{org:'АРБАТ.ГК',date:'2026-12-10',amountGross:'12200',vatRate:22,vatDeductible:false}]
+  expenses:[{org:'АРБАТ.ГК',date:'2026-11-10',amountGross:'24400',vatRate:22,vatDeductible:true,vatDeductionDate:'2026-11-10',vatInvoice:'УПД 1',profitTaxDeductible:true,profitTaxRecognitionDate:'2026-11-10',profitTaxDocument:'Расход признан'}],
+  costs:[{org:'АРБАТ.ГК',date:'2026-12-10',amountGross:'12200',vatRate:22,vatDeductible:false,profitTaxDeductible:true,profitTaxRecognitionDate:'2026-12-10',profitTaxDocument:'Расход признан'}]
  };
  const x=f.quarterTaxSnapshot(data,'2026-10-18');
  assert.equal(x.bounds.from,'2026-10-01');assert.equal(x.bounds.to,'2026-12-31');
@@ -22,7 +22,7 @@ test('quarter tax snapshot separates AIR USN 15% and ARBAT VAT 22%',()=>{
 test('ARBAT profit tax includes payroll and employer contributions at the 2026 general rate',()=>{
  const x=f.quarterTaxSnapshot({
   realizations:[{org:'АРБАТ.ГК',date:'2026-10-10',amountGross:'122000',vatRate:22}],
-  labor:[{org:'АРБАТ.ГК',date:'2026-10-31',amount:'30000',employerContributions:'9000'}]
+  labor:[{org:'АРБАТ.ГК',date:'2026-10-31',amount:'30000',employerContributions:'9000',profitTaxDeductible:true,profitTaxRecognitionDate:'2026-10-31',profitTaxDocument:'Регистр зарплаты'}]
  },'2026-10-18');
  assert.equal(x.arbat.profitTaxRate,25);
  assert.equal(f.rubles(x.arbat.profitRevenue),'100000.00');assert.equal(f.rubles(x.arbat.profitExpenses),'39000.00');assert.equal(f.rubles(x.arbat.profitTax),'15250.00');

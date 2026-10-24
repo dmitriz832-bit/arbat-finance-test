@@ -31,4 +31,5 @@ jobs:
             test-results/business-cycle*.png
             test-results/multiuser*.png
             test-results/periods*.png
+            test-results/tax-*.png
           if-no-files-found: ignore

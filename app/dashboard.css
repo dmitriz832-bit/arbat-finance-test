@@ -133,3 +133,8 @@
  #overview .dashboard-legend{flex-wrap:wrap}
  #overview .dashboard-chart svg{max-width:100%;height:auto}
 }
+
+/* Do not display stale financial totals when a source document is invalid. */
+.dashboard-calculation-error .dashboard-panel:not(.dashboard-tax-panel),.dashboard-calculation-error #dashboardKpis,.dashboard-calculation-error .dashboard-command-meta{display:none!important}
+.dashboard-calculation-error .dashboard-layout{display:block}
+.dashboard-tax-details p,.dashboard-tax-company p{overflow-wrap:anywhere}

@@ -41,7 +41,7 @@ test('quarter snapshot resolves income article metadata and its negative correct
   const data={pnlArticles:[{id:'interest',name:'Other income',type:'income'}],costs:[
     {org:'АРБАТ.ГК',date:'2026-10-02',amountGross:'12200',vatRate:22,pnlArticleId:'interest'},
     {org:'АРБАТ.ГК',date:'2026-10-03',amountGross:'-2440',vatRate:22,pnlArticleId:'interest'},
-    {org:'АРБАТ.ГК',date:'2026-10-04',amountGross:'6100',vatRate:22,pnlType:'income',profitTaxable:false}
+    {org:'АРБАТ.ГК',date:'2026-10-04',amountGross:'6100',vatRate:22,pnlType:'income',profitTaxable:false,taxExclusionReason:'Подтверждённое основание исключения из базы налога на прибыль'}
   ]};
   const q=f.quarterTaxSnapshot(data,'2026-10-23').arbat;
   assert.equal(q.profitRevenue,800000n);
