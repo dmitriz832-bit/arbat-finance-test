@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),http=requir
 const {chromium,webkit}=require('playwright'),{fixture}=require('../tests/helpers/business-cycle.cjs'),root=path.resolve(__dirname,'..');
 test('tax audit shows incomplete calculations honestly, includes prior quarters and opens source documents on phone and desktop',{timeout:120000},async()=>{
  const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(u.pathname.endsWith('/')?u.pathname+'index.html':u.pathname));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
- try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [390,1440]){
+ try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [390,768,1440]){
   const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(u.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:"window.abIdentity={user_id:'fixture',role:'admin'};document.body.classList.add('ab-ready');"});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return route.fulfill({body:''});return route.continue()});
   const data=fixture(),AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК';
@@ -74,6 +74,31 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await page.reload();await page.locator('#dashboardTaxes').waitFor();
   assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnDocument),'УПД 42, товар принят и оплачен');assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents.length),2);
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().arbat.inputVat.toString()),'22000');
+  // Edit, remove one event, then remove all; legacy evidence must be explicitly cleared.
+  await page.evaluate(()=>openRecord('cash','advance'));
+  await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
+  await events.nth(0).locator('[data-event-amount]').fill('15000');
+  await events.nth(1).locator('[data-event-remove]').click();
+  await form.locator('button[type=submit]').click();
+  await page.locator('#genericModal.open').waitFor({state:'hidden'});
+  await page.reload();await page.locator('#dashboardTaxes').waitFor();
+  assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'1500000');
+  await page.evaluate(()=>openRecord('cash','advance'));
+  await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
+  assert.equal(await events.count(),1);
+  await events.nth(0).locator('[data-event-remove]').click();
+  await form.locator('[name=usnDeductible]').selectOption('');
+  await form.locator('[name=usnRecognitionDate]').fill('');
+  await form.locator('[name=usnRecognizedAmount]').fill('');
+  await form.locator('[name=usnDocument]').fill('');
+  await form.locator('button[type=submit]').click();
+  await page.locator('#genericModal.open').waitFor({state:'hidden'});
+  await page.reload();await page.locator('#dashboardTaxes').waitFor();
+  assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'0');
+  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents),undefined);
+  await page.evaluate(()=>openRecord('cash','advance'));
+  assert.equal(await events.count(),0);await page.locator('#genericClose').click();
+
   await page.evaluate(()=>{db.expenses.push({_id:'invalid-vat',org:'АРБАТ.ГК',date:'2026-10-01',amountGross:'1220',vatRate:18,note:'Повреждённые реквизиты НДС'});window.render()});
   assert.match(await page.locator('#dashboardTaxes').innerText(),/Требует проверки/);assert.equal(await page.locator('#dashboardVisuals').evaluate(el=>el.classList.contains('dashboard-calculation-error')),true);
   await page.locator('#dashboardTaxes [data-ux-tax]').click();assert.match(await page.locator('[data-tax-issues]').innerText(),/Не указана ставка НДС либо суммы НДС и документа не совпадают/);
