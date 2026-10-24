@@ -30,4 +30,5 @@ jobs:
           path: |
             test-results/business-cycle*.png
             test-results/multiuser*.png
+            test-results/periods*.png
           if-no-files-found: ignore
