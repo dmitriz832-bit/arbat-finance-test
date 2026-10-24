@@ -99,7 +99,7 @@
   }
   return null;
  }
- api.hydrate=(form,row,collection)=>{for(const panel of form.querySelectorAll('[data-tax-event-editor]'))panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}form.dataset.taxCollection=collection;refresh(form,collection);};
+ api.hydrate=(form,row,collection)=>{for(const panel of form.querySelectorAll('[data-tax-event-editor]')){if(typeof panel.load!=='function')setupEvents(panel);panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);}for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}form.dataset.taxCollection=collection;refresh(form,collection);};
  api.receiptFields=(host,source)=>{
   const d=document.createElement('details');d.className='tax-document-fields';d.dataset.receiptTax='';d.innerHTML='<summary>НДС товарной строки</summary><p>Цена строки указана с НДС. Изменение реквизитов не переоценивает исторические партии FIFO.</p><div class="tax-document-grid"><label>Ставка НДС<select name="vatRate"><option value="">Не проверено</option>'+[0,5,7,10,20,22].map(n=>'<option value="'+n+'">'+n+'%</option>').join('')+'</select></label>'+choice('vatDeductible','Входной НДС принимается к вычету')+input('vatInvoice','Счёт-фактура / УПД')+input('vatDeductionDate','Дата выполнения условий вычета','date')+'</div>';host.append(d);
   for(const name of ['vatRate','vatDeductible','vatInvoice','vatDeductionDate'])d.querySelector('[name='+name+']').value=String(source[name]??'');
