@@ -95,7 +95,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await page.locator('#genericModal.open').waitFor({state:'hidden'});
   await page.reload();await page.locator('#dashboardTaxes').waitFor();
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'0');
-  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents),undefined);
+  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents),null);
   await page.evaluate(()=>openRecord('cash','advance'));
   assert.equal(await events.count(),0);await page.locator('#genericClose').click();
 
