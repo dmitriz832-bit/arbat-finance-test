@@ -315,10 +315,10 @@
     }
     const registerModel=typeof module==='object'&&module.exports?require('./tax-register-model.js'):globalThis.ArbatTaxRegisters;
     const advanceRegister=registerModel?.advances(data,{from:bounds.from,to:bounds.to}),obligationRegister=registerModel?.obligations(data,{to:bounds.to});
-    const annualAdvances=registerModel?.advances(data,{from:yearBounds.from,to:yearBounds.to,org:AIR});
+    const annualAdvances=registerModel?.advances(data,{from:(year-1)+'-01-01',to:yearBounds.to,org:AIR});
     const airAdvanceVat=new Map(),airRefundGross=new Map();
     let usnIncome=0n,usnExpenses=0n,airOutputVat=0n,airInputVat=0n;
-    for(const r of annualAdvances?.rows||[]){if(r.kind==='received')airAdvanceVat.set(r.id,(airAdvanceVat.get(r.id)||0n)+r.vat);if(r.kind==='refund'){airRefundGross.set(r.id,(airRefundGross.get(r.id)||0n)+r.amount);usnIncome-=r.amount-r.vat;entry('usn','cash',r.source,r.date,-(r.amount-r.vat),'Возврат дохода УСН без НДС')}}
+    for(const r of annualAdvances?.rows||[]){if(r.kind==='received')airAdvanceVat.set(r.id,(airAdvanceVat.get(r.id)||0n)+r.vat);if(r.kind==='refund'){airRefundGross.set(r.id,(airRefundGross.get(r.id)||0n)+r.amount);if(between(r.date,yearBounds)){usnIncome-=r.amount-r.vat;entry('usn','cash',r.source,r.date,-(r.amount-r.vat),'Возврат дохода УСН без НДС')}}}
 
     const incomeEvents=(annualAdvances?.rows||[]).filter(r=>r.kind==='refund').map(r=>({date:r.date,amount:-(r.amount-r.vat)}));
     for(const source of data.cash||[]){
