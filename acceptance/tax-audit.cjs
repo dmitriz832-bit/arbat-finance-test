@@ -45,6 +45,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await form.locator('[name=usnDocument]').inputValue(),'УПД 42, товар принят и оплачен');await page.locator('#genericClose').click();
   // Split one documented tax deduction into two dated recognition events.
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
+  await form.locator('[data-tax-fields] summary').click();
   await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
   await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
   const events=form.locator('[data-tax-event-editor=usn] .tax-event-row');
