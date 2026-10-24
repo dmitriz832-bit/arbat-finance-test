@@ -10,7 +10,7 @@ const rows=()=>db[collection]||[],snapshot=()=>JSON.stringify(rows());
 const options=(values,current)=>values.map(([value,label])=>'<option value="'+esc(value)+'"'+(String(current??'')===String(value)?' selected':'')+'>'+esc(label)+'</option>').join('');
 const select=(name,label,values,value)=>'<label>'+label+'<select name="'+name+'">'+options(values,value)+'</select></label>';
 const input=(name,label,value='',type='text')=>'<label>'+label+'<input name="'+name+'" type="'+type+'" value="'+esc(value)+'"'+(name==='amount'?' inputmode="decimal"':'')+'></label>';
-const dates=e=>{if(!e)return [];const list=[e.date],p=String(e.period||'');if(/^\d{4}$/.test(p)){for(let n=1;n<=12;n++)list.push(p+'-'+String(n).padStart(2,'0')+'-01')}else if(/^\d{4}-Q[1-4]$/.test(p)){const start=(Number(p.at(-1))-1)*3+1;for(let n=start;n<start+3;n++)list.push(p.slice(0,4)+'-'+String(n).padStart(2,'0')+'-01')}else if(/^\d{4}-\d{2}$/.test(p))list.push(p+'-01');return list};
+const dates=e=>{if(!e)return [];const list=[e.date],p=['accrual','openingDebt','openingCredit'].includes(e.kind)?String(e.period||''):'';if(/^\d{4}$/.test(p)){for(let n=1;n<=12;n++)list.push(p+'-'+String(n).padStart(2,'0')+'-01')}else if(/^\d{4}-Q[1-4]$/.test(p)){const start=(Number(p.at(-1))-1)*3+1;for(let n=start;n<start+3;n++)list.push(p.slice(0,4)+'-'+String(n).padStart(2,'0')+'-01')}else if(/^\d{4}-\d{2}$/.test(p))list.push(p+'-01');return list};
 function report(){
  const to=dialog.querySelector('[data-asof]').value,result=mode==='advances'?model.advances(db,{to}):model.obligations(db,{to});
  let html='<p>Только внесённые события с документами-основаниями. Расчётная оценка налога не создаёт подтверждённое обязательство.</p>';
@@ -42,14 +42,14 @@ function references(existing={}){
 }
 async function commit(remove=false){if(busy||!allowed())return;busy=true;const f=dialog.querySelector('form'),error=f.querySelector('[data-error]');try{
  if(snapshot()!==baseline)throw Error('Регистр изменён другим сотрудником. Закройте форму и откройте событие снова.');
- const old=rows().find(x=>id(x)===editing),e={...Object.fromEntries(new FormData(f)),_id:editing||crypto.randomUUID()};if(editing&&!old)throw Error('Событие уже удалено');
+ const old=rows().find(x=>id(x)===editing),sourceBaseline=JSON.stringify([db.cash,db.realizations]),e={...Object.fromEntries(new FormData(f)),_id:editing||crypto.randomUUID()};if(editing&&!old)throw Error('Событие уже удалено');
  const next=remove?rows().filter(x=>id(x)!==editing):[...rows().filter(x=>id(x)!==editing),e];const candidate={...db,[collection]:next};
  const check=mode==='advances'?model.advances(candidate):model.obligations(candidate),newIssues=check.issues.filter(x=>id(x.event)===e._id||!rows().some(r=>id(r)===id(x.event)));
  if(!remove&&newIssues.length)throw Error(newIssues[0].message);
  // A change or deletion must also leave dependent offsets/refunds valid.
  const before=mode==='advances'?model.advances(db):model.obligations(db),prior=new Set(before.issues.map(x=>id(x.event)+'|'+x.message));const introduced=check.issues.find(x=>!prior.has(id(x.event)+'|'+x.message));if(introduced)throw Error(introduced.message);
- if(window.arbatEnsureOpenPeriods)await window.arbatEnsureOpenPeriods([...dates(old),...dates(e)]);
- if(snapshot()!==baseline)throw Error('Регистр изменился во время проверки периода. Откройте форму снова.');
+ if(window.arbatEnsureOpenPeriods)await window.arbatEnsureOpenPeriods([...dates(old),...dates(e),...(mode==='advances'?rows().filter(r=>[old,e].filter(Boolean).some(x=>(x.advanceId||id(x))===(r.advanceId||id(r))&&r.date>=x.date)).flatMap(dates):[])]);
+ if(snapshot()!==baseline||sourceBaseline!==JSON.stringify([db.cash,db.realizations]))throw Error('Регистр или документ-источник изменился во время проверки периода. Откройте форму снова.');
  if(remove){if(!confirm('Убрать налоговое событие? Будет сохранена резервная копия регистра.'))return;localStorage.setItem('arbat-tax-register-backup-'+Date.now(),snapshot())}
  db[collection]=next;save();f.hidden=true;report();
  }catch(e){error.hidden=false;error.textContent=e.message}finally{busy=false}}
