@@ -23,7 +23,7 @@
   if(active.includes('profitExpense'))flags.push('profitTaxDeductible');
   if(flags.some(f=>no(row[f]))&&!text(row.taxExclusionReason))return 'Укажите основание исключения из налогового расчёта';
   for(const [scope,prefix] of [['usnExpense','usn'],['profitExpense','profitTax']]){
-   if(!active.includes(scope)||!yes(row[prefix+'Deductible']))continue;
+   if(!active.includes(scope)||!yes(row[prefix+'Deductible'])||Array.isArray(row[prefix+'RecognitionEvents'])&&row[prefix+'RecognitionEvents'].length)continue;
    const date=row[prefix+'RecognitionDate'];
    if(!valid(date)||!valid(row.date)||date<row.date)return 'Проверьте дату признания: она не может быть раньше даты документа или оплаты';
    if(!text(row[prefix+'Document']))return 'Укажите документ-основание признания расхода';
@@ -99,7 +99,7 @@
   }
   return null;
  }
- api.hydrate=(form,row,collection)=>{for(const panel of form.querySelectorAll('[data-tax-event-editor]'))panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);for(const name of fields){const f=form.elements.namedItem(name);if(f)f.value=row[name]===undefined?'':String(row[name]);}form.dataset.taxCollection=collection;refresh(form,collection);};
+ api.hydrate=(form,row,collection)=>{for(const panel of form.querySelectorAll('[data-tax-event-editor]'))panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}form.dataset.taxCollection=collection;refresh(form,collection);};
  api.receiptFields=(host,source)=>{
   const d=document.createElement('details');d.className='tax-document-fields';d.dataset.receiptTax='';d.innerHTML='<summary>НДС товарной строки</summary><p>Цена строки указана с НДС. Изменение реквизитов не переоценивает исторические партии FIFO.</p><div class="tax-document-grid"><label>Ставка НДС<select name="vatRate"><option value="">Не проверено</option>'+[0,5,7,10,20,22].map(n=>'<option value="'+n+'">'+n+'%</option>').join('')+'</select></label>'+choice('vatDeductible','Входной НДС принимается к вычету')+input('vatInvoice','Счёт-фактура / УПД')+input('vatDeductionDate','Дата выполнения условий вычета','date')+'</div>';host.append(d);
   for(const name of ['vatRate','vatDeductible','vatInvoice','vatDeductionDate'])d.querySelector('[name='+name+']').value=String(source[name]??'');
@@ -113,7 +113,7 @@
  // Capture before the legacy save handler. Its normal save/sync and conflict checks remain in use.
  document.addEventListener('submit',e=>{
   const form=e.target,collection=form.dataset.taxCollection;if(!collection||!form.querySelector('[data-tax-fields]'))return;
-  const row=values(form),message=checkEvents(form,row,collection)||validate(row,collection),error=form.querySelector('[data-tax-form-error]');
+  const row=values(form);for(const prefix of ['usn','profitTax']){const raw=row[prefix+'RecognitionEvents'];if(raw){try{row[prefix+'RecognitionEvents']=JSON.parse(raw)}catch{row[prefix+'RecognitionEvents']=[]}}}const message=checkEvents(form,row,collection)||validate(row,collection),error=form.querySelector('[data-tax-form-error]');
   if(message){e.preventDefault();e.stopImmediatePropagation();error.hidden=false;error.textContent=message;form.querySelector('[data-tax-fields]').open=true;error.scrollIntoView({block:'nearest'});return;}
   error.hidden=true;
   if(cleared.get(form)===signature(form)){cleared.delete(form);return;}
@@ -121,7 +121,7 @@
   e.preventDefault();e.stopImmediatePropagation();if(pending.has(form))return;
   const before=signature(form),target=typeof genericTarget==='object'?genericTarget:null;
   let old=null;if(form.id==='genericEditForm'&&target&&typeof db==='object')old=db[target.key]?.find(x=>x._id===target.id);
-  const dates=[old,row].filter(Boolean).flatMap(x=>[x.date,x.usnRecognitionDate,x.profitTaxRecognitionDate,x.vatDeductionDate]);
+  const dates=[old,row].filter(Boolean).flatMap(x=>[x.date,x.usnRecognitionDate,x.profitTaxRecognitionDate,x.vatDeductionDate,...(Array.isArray(x.usnRecognitionEvents)?x.usnRecognitionEvents.map(e=>e.date):[]),...(Array.isArray(x.profitTaxRecognitionEvents)?x.profitTaxRecognitionEvents.map(e=>e.date):[])]);
   pending.add(form);
   root.arbatEnsureOpenPeriods(dates).then(()=>{
    if(before!==signature(form))throw Error('Данные изменились во время проверки периода. Нажмите «Сохранить» ещё раз.');
