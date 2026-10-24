@@ -117,10 +117,12 @@
   }else if(kind==='tax'){
    title='Налоговый расчёт и замечания';scope='УСН и прибыль: '+data.taxes.yearBounds.from+' — '+data.taxes.yearBounds.to+' · НДС: '+data.taxes.bounds.label;
    const tax=data.taxes;
+   body='';
    const taxRow=row=>row.collection==='warehouse'?{...row,collection:'payables',id:window.ArbatPayables?.receiptKey(row.source),label:row.label||'Приход на склад'}:row;
    body='<p class="ux-explanation">Показаны суммы, которые вошли в расчёт, и причины, мешающие подтвердить результат. Расход ДДС, расход ОПиУ и налоговый расход имеют разные правила признания. Старые документы автоматически не переписываются.</p>';
+   body+='<p><button type="button" data-open-tax-register="advances">НДС с авансов</button> <button type="button" data-open-tax-register="obligations">Сверка налоговых обязательств</button></p>';
    if(tax.issues.length)body+='<div data-tax-issues><h3>Требует проверки · '+tax.issues.length+'</h3><div class="ux-source-list">'+tax.issues.map(x=>{const row=taxRow({source:x.source,collection:x.collection,id:x.source?._id||x.source?.id,label:x.source?.note||x.source?.name||'Источник'});return '<div class="ux-source-row"><div>'+sourceButton(row)+'<small>'+esc([x.source?.date||x.source?.dt||'',x.source?.org||'',({usn:'УСН',vat:'НДС',profit:'Прибыль'})[x.scope]].filter(Boolean).join(' · '))+'</small><p>'+esc(x.message)+'</p></div></div>'}).join('')+'</div></div>';
-   for(const [part,label] of [['usn','УСН: признанные доходы и расходы'],['vat','НДС: начисления и вычеты'],['profit','Прибыль: признанные доходы и расходы']])body+='<div data-tax-register="'+part+'"><h3>'+label+'</h3>'+sourceRows(tax.rows.filter(x=>x.scope===part).map(taxRow))+'</div>';
+   for(const [part,label] of [['usn','УСН: признанные доходы и расходы'],['vat','АРБАТ.ГК · НДС: начисления и вычеты'],['airVat','АИР-КЛИМАТ · НДС: начисления и вычеты'],['profit','Прибыль: признанные доходы и расходы']])body+='<div data-tax-register="'+part+'"><h3>'+label+'</h3>'+sourceRows(tax.rows.filter(x=>x.scope===part).map(taxRow))+'</div>';
    body+='<div><h3>Границы расчёта</h3>'+tax.limitations.map(x=>'<p>'+esc(x)+'</p>').join('')+'<p>Для подтверждения налоговых расходов и вычетов нужна сверка с регистрами бухгалтера. Статья ДДС сама по себе не подтверждает налоговое признание.</p></div>';
 
   }

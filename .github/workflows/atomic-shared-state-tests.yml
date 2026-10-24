@@ -7,6 +7,8 @@ on:
       - 'app/sync.js'
       - 'supabase/migrations/*tax_recognition_period_guard.sql'
       - 'tests/tax-recognition-periods.sql'
+      - 'tests/tax-event-registers.sql'
+      - 'supabase/migrations/*tax_event_registers.sql'
       - 'supabase/migrations/*atomic_shared_state_batch.sql'
       - 'tests/atomic-shared-state-batch.sql'
       - '.github/workflows/atomic-shared-state-tests.yml'
@@ -40,3 +42,8 @@ jobs:
         env:
           PGPASSWORD: isolated-ci-only
         run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/tax-recognition-periods.sql
+
+      - name: Verify explicit tax register periods and audit
+        env:
+          PGPASSWORD: isolated-ci-only
+        run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/tax-event-registers.sql

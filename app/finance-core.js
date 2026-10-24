@@ -313,14 +313,20 @@
         return v;
       }catch{issue('vat-metadata-invalid',scope,collection,source);return null}
     }
-    let usnIncome=0n,usnExpenses=0n;
-    const incomeEvents=[];
+    const registerModel=typeof module==='object'&&module.exports?require('./tax-register-model.js'):globalThis.ArbatTaxRegisters;
+    const advanceRegister=registerModel?.advances(data,{from:bounds.from,to:bounds.to}),obligationRegister=registerModel?.obligations(data,{to:bounds.to});
+    const annualAdvances=registerModel?.advances(data,{from:(year-1)+'-01-01',to:yearBounds.to,org:AIR});
+    const airAdvanceVat=new Map(),airRefundGross=new Map();
+    let usnIncome=0n,usnExpenses=0n,airOutputVat=0n,airInputVat=0n;
+    for(const r of annualAdvances?.rows||[]){if(r.kind==='received')airAdvanceVat.set(r.id,(airAdvanceVat.get(r.id)||0n)+r.vat);if(r.kind==='refund'){airRefundGross.set(r.id,(airRefundGross.get(r.id)||0n)+r.amount);if(between(r.date,yearBounds)){usnIncome-=r.amount-r.vat;entry('usn','cash',r.source,r.date,-(r.amount-r.vat),'Возврат дохода УСН без НДС')}}}
+
+    const incomeEvents=(annualAdvances?.rows||[]).filter(r=>r.kind==='refund').map(r=>({date:r.date,amount:-(r.amount-r.vat)}));
     for(const source of data.cash||[]){
       if(source.org!==AIR||source.type==='transfer')continue;
       const d=readDate(source,'cash','usn');if(!d)continue;
       if(source.type==='in'){
         if(d<`${year-1}-01-01`||d>bounds.to)continue;
-        const n=amount(source.amount,source,'cash','usn');if(n===null)continue;
+        let n=amount(source.amount,source,'cash','usn');if(n===null)continue;n-=airAdvanceVat.get(String(source._id||source.id))||0n;
         if(n<0n){issue('invalid-tax-amount','usn','cash',source);continue}
         if(excluded(source,'usnTaxable','usn','cash'))continue;
         if(!yes(source.usnTaxable)&&between(d,yearBounds))issue('usn-income-unconfirmed','usn','cash',source);
@@ -331,7 +337,7 @@
         if(d>bounds.to||source.usnRecognitionEvents==null&&recognized&&valid(recognized)&&recognized>bounds.to)continue;
         if(d<yearBounds.from&&!between(recognized,yearBounds)&&!Array.isArray(source.usnRecognitionEvents))continue;
         if(excluded(source,'usnDeductible','usn','cash'))continue;
-        const n=amount(source.amount,source,'cash','usn');if(n===null||n<0n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        const grossPayment=amount(source.amount,source,'cash','usn'),n=grossPayment===null?null:grossPayment-(airRefundGross.get(String(source._id||source.id))||0n);if(n===0n)continue;if(n===null||n<0n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
         const events=recognitionEvents(source,'cash','usn','usnRecognitionEvents',recognized,source.usnRecognizedAmount,source.usnDocument,n,d);
         if(events===false)continue;
         if(events){if(!yes(source.usnDeductible)){issue('usn-expense-unconfirmed','usn','cash',source);continue}
@@ -403,9 +409,13 @@
       inputDocument(source,'warehouse',gross);
       if(between(d,yearBounds))issue('warehouse-tax-basis','profit','warehouse',source);
     }
+    if(advanceRegister){
+      for(const r of advanceRegister.rows){if(r.org===ARBAT){if(r.kind==='received')outputVat+=r.vat;else inputVat+=r.vat}else if(r.org===AIR){if(r.kind==='received')airOutputVat+=r.vat;else airInputVat+=r.vat}entry(r.org===AIR?'airVat':'vat',r.collection,r.source,r.date,r.kind==='received'?r.vat:-r.vat,r.label+' · '+r.event.document)}
+      for(const problem of advanceRegister.issues)if(problem.event.org===ARBAT)issues.push({code:'vat-advance-review',scope:'vat',collection:'organization',source:{org:ARBAT,name:problem.event.document||'Событие НДС'},message:problem.message});
+    }
     for(const source of data.cash||[])if(source.org===ARBAT&&source.type!=='transfer'){
       const d=date(source.date);if(!valid(d))issue('invalid-tax-date','vat','cash',source);
-      else if(between(d,bounds))issue('vat-cash-review','vat','cash',source);
+      else if(between(d,bounds)&&!advanceRegister?.coveredCash.includes(String(source._id||source.id)))issue('vat-cash-review','vat','cash',source);
     }
     // Work acts can overlap payroll; until reconciled in a tax register they
     // must be visible as a source, not silently omitted or deducted twice.
@@ -413,6 +423,7 @@
       const d=readDate(source,'workActs','profit');if(d&&between(d,yearBounds))issue('profit-expense-unconfirmed','profit','workActs',source);
     }
     for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items)if(source.org===AIR&&between(date(source.date),yearBounds)&&Number(source.vatRate)>0)issue('air-vat-document','usn',collection,source);
+    for(const source of data.realizations||[])if(source.org===AIR&&between(date(source.date),bounds)&&Number(source.vatRate)>0){const v=vat(source,'realizations','usn');if(v){airOutputVat+=v.vatAmount;entry('airVat','realizations',source,date(source.date),v.vatAmount,'Исходящий НДС АИР-КЛИМАТ')}}
     const cutoff=valid(date(reference))?date(reference):bounds.to,limitRub=year===2025?60000000:year===2026?20000000:year===2027?15000000:year===2028?10000000:null;
     const previousIncome=incomeEvents.filter(x=>x.date.startsWith(String(year-1))).reduce((n,x)=>n+x.amount,0n),events=incomeEvents.filter(x=>x.date>=yearBounds.from&&x.date<=cutoff).sort((a,b)=>a.date.localeCompare(b.date));
     let observedIncome=0n,exceededOn=null,effectiveFrom=null;
@@ -422,8 +433,8 @@
     if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
     if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
     const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
-    return {bounds,yearBounds,rows,issues,
-      air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold:{limit,observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:cutoff,coverageConfirmed:false}},
+    return {bounds,yearBounds,rows,issues,advanceRegister,obligationRegister,
+      air:{outputVat:airOutputVat,inputVat:airInputVat,vatBalance:airOutputVat-airInputVat,income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold:{limit,observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:cutoff,coverageConfirmed:false}},
       arbat:{outputVat,inputVat,payable:positive(difference),recoverable:positive(-difference),unconfirmed:issues.filter(x=>x.scope==='vat').length,profitRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25,vatReady:!issues.some(x=>x.scope==='vat'),profitReady:!issues.some(x=>x.scope==='profit')},
       limitations:['Расчёт по внесённым данным. Полнота года и начальные налоговые остатки не подтверждены.','Не учтены зачёт налоговых авансов, ЕНС, перенос убытков и специальные налоговые корректировки.','НДС с авансов, восстановление и корректировки требуют отдельного регистра.']};
   }
