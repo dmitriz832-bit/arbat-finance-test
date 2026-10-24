@@ -286,6 +286,25 @@
       issue('tax-exclusion-without-reason',scope,collection,source);return false;
     }
     function entry(scope,collection,source,d,value,label){rows.push({scope,collection,source,id:source._id||source.id,date:d,amount:value,label})}
+    // Event-level tax recognition supports several independently documented portions
+    // of one payment, without counting a legacy single recognition twice.
+    function recognitionEvents(source,collection,scope,field,legacyDate,legacyAmount,legacyDocument,cap,earliest){
+      const events=source[field];
+      if(events===undefined||events===null)return null;
+      if(!Array.isArray(events)||events.length===0){issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false}
+      let total=0n;const found=new Set(),accepted=[];
+      for(const e of events){
+        const d=date(e?.date),document=text(e?.document),id=text(e?.id);
+        let n;try{n=cents(e?.amount)}catch{n=null}
+        if(!valid(d)||d<earliest||!document||!id||found.has(id)||n===null||n<=0n){
+          issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false
+        }
+        found.add(id);total+=n;accepted.push({date:d,amount:n,document,id});
+      }
+      if(total>cap||total<0n){issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false}
+      return accepted;
+    }
+
     function vat(source,collection,scope,gross=source.amountGross??source.amount){
       try{
         if(gross==null||text(gross)==='')throw Error('Missing amount');
@@ -309,11 +328,18 @@
         if(between(d,yearBounds)){usnIncome+=n;entry('usn','cash',source,d,n,'Доход УСН')}
       }else if(source.type==='out'){
         const recognized=date(source.usnRecognitionDate);
-        if(d>bounds.to||recognized&&valid(recognized)&&recognized>bounds.to)continue;
-        if(d<yearBounds.from&&!between(recognized,yearBounds))continue;
+        if(d>bounds.to||source.usnRecognitionEvents==null&&recognized&&valid(recognized)&&recognized>bounds.to)continue;
+        if(d<yearBounds.from&&!between(recognized,yearBounds)&&!Array.isArray(source.usnRecognitionEvents))continue;
         if(excluded(source,'usnDeductible','usn','cash'))continue;
-        const n=amount(source.amount,source,'cash','usn'),accepted=amount(source.usnRecognizedAmount??source.amount,source,'cash','usn');
-        if(!yes(source.usnDeductible)||!valid(recognized)||recognized<d||!text(source.usnDocument)||n===null||accepted===null||n<0n||accepted<0n||accepted>n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        const n=amount(source.amount,source,'cash','usn');if(n===null||n<0n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        const events=recognitionEvents(source,'cash','usn','usnRecognitionEvents',recognized,source.usnRecognizedAmount,source.usnDocument,n,d);
+        if(events===false)continue;
+        if(events){if(!yes(source.usnDeductible)){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+          for(const e of events)if(between(e.date,yearBounds)){usnExpenses+=e.amount;entry('usn','cash',source,e.date,-e.amount,'Признанный расход УСН · '+e.document)}
+          continue;
+        }
+        const accepted=amount(source.usnRecognizedAmount??source.amount,source,'cash','usn');
+        if(!yes(source.usnDeductible)||!valid(recognized)||recognized<d||!text(source.usnDocument)||accepted===null||accepted<0n||accepted>n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
         if(between(recognized,yearBounds)){usnExpenses+=accepted;entry('usn','cash',source,recognized,-accepted,'Признанный расход УСН')}
       }
     }
