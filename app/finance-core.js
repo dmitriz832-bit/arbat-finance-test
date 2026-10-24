@@ -370,15 +370,19 @@
     function profitExpense(source,collection){
       const d=readDate(source,collection,'profit');if(!d||d>bounds.to)return;
       const recognized=date(source.profitTaxRecognitionDate);
-      if(recognized&&valid(recognized)&&recognized>bounds.to)return;
-      if(d<yearBounds.from&&!between(recognized,yearBounds))return;
+      if(source.profitTaxRecognitionEvents==null&&recognized&&valid(recognized)&&recognized>bounds.to)return;
+      if(d<yearBounds.from&&!between(recognized,yearBounds)&&!Array.isArray(source.profitTaxRecognitionEvents))return;
       if(excluded(source,'profitTaxDeductible','profit',collection))return;
-      if(!yes(source.profitTaxDeductible)||!valid(recognized)||recognized<d||!text(source.profitTaxDocument)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      if(!yes(source.profitTaxDeductible)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      if(source.profitTaxRecognitionEvents==null&&(!valid(recognized)||recognized<d||!text(source.profitTaxDocument))){issue('profit-expense-unconfirmed','profit',collection,source);return}
       let max;
       if(collection==='labor'){
         const wages=amount(source.amount,source,collection,'profit'),contributions=amount(source.employerContributions||0,source,collection,'profit');if(wages===null||contributions===null)return;max=wages+contributions;
       }else{const v=vat(source,collection,'profit');if(!v)return;if(v.vatAmount!==0n&&!yes(source.vatDeductible)&&!no(source.vatDeductible)){issue('profit-expense-unconfirmed','profit',collection,source);return}max=yes(source.vatDeductible)?v.amountNet:v.amountGross}
       const n=source.profitTaxRecognizedAmount==null||text(source.profitTaxRecognizedAmount)===''?max:amount(source.profitTaxRecognizedAmount,source,collection,'profit');
+      const events=recognitionEvents(source,collection,'profit','profitTaxRecognitionEvents',recognized,source.profitTaxRecognizedAmount,source.profitTaxDocument,max,d);
+      if(events===false)return;
+      if(events){for(const e of events)if(between(e.date,yearBounds)){profitExpenses+=e.amount;entry('profit',collection,source,e.date,-e.amount,'Признанный налоговый расход · '+e.document)}return}
       if(n===null||max>=0n&&(n<0n||n>max)||max<0n&&(n>0n||n<max)){issue('profit-expense-unconfirmed','profit',collection,source);return}
       if(between(recognized,yearBounds)){profitExpenses+=n;entry('profit',collection,source,recognized,-n,'Признанный налоговый расход')}
     }
