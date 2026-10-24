@@ -9,7 +9,7 @@ end $$;
 create table public.finance_periods(period text primary key,status text);
 create table public.finance_state(id text primary key,payload jsonb);
 create table public.warehouse_state(id text primary key,payload jsonb);
-\ir ../supabase/migrations/20261024161103_tax_recognition_period_guard.sql
+\ir ../supabase/migrations/20261024163056_tax_recognition_period_guard.sql
 insert into public.finance_periods values('2026-11','closed');
 insert into public.finance_state values('main','{"cash":[{"_id":"open","date":"2026-10-01","amount":100}],"costs":[{"_id":"old","date":"2026-10-01","profitTaxRecognitionDate":"2026-11-01"}]}');
 insert into public.warehouse_state values('main','{"moves":[{"id":"r","date":"2026-10-01","vatDeductionDate":"2026-11-01"}]}');
