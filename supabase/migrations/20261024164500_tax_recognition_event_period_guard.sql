@@ -23,7 +23,7 @@ begin
     end if;
    end loop;
    foreach event_field in array array['usnRecognitionEvents','profitTaxRecognitionEvents'] loop
-    if rec ? event_field and jsonb_typeof(rec->event_field)<>'array' then
+    if rec ? event_field and jsonb_typeof(rec->event_field) not in ('array','null') then
       raise exception 'Invalid tax recognition event collection in %.',section;
     end if;
     for event in select value from jsonb_array_elements(case when jsonb_typeof(rec->event_field)='array' then rec->event_field else '[]'::jsonb end) e(value) loop
