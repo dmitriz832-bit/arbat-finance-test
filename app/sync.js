@@ -134,7 +134,7 @@
   }
 
   function applyRemote(rows,visible=rows.map(row=>row.payload)){
-    for(let i=0;i<K.length;i++){previous[i]=rows[i].payload;baseSet.call(localStorage,K[i],JSON.stringify(visible[i]))}
+    for(let i=0;i<K.length;i++){previous[i]=JSON.parse(JSON.stringify(rows[i].payload));baseSet.call(localStorage,K[i],JSON.stringify(visible[i]))}
     rev=Object.fromEntries(T.map((table,i)=>[table,rows[i].revision]));
     put(B,rev);
     window.dispatchEvent(new CustomEvent('arbat:cloud-update',{detail:{finance:visible[0],warehouse:visible[1],revisions:{...rev}}}));
