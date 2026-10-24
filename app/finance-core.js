@@ -286,6 +286,25 @@
       issue('tax-exclusion-without-reason',scope,collection,source);return false;
     }
     function entry(scope,collection,source,d,value,label){rows.push({scope,collection,source,id:source._id||source.id,date:d,amount:value,label})}
+    // Event-level tax recognition supports several independently documented portions
+    // of one payment, without counting a legacy single recognition twice.
+    function recognitionEvents(source,collection,scope,field,legacyDate,legacyAmount,legacyDocument,cap,earliest){
+      const events=source[field];
+      if(events===undefined||events===null)return null;
+      if(!Array.isArray(events)||events.length===0){issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false}
+      let total=0n;const found=new Set(),accepted=[];
+      for(const e of events){
+        const d=date(e?.date),document=text(e?.document),id=text(e?.id);
+        let n;try{n=cents(e?.amount)}catch{n=null}
+        if(!valid(d)||d<earliest||!document||!id||found.has(id)||n===null||n<=0n){
+          issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false
+        }
+        found.add(id);total+=n;accepted.push({date:d,amount:n,document,id});
+      }
+      if(total>cap||total<0n){issue(scope==='usn'?'usn-expense-unconfirmed':'profit-expense-unconfirmed',scope,collection,source);return false}
+      return accepted;
+    }
+
     function vat(source,collection,scope,gross=source.amountGross??source.amount){
       try{
         if(gross==null||text(gross)==='')throw Error('Missing amount');
@@ -309,11 +328,18 @@
         if(between(d,yearBounds)){usnIncome+=n;entry('usn','cash',source,d,n,'Доход УСН')}
       }else if(source.type==='out'){
         const recognized=date(source.usnRecognitionDate);
-        if(d>bounds.to||recognized&&valid(recognized)&&recognized>bounds.to)continue;
-        if(d<yearBounds.from&&!between(recognized,yearBounds))continue;
+        if(d>bounds.to||source.usnRecognitionEvents==null&&recognized&&valid(recognized)&&recognized>bounds.to)continue;
+        if(d<yearBounds.from&&!between(recognized,yearBounds)&&!Array.isArray(source.usnRecognitionEvents))continue;
         if(excluded(source,'usnDeductible','usn','cash'))continue;
-        const n=amount(source.amount,source,'cash','usn'),accepted=amount(source.usnRecognizedAmount??source.amount,source,'cash','usn');
-        if(!yes(source.usnDeductible)||!valid(recognized)||recognized<d||!text(source.usnDocument)||n===null||accepted===null||n<0n||accepted<0n||accepted>n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        const n=amount(source.amount,source,'cash','usn');if(n===null||n<0n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+        const events=recognitionEvents(source,'cash','usn','usnRecognitionEvents',recognized,source.usnRecognizedAmount,source.usnDocument,n,d);
+        if(events===false)continue;
+        if(events){if(!yes(source.usnDeductible)){issue('usn-expense-unconfirmed','usn','cash',source);continue}
+          for(const e of events)if(between(e.date,yearBounds)){usnExpenses+=e.amount;entry('usn','cash',source,e.date,-e.amount,'Признанный расход УСН · '+e.document)}
+          continue;
+        }
+        const accepted=amount(source.usnRecognizedAmount??source.amount,source,'cash','usn');
+        if(!yes(source.usnDeductible)||!valid(recognized)||recognized<d||!text(source.usnDocument)||accepted===null||accepted<0n||accepted>n){issue('usn-expense-unconfirmed','usn','cash',source);continue}
         if(between(recognized,yearBounds)){usnExpenses+=accepted;entry('usn','cash',source,recognized,-accepted,'Признанный расход УСН')}
       }
     }
@@ -344,15 +370,19 @@
     function profitExpense(source,collection){
       const d=readDate(source,collection,'profit');if(!d||d>bounds.to)return;
       const recognized=date(source.profitTaxRecognitionDate);
-      if(recognized&&valid(recognized)&&recognized>bounds.to)return;
-      if(d<yearBounds.from&&!between(recognized,yearBounds))return;
+      if(source.profitTaxRecognitionEvents==null&&recognized&&valid(recognized)&&recognized>bounds.to)return;
+      if(d<yearBounds.from&&!between(recognized,yearBounds)&&!Array.isArray(source.profitTaxRecognitionEvents))return;
       if(excluded(source,'profitTaxDeductible','profit',collection))return;
-      if(!yes(source.profitTaxDeductible)||!valid(recognized)||recognized<d||!text(source.profitTaxDocument)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      if(!yes(source.profitTaxDeductible)){issue('profit-expense-unconfirmed','profit',collection,source);return}
+      if(source.profitTaxRecognitionEvents==null&&(!valid(recognized)||recognized<d||!text(source.profitTaxDocument))){issue('profit-expense-unconfirmed','profit',collection,source);return}
       let max;
       if(collection==='labor'){
         const wages=amount(source.amount,source,collection,'profit'),contributions=amount(source.employerContributions||0,source,collection,'profit');if(wages===null||contributions===null)return;max=wages+contributions;
       }else{const v=vat(source,collection,'profit');if(!v)return;if(v.vatAmount!==0n&&!yes(source.vatDeductible)&&!no(source.vatDeductible)){issue('profit-expense-unconfirmed','profit',collection,source);return}max=yes(source.vatDeductible)?v.amountNet:v.amountGross}
       const n=source.profitTaxRecognizedAmount==null||text(source.profitTaxRecognizedAmount)===''?max:amount(source.profitTaxRecognizedAmount,source,collection,'profit');
+      const events=recognitionEvents(source,collection,'profit','profitTaxRecognitionEvents',recognized,source.profitTaxRecognizedAmount,source.profitTaxDocument,max,d);
+      if(events===false)return;
+      if(events){for(const e of events)if(between(e.date,yearBounds)){profitExpenses+=e.amount;entry('profit',collection,source,e.date,-e.amount,'Признанный налоговый расход · '+e.document)}return}
       if(n===null||max>=0n&&(n<0n||n>max)||max<0n&&(n>0n||n<max)){issue('profit-expense-unconfirmed','profit',collection,source);return}
       if(between(recognized,yearBounds)){profitExpenses+=n;entry('profit',collection,source,recognized,-n,'Признанный налоговый расход')}
     }
