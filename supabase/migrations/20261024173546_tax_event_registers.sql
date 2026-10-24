@@ -16,9 +16,9 @@ begin
    select s.section,e.value from unnest(array['cash','realizations','vatAdvanceEvents','taxObligationEvents']) s(section)
    cross join lateral jsonb_array_elements(case when jsonb_typeof(new.payload->s.section)='array' then new.payload->s.section else '[]'::jsonb end) e(value)
   ),delta as ((select * from old_rows except all select * from new_rows) union all (select * from new_rows except all select * from old_rows)),
-  events as (select * from old_rows where section in ('vatAdvanceEvents','taxObligationEvents') union select * from new_rows where section in ('vatAdvanceEvents','taxObligationEvents')),
+  events as (select * from old_rows where old_rows.section in ('vatAdvanceEvents','taxObligationEvents') union select * from new_rows where new_rows.section in ('vatAdvanceEvents','taxObligationEvents')),
   seeds as (
-   select * from delta where section in ('vatAdvanceEvents','taxObligationEvents')
+   select * from delta where delta.section in ('vatAdvanceEvents','taxObligationEvents')
    union
    select e.* from events e join delta d on
     (d.section='cash' and e.value->>'cashId'=coalesce(d.value->>'_id',d.value->>'id')) or

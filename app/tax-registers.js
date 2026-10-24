@@ -42,7 +42,7 @@ function references(existing={}){
 }
 async function commit(remove=false){if(busy||!allowed())return;busy=true;const f=dialog.querySelector('form'),error=f.querySelector('[data-error]');try{
  if(snapshot()!==baseline)throw Error('Регистр изменён другим сотрудником. Закройте форму и откройте событие снова.');
- const old=rows().find(x=>id(x)===editing),sourceBaseline=JSON.stringify([db.cash,db.realizations]),e={...Object.fromEntries(new FormData(f)),_id:editing||crypto.randomUUID()};if(editing&&!old)throw Error('Событие уже удалено');
+ const old=rows().find(x=>id(x)===editing),sourceBaseline=JSON.stringify([db.cash,db.realizations]),e={...Object.fromEntries(new FormData(f)),_id:editing||crypto.randomUUID()};if(!String(e.amount||'').trim())throw Error('Укажите сумму');e.amount=core.rubles(core.cents(e.amount));if(editing&&!old)throw Error('Событие уже удалено');
  const next=remove?rows().filter(x=>id(x)!==editing):[...rows().filter(x=>id(x)!==editing),e];const candidate={...db,[collection]:next};
  const check=mode==='advances'?model.advances(candidate):model.obligations(candidate),newIssues=check.issues.filter(x=>id(x.event)===e._id||!rows().some(r=>id(r)===id(x.event)));
  if(!remove&&newIssues.length)throw Error(newIssues[0].message);
