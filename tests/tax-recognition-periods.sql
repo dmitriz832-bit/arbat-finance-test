@@ -60,6 +60,13 @@ do $$ declare field text; begin
   exception when others then if sqlerrm not like 'Financial period 2026-10 is closed:%' then raise;end if;end;
  end loop;
  delete from public.finance_periods where period='2026-10';
+ -- Forms persist empty event controls as JSON null, which uses legacy recognition.
+ update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents}','null');
+ update public.finance_state set payload=jsonb_set(payload,'{cash,0,profitTaxRecognitionEvents}','null');
+ begin
+  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents}','{}');
+  raise exception 'Expected malformed collection rejection';
+ exception when others then if sqlerrm not like 'Invalid tax recognition event collection%' then raise;end if;end;
  -- An unchanged closed record does not prevent an independent open record edit.
  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionDate}','"2026-10-02"');
  update public.finance_state set payload=payload;
