@@ -10,6 +10,7 @@ create table public.finance_periods(period text primary key,status text);
 create table public.finance_state(id text primary key,payload jsonb);
 create table public.warehouse_state(id text primary key,payload jsonb);
 \ir ../supabase/migrations/20261024163056_tax_recognition_period_guard.sql
+\ir ../supabase/migrations/20261024164500_tax_recognition_event_period_guard.sql
 insert into public.finance_periods values('2026-11','closed');
 insert into public.finance_state values('main','{"cash":[{"_id":"open","date":"2026-10-01","amount":100}],"costs":[{"_id":"old","date":"2026-10-01","profitTaxRecognitionDate":"2026-11-01"}]}');
 insert into public.warehouse_state values('main','{"moves":[{"id":"r","date":"2026-10-01","vatDeductionDate":"2026-11-01"}]}');
@@ -27,6 +28,16 @@ do $$ declare field text; begin
  begin
   update public.warehouse_state set payload='{"moves":[]}'::jsonb;
   raise exception 'Expected receipt deletion rejection';
+ exception when others then if sqlerrm not like 'Financial period 2026-11 is closed:%' then raise;end if;end;
+ -- Event-level dates are protected on insert, update, and removal.
+ begin
+  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents}','[{"id":"a","date":"2026-11-02","amount":10,"document":"УПД"}]'::jsonb);
+  raise exception 'Expected event insertion rejection';
+ exception when others then if sqlerrm not like 'Financial period 2026-11 is closed:%' then raise;end if;end;
+ update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents}','[{"id":"a","date":"2026-10-02","amount":10,"document":"УПД"}]'::jsonb);
+ begin
+  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionEvents,0,date}','"2026-11-03"');
+  raise exception 'Expected event moved into closed month rejection';
  exception when others then if sqlerrm not like 'Financial period 2026-11 is closed:%' then raise;end if;end;
  -- An unchanged closed record does not prevent an independent open record edit.
  update public.finance_state set payload=jsonb_set(payload,'{cash,0,usnRecognitionDate}','"2026-10-02"');
