@@ -27,5 +27,7 @@ jobs:
         if: always()
         with:
           name: business-cycle-screenshots
-          path: test-results/business-cycle*.png
+          path: |
+            test-results/business-cycle*.png
+            test-results/multiuser*.png
           if-no-files-found: ignore

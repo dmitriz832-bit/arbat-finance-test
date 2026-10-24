@@ -188,3 +188,47 @@ test('newer queued pair while a successful batch is in flight is sent together a
  h.save(F,{deals:[{_id:'first'}]});h.save(W,{items:[{id:'first'}]});await wait();h.save(F,{deals:[{_id:'latest'}]});h.save(W,{items:[{id:'latest'}]});gate.resolve();await wait();await wait();
  assert.equal(h.writes.length,2);assert.ok(h.writes.every(x=>x.p_changes.length===2));assert.equal(h.getCloud(0).payload.deals[0]._id,'latest');assert.equal(h.getCloud(1).payload.items[0].id,'latest');assert.equal(h.getCloud(0).revision,3);assert.equal(h.getCloud(1).revision,3);
 });
+
+test('transient poll network failure retries without locking the app or replacing local data',async()=>{
+ const h=harness({deals:[{_id:'existing'}]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();
+ h.get(async()=>{throw new TypeError('Failed to fetch')});await h.intervals[0]();
+ assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),false,'a read outage must not require discarding a recovery snapshot');
+ h.get(null);h.setCloud(0,{deals:[{_id:'existing'},{_id:'colleague'}]});await h.intervals[0]();
+ assert.deepEqual(h.read(F).deals.map(x=>x._id),['existing','colleague'],'next poll must receive colleague documents without reload');
+});
+
+test('temporary server failure is retried but access rejection still halts and preserves recovery',async()=>{
+ for(const status of [503,403]){
+  const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.get(async()=>{throw Object.assign(new Error('server error'),{status})});await h.intervals[0]();
+  const recovery=[...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:'));assert.equal(recovery,status===403);
+  h.get(null);h.setCloud(0,{deals:[{_id:'next'}]});await h.intervals[0]();assert.equal(h.read(F).deals.length,status===503?1:0);
+ }
+});
+
+test('failed write can be explicitly retried against fresh cloud state without losing independent colleague edits',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async()=>{throw new TypeError('Failed to fetch')});h.save(F,{deals:[{_id:'mine'}]});await wait();await wait();
+ const retry=h.nodes.find(n=>n.id==='ab-recovery-retry');assert.ok(retry,'recovery must offer a safe retry');h.setCloud(0,{deals:[{_id:'colleague'}]});h.post(null);await retry.onclick();
+ assert.deepEqual(h.getCloud(0).payload.deals.map(x=>x._id).sort(),['colleague','mine']);assert.deepEqual(h.read(F),h.getCloud(0).payload);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),false,'recovery removed only after acknowledgement');
+});
+test('retry of an actual same-document conflict preserves both versions and the recovery snapshot',async()=>{
+ const h=harness({expenses:[{_id:'x',amount:10}]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.setCloud(0,{expenses:[{_id:'x',amount:20}]});h.save(F,{expenses:[{_id:'x',amount:30}]});await wait();await wait();
+ const retry=h.nodes.find(n=>n.id==='ab-recovery-retry');assert.ok(retry);await retry.onclick();assert.equal(h.getCloud(0).payload.expenses[0].amount,20);assert.equal(h.read(F).expenses[0].amount,30);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),true);
+ const calls=h.writes.length;h.window.abIdentity={user_id:'other',role:'admin'};await retry.onclick();assert.equal(h.writes.length,calls,'another user cannot replay the snapshot');
+});
+
+test('retry is idempotent when the original save committed but its response was lost',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async body=>{for(const c of body.p_changes)h.setCloud(c.store==='finance'?0:1,c.payload);throw new TypeError('Response lost')});h.save(F,{deals:[{_id:'once'}]});await wait();await wait();h.post(null);await h.nodes.find(n=>n.id==='ab-recovery-retry').onclick();assert.equal(h.getCloud(0).payload.deals.length,1);assert.equal(h.getCloud(0).payload.deals[0]._id,'once');
+});
+test('changing recovery owner during the fresh-state fetch prevents retry writes',async()=>{
+ const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.post(async()=>{throw new TypeError('Offline')});h.save(F,{deals:[{_id:'private'}]});await wait();await wait();const gate=deferred();h.post(null);h.get(async()=>gate.promise);const count=h.writes.length,attempt=h.nodes.find(n=>n.id==='ab-recovery-retry').onclick();await wait();h.window.abIdentity={user_id:'other',role:'admin'};gate.resolve();await attempt;assert.equal(h.writes.length,count);assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),true);
+});
+
+test('visible cloud model mutations cannot alter the three-way merge baseline',async()=>{
+ const h=harness({deals:[]});await h.window.arbatCloudBoot();h.setCloud(0,{deals:[{_id:'first'}]});await h.intervals[0]();
+ const visible=h.events.at(-1).detail.finance;visible.deals.push({_id:'mine'});h.setCloud(0,{deals:[{_id:'first'},{_id:'colleague'}]});h.save(F,visible);await wait();await wait();
+ assert.deepEqual(h.getCloud(0).payload.deals.map(x=>x._id).sort(),['colleague','first','mine']);
+});
+test('editing the emitted UI model retains the original baseline and detects another edit of that document',async()=>{
+ const h=harness({expenses:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.setCloud(0,{expenses:[{_id:'x',amount:10}]});await h.intervals[0]();
+ const visible=h.events.at(-1).detail.finance;visible.expenses[0].amount=30;h.setCloud(0,{expenses:[{_id:'x',amount:20}]});h.save(F,visible);await wait();await wait();assert.equal(h.getCloud(0).payload.expenses[0].amount,20);assert.equal(h.read(F).expenses[0].amount,30);assert.ok(h.messages.some(x=>x.includes('Конфликт')));
+});

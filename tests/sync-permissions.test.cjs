@@ -5,7 +5,7 @@ test('sync writes only via server RPC with revision compare-and-swap',()=>{
  assert.match(sync,/api\('rpc\/update_shared_state_batch'/);
  assert.match(sync,/expected_revision:rev\[T\[i\]\]/);
  assert.match(sync,/store:i===0\?'finance':'warehouse'/);
- assert.match(sync,/if\(!response\.ok\)throw Error/);
+ assert.match(sync,/if\(!response\.ok\)\{[^}]*error\.status=response\.status;throw error;/);
  assert.doesNotMatch(sync,/method:\s*'PATCH'|method:\s*'DELETE'|method:\s*'PUT'/);
 });
 test('revoked direct write privileges preserve selected read pathway',()=>{
