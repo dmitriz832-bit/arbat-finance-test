@@ -69,7 +69,7 @@
   const sync=()=>{const entries=[...list.children].map(el=>({id:el.dataset.eventId,date:el.querySelector('[data-event-date]').value,amount:el.querySelector('[data-event-amount]').value,document:el.querySelector('[data-event-document]').value}));hidden.value=entries.length?JSON.stringify(entries):'';};
   function add(e={}){
    const el=document.createElement('div');el.className='tax-event-row';el.dataset.eventId=e.id||(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+list.children.length);
-   el.innerHTML='<label>Дата<input data-event-date type="date"></label><label>Сумма, ₽<input data-event-amount inputmode="decimal"></label><label>Основание<input data-event-document></label><button type="button" data-event-remove>Удалить</button>';
+   el.innerHTML='<label>Дата<input data-event-date type="date"></label><label>Сумма, ₽<input data-event-amount inputmode="decimal"></label><label>Основание<input data-event-document></label><button type="button" data-event-remove>Убрать признание</button>';
    el.querySelector('[data-event-date]').value=e.date||'';el.querySelector('[data-event-amount]').value=e.amount??'';el.querySelector('[data-event-document]').value=e.document||'';
    el.querySelector('[data-event-remove]').onclick=()=>{el.remove();sync()};el.addEventListener('input',sync);el.addEventListener('change',sync);list.append(el);sync();
   }
