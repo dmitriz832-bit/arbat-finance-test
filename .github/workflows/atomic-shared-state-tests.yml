@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - 'app/sync.js'
+      - 'supabase/migrations/*tax_recognition_period_guard.sql'
+      - 'tests/tax-recognition-periods.sql'
       - 'supabase/migrations/*atomic_shared_state_batch.sql'
       - 'tests/atomic-shared-state-batch.sql'
       - '.github/workflows/atomic-shared-state-tests.yml'
@@ -33,3 +35,8 @@ jobs:
         env:
           PGPASSWORD: isolated-ci-only
         run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/atomic-shared-state-batch.sql
+
+      - name: Verify tax recognition months and receipt deductions respect closed periods
+        env:
+          PGPASSWORD: isolated-ci-only
+        run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/tax-recognition-periods.sql
