@@ -70,7 +70,11 @@
  const sourceButton=row=>row.collection&&row.id?'<button type="button" class="ux-text-link" data-ux-source="'+esc(row.collection)+'" data-ux-id="'+esc(row.id)+'">'+esc(row.source?.document||row.source?.name||row.label||'Открыть документ')+'</button>':'<strong>'+esc(row.label||'Расчётная строка')+'</strong>';
  function sourceRows(rows){return rows.length?'<div class="ux-source-list">'+rows.map(row=>'<div class="ux-source-row"><div>'+sourceButton(row)+'<small>'+esc([row.date,row.label,row.source?.org].filter(Boolean).join(' · '))+'</small><p>'+esc(row.explanation||row.source?.note||row.source?.payee||'')+'</p></div><strong class="'+(row.amount<0n?'dashboard-negative':'')+'">'+rub(row.amount)+'</strong></div>').join('')+'</div>':'<div class="ux-empty">За выбранный период записей нет. Измените период или добавьте документ в соответствующем разделе.</div>'}
  function refreshDetail(){
-  if(!detailState)return;const data=window.arbatDashboardSnapshot(),{kind,value}=detailState;let title='',scope='',body='';
+  if(!detailState)return;const {kind,value}=detailState;
+  if(kind!=='tax'&&visuals.classList.contains('dashboard-calculation-error')){
+   $('uxDetailTitle').textContent='Проверьте исходные документы';$('uxDetailScope').textContent='Расчёт остановлен';$('uxDetailBody').innerHTML='<p>В исходных документах есть некорректные суммы или реквизиты. Предыдущая расшифровка скрыта.</p><button type="button" class="ux-text-link" data-ux-tax>Открыть налоговый расчёт и замечания</button>';return;
+  }
+  const data=kind==='tax'?{taxes:window.arbatTaxSnapshot()}:window.arbatDashboardSnapshot();let title='',scope='',body='';
   if(kind==='metric'){
    title=({revenue:'Реализации без НДС',direct:'Признанные прямые затраты',production:'Общепроизводственные расходы',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
    const rows=model.financialRows(data.financial,value,core),total=rows.reduce((v,x)=>v+x.amount,0n);scope=data.bounds.label+' · '+(data.org||'Весь бизнес');
@@ -111,13 +115,21 @@
   }else if(kind==='stock'){
    title='Остатки материалов';scope='По движениям FIFO · '+(data.org||'Все организации');body='<p class="ux-explanation">Остатки по местам хранения. Неоценённые материалы не подменяются нулевой стоимостью.</p><div class="ux-source-list">'+data.stock.rows.map(x=>'<div class="ux-source-row"><div><strong>'+esc(x.name||x.itemName||x.itemId)+'</strong><small>'+esc(x.placeName||x.placeId)+' · '+esc(x.qty)+' '+esc(x.unit||'')+'</small></div><strong>'+(x.value===null?'Требует оценки':rub(x.value))+'</strong></div>').join('')+'</div><button type="button" data-ux-route="materials:catalog">Открыть остатки и номенклатуру →</button>';
   }else if(kind==='tax'){
-   title='Источники налогового расчёта';scope=data.taxes.bounds.label+' · Обе организации';const bounds=data.taxes.bounds,within=x=>(x.date||x.dt||'')>=bounds.from&&(x.date||x.dt||'')<=bounds.to;
-   const rows=[];for(const collection of ['cash','realizations','expenses','costs','labor'])for(const source of db[collection]||[]){if(!within(source))continue;if(collection==='cash'?(source.org!=='АИР-КЛИМАТ'||source.type==='transfer'):source.org!=='АРБАТ.ГК')continue;rows.push({collection,source,id:source._id||source.id,date:source.date||source.dt,label:({cash:'ДДС — источник УСН',realizations:'Реализация',expenses:'Расход проекта',costs:'Общий расход',labor:'Начисление'})[collection],amount:core.cents(source.amount||0)})}
-   body='<p class="ux-explanation">Показаны исходные документы для проверки, их суммы не складываются в налог напрямую. УСН: классифицированные поступления и расходы АИР-КЛИМАТ. НДС: реализации и расходы АРБАТ.ГК с подтверждённой ставкой и признаком вычета. Прибыль: налоговые доходы, допустимые расходы и начисления. Исключения задаются в документах. Расчёт предварительный, до зачёта авансов.</p>'+sourceRows(rows);
+   title='Налоговый расчёт и замечания';scope='УСН и прибыль: '+data.taxes.yearBounds.from+' — '+data.taxes.yearBounds.to+' · НДС: '+data.taxes.bounds.label;
+   const tax=data.taxes;
+   const taxRow=row=>row.collection==='warehouse'?{...row,collection:'payables',id:window.ArbatPayables?.receiptKey(row.source),label:row.label||'Приход на склад'}:row;
+   body='<p class="ux-explanation">Показаны суммы, которые вошли в расчёт, и причины, мешающие подтвердить результат. Расход ДДС, расход ОПиУ и налоговый расход имеют разные правила признания. Старые документы автоматически не переписываются.</p>';
+   if(tax.issues.length)body+='<div data-tax-issues><h3>Требует проверки · '+tax.issues.length+'</h3><div class="ux-source-list">'+tax.issues.map(x=>{const row=taxRow({source:x.source,collection:x.collection,id:x.source?._id||x.source?.id,label:x.source?.note||x.source?.name||'Источник'});return '<div class="ux-source-row"><div>'+sourceButton(row)+'<small>'+esc([x.source?.date||x.source?.dt||'',x.source?.org||'',({usn:'УСН',vat:'НДС',profit:'Прибыль'})[x.scope]].filter(Boolean).join(' · '))+'</small><p>'+esc(x.message)+'</p></div></div>'}).join('')+'</div></div>';
+   for(const [part,label] of [['usn','УСН: признанные доходы и расходы'],['vat','НДС: начисления и вычеты'],['profit','Прибыль: признанные доходы и расходы']])body+='<div data-tax-register="'+part+'"><h3>'+label+'</h3>'+sourceRows(tax.rows.filter(x=>x.scope===part).map(taxRow))+'</div>';
+   body+='<div><h3>Границы расчёта</h3>'+tax.limitations.map(x=>'<p>'+esc(x)+'</p>').join('')+'<p>Для подтверждения налоговых расходов и вычетов нужна сверка с регистрами бухгалтера. Статья ДДС сама по себе не подтверждает налоговое признание.</p></div>';
+
   }
   $('uxDetailTitle').textContent=title;$('uxDetailScope').textContent=scope;$('uxDetailBody').innerHTML=body;
  }
  function refreshCalendar(){
+  if(visuals.classList.contains('dashboard-calculation-error')){
+   $('calendarTable').replaceChildren();$('calendarKpis').replaceChildren();$('calendarAlerts').innerHTML='<p>Расчёт требует проверки исходных документов.</p><button type="button" data-ux-tax>Открыть замечания к документам</button>';return;
+  }
   const data=window.arbatDashboardSnapshot(),p=data.forecast,target=$('calendarTable');if(!target)return;
   const rows=forecastCalendarRows(p),income=x=>p.incomeRows.includes(x);
   target.innerHTML='<table><thead><tr><th>Дата оплаты</th><th>Организация</th><th>Направление</th><th>Источник</th><th>Сумма</th><th>Статус</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.occurrence)+'</td><td>'+esc(x.org)+'</td><td>'+(income(x)?'Поступление':'Платёж')+'</td><td>'+sourceButton({collection:x.source==='supplier'?'payables':'calendar',id:x.documentKey||x.calendarId,source:{name:x.name}})+'<small>'+esc(x.source==='supplier'?'Неоплаченный остаток документа':'Самостоятельный план календаря')+'</small></td><td>'+rub(x.amount)+'</td><td>'+esc(x.days<0?'Просрочено':x.days<7?'В ближайшие 7 дней':'План')+'</td></tr>').join('')+(rows.length?'':'<tr><td colspan="6">Нет поступлений и платежей с известным сроком в ближайшие 90 дней.</td></tr>')+'</tbody></table>';
