@@ -41,7 +41,7 @@
       ...(body===undefined?{}:{body:JSON.stringify(body)})
     });
     const result=await response.json().catch(()=>({}));
-    if(!response.ok)throw Error(result.message||result.error||'HTTP '+response.status);
+    if(!response.ok){const error=Error(result.message||result.error||'HTTP '+response.status);error.status=response.status;throw error;}
     return result;
   }
 
@@ -226,7 +226,10 @@
         const version=writeVersion,fresh=await fetchAll();
         if(busy||Object.keys(pending).length||version!==writeVersion)return;
         if(T.some((table,i)=>Number(fresh[i].revision)!==Number(rev[table])))applyRemote(fresh);else lastCloudCheck=Date.now();
-      }catch(error){fail(error)}
+      }catch(error){
+        if(error.name==='TypeError'||[408,429,500,502,503,504].includes(error.status)){window.abMessage('Нет связи с общей базой. Повторяем проверку автоматически; локальные данные сохранены.');return;}
+        fail(error);
+      }
     };
     setInterval(refresh,4500);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastCloudCheck>1500)refresh()});

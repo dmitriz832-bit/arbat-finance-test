@@ -188,3 +188,19 @@ test('newer queued pair while a successful batch is in flight is sent together a
  h.save(F,{deals:[{_id:'first'}]});h.save(W,{items:[{id:'first'}]});await wait();h.save(F,{deals:[{_id:'latest'}]});h.save(W,{items:[{id:'latest'}]});gate.resolve();await wait();await wait();
  assert.equal(h.writes.length,2);assert.ok(h.writes.every(x=>x.p_changes.length===2));assert.equal(h.getCloud(0).payload.deals[0]._id,'latest');assert.equal(h.getCloud(1).payload.items[0].id,'latest');assert.equal(h.getCloud(0).revision,3);assert.equal(h.getCloud(1).revision,3);
 });
+
+test('transient poll network failure retries without locking the app or replacing local data',async()=>{
+ const h=harness({deals:[{_id:'existing'}]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();
+ h.get(async()=>{throw new TypeError('Failed to fetch')});await h.intervals[0]();
+ assert.equal([...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:')),false,'a read outage must not require discarding a recovery snapshot');
+ h.get(null);h.setCloud(0,{deals:[{_id:'existing'},{_id:'colleague'}]});await h.intervals[0]();
+ assert.deepEqual(h.read(F).deals.map(x=>x._id),['existing','colleague'],'next poll must receive colleague documents without reload');
+});
+
+test('temporary server failure is retried but access rejection still halts and preserves recovery',async()=>{
+ for(const status of [503,403]){
+  const h=harness({deals:[]},{items:[]},{identity:{user_id:'admin',email:'admin@example.test',role:'admin'}});await h.window.arbatCloudBoot();h.get(async()=>{throw Object.assign(new Error('server error'),{status})});await h.intervals[0]();
+  const recovery=[...h.localStorage.data.keys()].some(k=>k.startsWith('arbat-unsynced-recovery-v1:'));assert.equal(recovery,status===403);
+  h.get(null);h.setCloud(0,{deals:[{_id:'next'}]});await h.intervals[0]();assert.equal(h.read(F).deals.length,status===503?1:0);
+ }
+});
