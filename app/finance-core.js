@@ -403,9 +403,15 @@
       inputDocument(source,'warehouse',gross);
       if(between(d,yearBounds))issue('warehouse-tax-basis','profit','warehouse',source);
     }
+    const registerModel=typeof module==='object'&&module.exports?require('./tax-register-model.js'):globalThis.ArbatTaxRegisters;
+    const advanceRegister=registerModel?.advances(data,{from:bounds.from,to:bounds.to}),obligationRegister=registerModel?.obligations(data,{to:bounds.to});
+    if(advanceRegister){
+      for(const r of advanceRegister.rows)if(r.org===ARBAT){if(r.kind==='received')outputVat+=r.vat;else inputVat+=r.vat;entry('vat',r.collection,r.source,r.date,r.kind==='received'?r.vat:-r.vat,r.label+' · '+r.event.document)}
+      for(const problem of advanceRegister.issues)if(problem.event.org===ARBAT)issues.push({code:'vat-advance-review',scope:'vat',collection:'organization',source:{org:ARBAT,name:problem.event.document||'Событие НДС'},message:problem.message});
+    }
     for(const source of data.cash||[])if(source.org===ARBAT&&source.type!=='transfer'){
       const d=date(source.date);if(!valid(d))issue('invalid-tax-date','vat','cash',source);
-      else if(between(d,bounds))issue('vat-cash-review','vat','cash',source);
+      else if(between(d,bounds)&&!advanceRegister?.coveredCash.includes(String(source._id||source.id)))issue('vat-cash-review','vat','cash',source);
     }
     // Work acts can overlap payroll; until reconciled in a tax register they
     // must be visible as a source, not silently omitted or deducted twice.
@@ -422,7 +428,7 @@
     if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
     if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
     const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
-    return {bounds,yearBounds,rows,issues,
+    return {bounds,yearBounds,rows,issues,advanceRegister,obligationRegister,
       air:{income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold:{limit,observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:cutoff,coverageConfirmed:false}},
       arbat:{outputVat,inputVat,payable:positive(difference),recoverable:positive(-difference),unconfirmed:issues.filter(x=>x.scope==='vat').length,profitRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25,vatReady:!issues.some(x=>x.scope==='vat'),profitReady:!issues.some(x=>x.scope==='profit')},
       limitations:['Расчёт по внесённым данным. Полнота года и начальные налоговые остатки не подтверждены.','Не учтены зачёт налоговых авансов, ЕНС, перенос убытков и специальные налоговые корректировки.','НДС с авансов, восстановление и корректировки требуют отдельного регистра.']};
