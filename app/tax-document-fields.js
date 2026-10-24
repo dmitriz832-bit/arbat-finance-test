@@ -6,7 +6,7 @@
  const valid=x=>/^\d{4}-\d{2}-\d{2}$/.test(text(x))&&!Number.isNaN(Date.parse(x+'T00:00:00Z'))&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
  const AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК';
  const forms={cashForm:'cash',expenseForm:'expenses',costForm:'costs',realizationForm:'realizations',laborForm:'labor'};
- const fields=['usnRecognitionEvents','profitTaxRecognitionEvents','usnTaxable','usnDeductible','usnRecognitionDate','usnRecognizedAmount','usnDocument','profitTaxable','profitTaxDeductible','profitTaxRecognitionDate','profitTaxRecognizedAmount','profitTaxDocument','taxExclusionReason','vatInvoice','vatDeductionDate'];
+ const fields=['usnVatAmount','usnVatDocument','usnRecognitionEvents','profitTaxRecognitionEvents','usnTaxable','usnDeductible','usnRecognitionDate','usnRecognizedAmount','usnDocument','profitTaxable','profitTaxDeductible','profitTaxRecognitionDate','profitTaxRecognizedAmount','profitTaxDocument','taxExclusionReason','vatInvoice','vatDeductionDate'];
  function scopes(row,collection){
   if(row.org===AIR&&collection==='cash'&&row.type!=='transfer')return [row.type==='in'?'usnIncome':'usnExpense'];
   if(row.org!==ARBAT)return [];
@@ -22,6 +22,9 @@
   if(active.includes('profitIncome'))flags.push('profitTaxable');
   if(active.includes('profitExpense'))flags.push('profitTaxDeductible');
   if(flags.some(f=>no(row[f]))&&!text(row.taxExclusionReason))return 'Укажите основание исключения из налогового расчёта';
+  if(active.includes('usnIncome')&&(text(row.usnVatAmount)||text(row.usnVatDocument))){
+   try{const n=core.cents(row.usnVatAmount),gross=core.cents(row.amountGross??row.amount);if(!text(row.usnVatAmount)||n<0n||n>gross)return 'Проверьте сумму НДС в поступлении';if(!text(row.usnVatDocument))return 'Укажите основание суммы НДС в поступлении'}catch{return 'Проверьте сумму НДС в поступлении'}
+  }
   for(const [scope,prefix] of [['usnExpense','usn'],['profitExpense','profitTax']]){
    if(!active.includes(scope)||!yes(row[prefix+'Deductible'])||Array.isArray(row[prefix+'RecognitionEvents'])&&row[prefix+'RecognitionEvents'].length)continue;
    const date=row[prefix+'RecognitionDate'];
@@ -52,7 +55,7 @@
  const choice=(name,title)=>'<label>'+title+'<select name="'+name+'"><option value="">Не проверено</option><option value="true">Да</option><option value="false">Нет — указать основание</option></select></label>';
  const recognition=prefix=>choice(prefix+'Deductible','Расход подтверждён для налогового учёта')+input(prefix+'RecognitionDate','Дата налогового признания','date')+input(prefix+'RecognizedAmount','Признанная сумма, ₽ (пусто — вся допустимая сумма)')+input(prefix+'Document','Документ и основание признания')+'<div class="tax-event-editor" data-tax-event-editor="'+prefix+'"><p>Частичное признание: укажите отдельные даты, суммы и основания. При наличии событий одиночное признание в расчёт не включается.</p><div data-tax-event-list></div><button type="button" data-tax-event-add>+ Добавить признание</button><input type="hidden" name="'+prefix+'RecognitionEvents"></div>';
  const group=(scope,html)=>'<div data-tax-scope="'+scope+'" class="tax-document-grid">'+html+'</div>';
- function panel(){const d=document.createElement('details');d.className='tax-document-fields';d.dataset.taxFields='';d.innerHTML='<summary>Налоговый учёт · подтверждение данных</summary><p>Заполняет бухгалтер после проверки. Не проверено — документ сохраняется с замечанием. Дата и основание не назначаются автоматически.</p>'+group('usnIncome',choice('usnTaxable','Поступление включается в доходы УСН'))+group('usnExpense',recognition('usn'))+group('profitIncome',choice('profitTaxable','Доход включается в базу налога на прибыль'))+group('profitExpense',recognition('profitTax'))+group('vat',input('vatInvoice','Счёт-фактура / УПД — основание вычета')+input('vatDeductionDate','Дата выполнения условий вычета НДС','date'))+input('taxExclusionReason','Основание исключения из налогового расчёта')+'<p data-tax-form-error role="alert" hidden></p>';return d;}
+ function panel(){const d=document.createElement('details');d.className='tax-document-fields';d.dataset.taxFields='';d.innerHTML='<summary>Налоговый учёт · подтверждение данных</summary><p>Заполняет бухгалтер после проверки. Не проверено — документ сохраняется с замечанием. Дата и основание не назначаются автоматически.</p>'+group('usnIncome',choice('usnTaxable','Поступление включается в доходы УСН')+input('usnVatAmount','НДС в поступлении, ₽ (всего, включая НДС аванса)')+input('usnVatDocument','Основание суммы НДС в поступлении'))+group('usnExpense',recognition('usn'))+group('profitIncome',choice('profitTaxable','Доход включается в базу налога на прибыль'))+group('profitExpense',recognition('profitTax'))+group('vat',input('vatInvoice','Счёт-фактура / УПД — основание вычета')+input('vatDeductionDate','Дата выполнения условий вычета НДС','date'))+input('taxExclusionReason','Основание исключения из налогового расчёта')+'<p data-tax-form-error role="alert" hidden></p>';return d;}
  function values(form){const row=Object.fromEntries(new FormData(form));if(row.amount!==undefined)row.amountGross=row.amount;
   if(!row.org&&row.projectKey&&typeof db==='object')row.org=(db.deals||[]).find(x=>root.arbatDealKey(x)===row.projectKey)?.org||'';
   if(row.name&&typeof db==='object'){const a=(db.pnlArticles||[]).find(x=>x.name===row.name);if(a)row.pnlType=a.type;}

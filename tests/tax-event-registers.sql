@@ -36,6 +36,9 @@ do $$ declare section text; begin
  -- A later settlement is allowed even when the original receipt month is closed.
  insert into public.finance_periods values('2026-03','closed');
  update public.finance_state set payload=jsonb_set(payload,'{vatAdvanceEvents}',(payload->'vatAdvanceEvents')||'[{"_id":"c","kind":"offset","org":"АРБАТ.ГК","advanceId":"a","realizationId":"sale","date":"2026-04-01","amount":61}]'::jsonb);
+ delete from public.finance_periods where period='2026-03';
+ update public.finance_state set payload='{"cash":[{"_id":"i","org":"АРБАТ.ГК","type":"in","date":"2026-05-01","amount":122},{"_id":"o","org":"АРБАТ.ГК","type":"out","date":"2026-05-02","amount":122}],"vatAdvanceEvents":[{"_id":"a","kind":"received","org":"АРБАТ.ГК","cashId":"i","date":"2026-05-01","amount":122,"vatRate":22},{"_id":"r","kind":"refund","org":"АРБАТ.ГК","advanceId":"a","cashId":"o","date":"2026-05-02","amount":122}]}'::jsonb;
+ begin update public.finance_state set payload=jsonb_set(payload,'{taxObligationEvents}','[{"_id":"t","org":"АРБАТ.ГК","kind":"payment","date":"2026-05-02","cashId":"o","amount":122,"tax":"vat","period":"2026-Q2","confirmed":true}]');raise exception 'Expected cross-register cash budget rejection';exception when others then if sqlerrm not like 'Tax event payment reference%' then raise;end if;end;
  if has_function_privilege('authenticated','public.enforce_tax_event_register_periods()','execute') or has_function_privilege('anon','public.audit_tax_event_registers()','execute') then raise exception 'Trigger endpoint exposed';end if;
 end $$;
 rollback;
