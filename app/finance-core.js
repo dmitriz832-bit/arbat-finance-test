@@ -459,7 +459,7 @@
     const contractGross=deal.contractTotal??deal.revenue;
     const issues=[];
     if(contractGross==null||cents(contractGross)<=0n)return {status:'requires-review',issues:['missing-project-contract'],contractNet:null};
-    const contractNet=documentPnlAmount({...deal,amountGross:contractGross});
+    let contractNet;try{contractNet=documentPnlAmount({...deal,amountGross:contractGross})}catch(error){if(!(error instanceof RangeError))throw error;return {status:'requires-review',issues:['invalid-project-contract-vat'],contractNet:null}}
     if(contractNet<=0n)return {status:'requires-review',issues:['invalid-project-contract'],contractNet};
     const until=(item,p)=>!p||String(item.date||item.dt||'').slice(0,p.length===10?10:7)<=p;
     const before=(item,p)=>String(item.date||item.dt||'').slice(0,p.length===10?10:7)<p;
