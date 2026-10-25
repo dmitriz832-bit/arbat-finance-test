@@ -187,7 +187,7 @@
   if(!p.document){fail('Укажите документ-основание расхода. Назначение платежа само по себе не подтверждает признание.');form.elements.namedItem(prefix+'Document').focus();return;}
   const patch={[prefix+'Deductible']:'true',[prefix+'RecognitionDate']:p.date,[prefix+'RecognizedAmount']:p.amount,[prefix+'Document']:p.document},message=validate({...row,...patch},form.dataset.taxCollection);
   if(message){fail(message);return;}
-  for(const [name,value]of Object.entries(patch))form.elements.namedItem(name).value=value;
+  for(const [name,value]of Object.entries(patch)){const field=form.elements.namedItem(name);field.value=value;field.dispatchEvent(new Event('change'));}
   error.hidden=true;refresh(form,form.dataset.taxCollection);
  });
  const cleared=new WeakMap(),pending=new WeakSet();

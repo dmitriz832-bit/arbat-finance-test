@@ -36,8 +36,8 @@ function applyProposal(force=false){
  if(editing&&!force)return;
  for(const name of ['amount','date','vatRate']){
   const field=f.elements.namedItem(name==='amount'?'taxAmount':name);if(!field||!force&&touched.has(name))continue;
-  if(p[name]!==undefined){field.value=p[name];managed[name]=p[name];}
-  else if(managed[name]!==undefined){field.value='';delete managed[name];}
+  if(p[name]!==undefined){field.value=p[name];managed[name]=p[name];field.dispatchEvent(new Event('change'));}
+  else if(managed[name]!==undefined){field.value='';delete managed[name];field.dispatchEvent(new Event('change'));}
  }
 }
 function references(existing={}){
