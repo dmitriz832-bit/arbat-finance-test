@@ -108,9 +108,10 @@
   const pending=flagNames.some(x=>!yes(row[x])&&!no(row[x]))||active.includes('vat')&&(!text(row.vatRate)||!yes(row.vatDeductible)&&!no(row.vatDeductible)||yes(row.vatDeductible)&&Number(row.vatRate)!==0&&(!text(row.vatInvoice)||!valid(row.vatDeductionDate)));
   block.querySelector('[data-tax-status]').textContent=validate(row,collection)||checkEvents(form,row,collection)?'Нужно проверить реквизиты':pending?'Нужно решение бухгалтера':'Подтверждено в документе';
  }
+ const loadingForms=new WeakSet();
  function setupEvents(panel){
   const prefix=panel.dataset.taxEventEditor,list=panel.querySelector('[data-tax-event-list]'),hidden=panel.querySelector('input[type=hidden]');
-  const sync=()=>{const entries=[...list.children].map(el=>({id:el.dataset.eventId,date:el.querySelector('[data-event-date]').value,amount:el.querySelector('[data-event-amount]').value,document:el.querySelector('[data-event-document]').value}));hidden.value=entries.length?JSON.stringify(entries):'';panel.querySelector('[data-tax-event-count]').textContent=entries.length?'· '+entries.length:'';if(panel.events){const f=panel.closest('form');refresh(f,f.dataset.taxCollection);}};
+  const sync=()=>{const entries=[...list.children].map(el=>({id:el.dataset.eventId,date:el.querySelector('[data-event-date]').value,amount:el.querySelector('[data-event-amount]').value,document:el.querySelector('[data-event-document]').value}));hidden.value=entries.length?JSON.stringify(entries):'';panel.querySelector('[data-tax-event-count]').textContent=entries.length?'· '+entries.length:'';const f=panel.closest('form');if(panel.events&&!loadingForms.has(f))refresh(f,f.dataset.taxCollection);};
   function add(e={}){
    const el=document.createElement('div');el.className='tax-event-row';el.dataset.eventId=e.id||(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+list.children.length);
    el.innerHTML='<label>Дата<input data-event-date type="date"></label><label>Сумма, ₽<input data-event-amount inputmode="decimal"></label><label>Основание<input data-event-document></label><button type="button" data-event-remove>Убрать признание</button>';
@@ -147,9 +148,12 @@
  api.hydrate=(form,row,collection)=>{
   form.dataset.taxCollection=collection;
   const editors=form.querySelectorAll('[data-tax-event-editor]');
-  for(const panel of editors)if(typeof panel.load!=='function')setupEvents(panel);
-  for(const panel of editors)panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);
-  for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}
+  loadingForms.add(form);
+  try{
+   for(const panel of editors)if(typeof panel.load!=='function')setupEvents(panel);
+   for(const panel of editors)panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);
+   for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}
+  }finally{loadingForms.delete(form);}
   refresh(form,collection);
   form.querySelector('[data-tax-source-actions]')?.remove();
   if(row._id&&[AIR,ARBAT].includes(row.org)&&(collection==='cash'&&['in','out'].includes(row.type)||collection==='realizations')){

@@ -36,9 +36,8 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   assert.equal(await form.locator('[name=vatInvoice]').inputValue(),'УПД 42');assert.equal(await form.locator('[name=vatDeductionDate]').inputValue(),'2026-10-02');
   assert.equal(await parts.locator('.tax-event-row').count(),1);
   const draft=await form.evaluate(el=>Object.fromEntries(new FormData(el)));assert.equal(JSON.parse(draft.profitTaxRecognitionEvents).length,1,'event must reach FormData');
-  await page.evaluate(()=>{window.__taxSaveTrace=[];const hydrate=ArbatTaxDocumentFields.hydrate;ArbatTaxDocumentFields.hydrate=(f,row,key)=>{__taxSaveTrace.push({phase:'hydrate-before',key,row:JSON.parse(JSON.stringify(row)),form:Object.fromEntries(new FormData(f))});hydrate(f,row,key);__taxSaveTrace.push({phase:'hydrate-after',form:Object.fromEntries(new FormData(f))})};const f=document.getElementById('expenseForm'),submit=f.onsubmit;f.onsubmit=e=>{__taxSaveTrace.push({phase:'original-submit',form:Object.fromEntries(new FormData(e.target))});return submit(e)}});
   await form.locator('button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
-  const saved=await page.evaluate(()=>({row:db.expenses[0],trace:__taxSaveTrace}));assert.equal(saved.row.profitTaxRecognitionEvents?.length,1,JSON.stringify(saved));
+  const saved=await page.evaluate(()=>({row:db.expenses[0]}));assert.equal(saved.row.profitTaxRecognitionEvents?.length,1,JSON.stringify(saved));
   await page.reload();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognitionEvents?.length),1);
 
   // Context action refuses unsaved document changes; source data is never silently saved.
