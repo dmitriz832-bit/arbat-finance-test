@@ -69,5 +69,29 @@ function obligations(data={},filters={}){
  for(const r of accepted.rows)if(r.collection==='cash')reservations.set(r.id,(reservations.get(r.id)||0n)+r.amount);
  return calculateObligations(data,filters,reservations);
 }
-return Object.freeze({advances,obligations,validDate,organizations,taxes});
+// Draft-only defaults. A linked source does not establish tax treatment or confirmation.
+function sourceProposal(data,mode,event){
+ try{
+  const collection=mode==='advances'?'vatAdvanceEvents':'taxObligationEvents',copy={...data,[collection]:(data[collection]||[]).filter(x=>!id(event)||id(x)!==id(event))};
+  const a=advances(copy),o=obligations(copy),kind=event.kind;
+  let source,remaining;
+  if(mode==='advances'&&kind==='offset'){
+   const matches=(data.realizations||[]).filter(x=>id(x)===event.realizationId&&x.org===event.org),b=a.balances.find(x=>x.id===event.advanceId&&x.org===event.org);
+   if(matches.length!==1||!b)return {};
+   source=matches[0];remaining=core.cents(source.amount)-a.rows.filter(x=>x.kind==='offset'&&x.id===id(source)).reduce((s,x)=>s+x.amount,0n);
+   if(b.remaining<remaining)remaining=b.remaining;
+  }else{
+   const type=mode==='advances'?(kind==='received'?'in':kind==='refund'?'out':null):(kind==='payment'?'out':kind==='refund'?'in':null);
+   if(!type)return {};
+   const matches=(data.cash||[]).filter(x=>id(x)===event.cashId&&x.org===event.org&&x.type===type);if(matches.length!==1)return {};
+   source=matches[0];remaining=core.cents(source.amount)-a.rows.filter(x=>x.collection==='cash'&&x.id===id(source)).reduce((s,x)=>s+x.amount,0n)-o.events.filter(x=>['payment','refund'].includes(x.kind)&&x.cashId===id(source)).reduce((s,x)=>s+core.cents(x.amount),0n);
+   if(mode==='advances'&&kind==='refund'){const b=a.balances.find(x=>x.id===event.advanceId&&x.org===event.org);if(!b)return {};if(b.remaining<remaining)remaining=b.remaining;}
+  }
+  if(!validDate(source.date))return {};
+  const patch={amount:core.rubles(remaining>0n?remaining:0n),date:source.date};
+  if(mode==='advances'&&kind==='received'&&text(source.vatRate)!==''&&[0,5,7,10,20,22].includes(Number(source.vatRate)))patch.vatRate=String(source.vatRate);
+  return patch;
+ }catch{return {}}
+}
+return Object.freeze({advances,obligations,validDate,organizations,taxes,sourceProposal});
 });

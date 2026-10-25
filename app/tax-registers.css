@@ -7,3 +7,6 @@
 .tax-register-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tax-register-fields [data-references]{display:contents}.tax-register-dialog [hidden]{display:none!important}
 .tax-register-events{display:grid;gap:8px}.tax-register-events button{text-align:left;display:grid;gap:3px;overflow-wrap:anywhere}.tax-register-events span{display:block;color:#566e87}.tax-register-dialog [data-error]{color:#b42318}.tax-register-scroll{overflow:auto;max-height:45vh}.tax-register-scroll table{border-collapse:collapse;min-width:900px;width:100%}.tax-register-scroll td,.tax-register-scroll th{padding:10px;border-bottom:1px solid #e1e7ee;text-align:left;vertical-align:top}.tax-register-scroll th{position:sticky;top:0;background:#fff}.tax-register-dialog form{border-top:1px solid #d8e1eb;margin-top:18px;padding-top:12px}.tax-register-actions{justify-content:flex-start;margin-top:16px}
 @media(max-width:640px){.tax-register-dialog{padding:14px}.tax-register-fields{grid-template-columns:minmax(0,1fr)}.tax-register-dialog h2{font-size:19px}}
+.tax-source-proposal{grid-column:1/-1;min-width:0}
+.tax-source-proposal p{font-size:13px;line-height:1.5;color:#62738a;overflow-wrap:anywhere}
+.tax-source-proposal button{min-height:44px;max-width:100%;white-space:normal}

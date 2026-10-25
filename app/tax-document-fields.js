@@ -47,15 +47,37 @@
   }
   return null;
  }
- const api={validate,scopes,fields};
+ // A proposal is never evidence: only the explicit confirmation action applies it.
+ function proposal(row,collection){
+  const active=scopes(row,collection),prefix=active.includes('usnExpense')?'usn':active.includes('profitExpense')?'profitTax':null;
+  if(!prefix||Array.isArray(row[prefix+'RecognitionEvents'])&&row[prefix+'RecognitionEvents'].length)return null;
+  try{
+   const date=text(row[prefix+'RecognitionDate'])||row.date;
+   if(!valid(row.date)||!valid(date)||date<row.date)return null;
+   let max=core.cents(row.amountGross??row.amount);
+   if(prefix==='profitTax'){
+    if(collection==='labor')max+=core.cents(row.employerContributions||0);
+    else{const v=core.documentVat(row.amountGross??row.amount,row.vatRate,yes(row.vatDeductible));if(v.vatAmount!==0n&&!yes(row.vatDeductible)&&!no(row.vatDeductible))return null;max=yes(row.vatDeductible)?v.amountNet:v.amountGross;}
+   }
+   const amount=text(row[prefix+'RecognizedAmount'])?core.cents(row[prefix+'RecognizedAmount']):max;
+   if(max<=0n||amount<0n||amount>max)return null;
+   return {prefix,date,amount:core.rubles(amount),document:text(row[prefix+'Document'])||text(row.document)||(collection==='expenses'?text(row.note):'')};
+  }catch{return null}
+ }
+ function vatProposal(row,collection){
+  if(!scopes(row,collection).includes('vat')||!yes(row.vatDeductible))return null;
+  const patch={vatInvoice:text(row.vatInvoice)||text(row.profitTaxDocument)||text(row.document)||(collection==='expenses'?text(row.note):''),vatDeductionDate:text(row.vatDeductionDate)||row.date};
+  return !patch.vatInvoice||validate({...row,...patch},collection)?null:patch;
+ }
+ const api={validate,scopes,fields,proposal,vatProposal};
  if(typeof module==='object'&&module.exports){module.exports=api;return}
  root.ArbatTaxDocumentFields=api;
  const esc=x=>text(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const input=(name,title,type='text')=>'<label>'+title+'<input name="'+name+'" type="'+type+'"'+(type==='text'&&name.endsWith('Amount')?' inputmode="decimal"':'')+'></label>';
  const choice=(name,title)=>'<label>'+title+'<select name="'+name+'"><option value="">Не проверено</option><option value="true">Да</option><option value="false">Нет — указать основание</option></select></label>';
- const recognition=prefix=>choice(prefix+'Deductible','Расход подтверждён для налогового учёта')+input(prefix+'RecognitionDate','Дата налогового признания','date')+input(prefix+'RecognizedAmount','Признанная сумма, ₽ (пусто — вся допустимая сумма)')+input(prefix+'Document','Документ и основание признания')+'<div class="tax-event-editor" data-tax-event-editor="'+prefix+'"><p>Частичное признание: укажите отдельные даты, суммы и основания. При наличии событий одиночное признание в расчёт не включается.</p><div data-tax-event-list></div><button type="button" data-tax-event-add>+ Добавить признание</button><input type="hidden" name="'+prefix+'RecognitionEvents"></div>';
+ const recognition=prefix=>'<p class="tax-quick-summary" data-tax-proposal="'+prefix+'"></p>'+input(prefix+'Document','Документ-основание расхода')+'<button type="button" data-tax-confirm="'+prefix+'">Подтвердить расход по документу</button><details class="tax-manual" data-tax-manual><summary>Другая дата, часть суммы или исключение</summary><div class="tax-document-grid">'+choice(prefix+'Deductible','Расход подтверждён для налогового учёта')+input(prefix+'RecognitionDate','Дата налогового признания','date')+input(prefix+'RecognizedAmount','Признанная сумма, ₽ (пусто — вся допустимая сумма)')+'</div></details><details class="tax-event-editor" data-tax-event-editor="'+prefix+'"><summary>Признание по нескольким датам <span data-tax-event-count></span></summary><p>Для каждой части укажите дату, сумму и основание. При наличии строк одиночное признание не учитывается.</p><div data-tax-event-list></div><button type="button" data-tax-event-add>+ Добавить признание</button><input type="hidden" name="'+prefix+'RecognitionEvents"></details>';
  const group=(scope,html)=>'<div data-tax-scope="'+scope+'" class="tax-document-grid">'+html+'</div>';
- function panel(){const d=document.createElement('details');d.className='tax-document-fields';d.dataset.taxFields='';d.innerHTML='<summary>Налоговый учёт · подтверждение данных</summary><p>Заполняет бухгалтер после проверки. Не проверено — документ сохраняется с замечанием. Дата и основание не назначаются автоматически.</p>'+group('usnIncome',choice('usnTaxable','Поступление включается в доходы УСН')+input('usnVatAmount','НДС в поступлении, ₽ (всего, включая НДС аванса)')+input('usnVatDocument','Основание суммы НДС в поступлении'))+group('usnExpense',recognition('usn'))+group('profitIncome',choice('profitTaxable','Доход включается в базу налога на прибыль'))+group('profitExpense',recognition('profitTax'))+group('vat',input('vatInvoice','Счёт-фактура / УПД — основание вычета')+input('vatDeductionDate','Дата выполнения условий вычета НДС','date'))+input('taxExclusionReason','Основание исключения из налогового расчёта')+'<p data-tax-form-error role="alert" hidden></p>';return d;}
+ function panel(){const d=document.createElement('details');d.className='tax-document-fields';d.dataset.taxFields='';d.innerHTML='<summary>Налоговый учёт · <span data-tax-status>Нужно решение бухгалтера</span></summary><p>Можно сохранить операцию и проверить налоги позже. Подтверждайте расход после проверки документов и выполнения условий признания.</p>'+group('usnIncome',choice('usnTaxable','Поступление включается в доходы УСН')+input('usnVatAmount','НДС в поступлении, ₽ (всего, включая НДС аванса)')+input('usnVatDocument','Основание суммы НДС в поступлении'))+group('usnExpense',recognition('usn'))+group('profitIncome',choice('profitTaxable','Доход включается в базу налога на прибыль'))+group('profitExpense',recognition('profitTax'))+group('vat','<p class="tax-quick-summary">Вычет подтверждается отдельно после проверки счёта-фактуры / УПД и выполнения условий.</p><button type="button" data-tax-confirm-vat>Подтвердить вычет по документу</button>'+input('vatInvoice','Счёт-фактура / УПД — основание вычета')+input('vatDeductionDate','Дата выполнения условий вычета НДС','date'))+'<div data-tax-exclusion hidden>'+input('taxExclusionReason','Основание исключения из налогового расчёта')+'</div><p data-tax-form-error role="alert" hidden></p>';return d;}
  function values(form){const row=Object.fromEntries(new FormData(form));if(row.amount!==undefined)row.amountGross=row.amount;
   if(!row.org&&row.projectKey&&typeof db==='object')row.org=(db.deals||[]).find(x=>root.arbatDealKey(x)===row.projectKey)?.org||'';
   if(row.name&&typeof db==='object'){const a=(db.pnlArticles||[]).find(x=>x.name===row.name);if(a)row.pnlType=a.type;}
@@ -66,10 +88,21 @@
   const row=values(form),active=scopes(row,collection);block.hidden=!active.length;
   for(const g of block.querySelectorAll('[data-tax-scope]')){g.hidden=!active.includes(g.dataset.taxScope);for(const f of g.querySelectorAll('input,select'))f.disabled=g.hidden;}
   const reason=block.querySelector('[name=taxExclusionReason]');reason.disabled=!active.length;
+  for(const prefix of ['usn','profitTax']){const editor=block.querySelector('[data-tax-event-editor="'+prefix+'"]');if(editor?.events)row[prefix+'RecognitionEvents']=editor.events();}
+  const suggested=proposal(row,collection);
+  for(const label of block.querySelectorAll('[data-tax-proposal]')){
+   const prefix=label.dataset.taxProposal,hasEvents=Array.isArray(row[prefix+'RecognitionEvents'])&&row[prefix+'RecognitionEvents'].length;
+   label.textContent=hasEvents?'Признание разбито по датам. Проверяйте отдельные части ниже.':suggested?.prefix===prefix?'К признанию: '+suggested.amount.replace('.',',')+' ₽ · '+suggested.date+'. Основание: '+(suggested.document||'нужно указать документ')+'. Подтверждайте только после выполнения условий признания.':'Укажите сумму, дату и реквизиты операции для подготовки признания.';
+   block.querySelector('[data-tax-confirm="'+prefix+'"]').hidden=!!hasEvents;
+  }
+  const flagNames=active.flatMap(x=>({usnIncome:['usnTaxable'],usnExpense:['usnDeductible'],profitIncome:['profitTaxable'],profitExpense:['profitTaxDeductible']})[x]||[]);
+  block.querySelector('[data-tax-exclusion]').hidden=!flagNames.some(x=>no(row[x]))&&!text(row.taxExclusionReason);
+  const pending=flagNames.some(x=>!yes(row[x])&&!no(row[x]))||active.includes('vat')&&(!text(row.vatRate)||!yes(row.vatDeductible)&&!no(row.vatDeductible)||yes(row.vatDeductible)&&Number(row.vatRate)!==0&&(!text(row.vatInvoice)||!valid(row.vatDeductionDate)));
+  block.querySelector('[data-tax-status]').textContent=validate(row,collection)||checkEvents(form,row,collection)?'Нужно проверить реквизиты':pending?'Нужно решение бухгалтера':'Подтверждено в документе';
  }
  function setupEvents(panel){
   const prefix=panel.dataset.taxEventEditor,list=panel.querySelector('[data-tax-event-list]'),hidden=panel.querySelector('input[type=hidden]');
-  const sync=()=>{const entries=[...list.children].map(el=>({id:el.dataset.eventId,date:el.querySelector('[data-event-date]').value,amount:el.querySelector('[data-event-amount]').value,document:el.querySelector('[data-event-document]').value}));hidden.value=entries.length?JSON.stringify(entries):'';};
+  const sync=()=>{const entries=[...list.children].map(el=>({id:el.dataset.eventId,date:el.querySelector('[data-event-date]').value,amount:el.querySelector('[data-event-amount]').value,document:el.querySelector('[data-event-document]').value}));hidden.value=entries.length?JSON.stringify(entries):'';panel.querySelector('[data-tax-event-count]').textContent=entries.length?'· '+entries.length:'';if(panel.events){const f=panel.closest('form');refresh(f,f.dataset.taxCollection);}};
   function add(e={}){
    const el=document.createElement('div');el.className='tax-event-row';el.dataset.eventId=e.id||(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+list.children.length);
    el.innerHTML='<label>Дата<input data-event-date type="date"></label><label>Сумма, ₽<input data-event-amount inputmode="decimal"></label><label>Основание<input data-event-document></label><button type="button" data-event-remove>Убрать признание</button>';
@@ -77,7 +110,7 @@
    el.querySelector('[data-event-remove]').onclick=()=>{el.remove();sync()};el.addEventListener('input',sync);el.addEventListener('change',sync);list.append(el);sync();
   }
   panel.querySelector('[data-tax-event-add]').onclick=()=>add();
-  panel.load=events=>{list.replaceChildren();if(Array.isArray(events))for(const e of events)add(e);sync()};
+  panel.load=events=>{list.replaceChildren();if(Array.isArray(events))for(const e of events)add(e);panel.open=Array.isArray(events)&&events.length>0;sync()};
   panel.events=()=>hidden.value?JSON.parse(hidden.value):null;
  }
  function checkEvents(form,row,collection){
@@ -102,14 +135,51 @@
   }
   return null;
  }
- api.hydrate=(form,row,collection)=>{for(const panel of form.querySelectorAll('[data-tax-event-editor]')){if(typeof panel.load!=='function')setupEvents(panel);panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);}for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}form.dataset.taxCollection=collection;refresh(form,collection);};
+ const sourceSnapshots=new WeakMap();
+ api.hydrate=(form,row,collection)=>{
+  form.dataset.taxCollection=collection;
+  for(const panel of form.querySelectorAll('[data-tax-event-editor]')){if(typeof panel.load!=='function')setupEvents(panel);panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);}
+  for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}
+  refresh(form,collection);
+  form.querySelector('[data-tax-source-actions]')?.remove();
+  if(row._id&&[AIR,ARBAT].includes(row.org)&&(collection==='cash'&&['in','out'].includes(row.type)||collection==='realizations')){
+   const actions=document.createElement('div');actions.dataset.taxSourceActions='';actions.className='tax-document-actions';
+   actions.innerHTML='<p>Налоговое событие из сохранённого документа</p>'+(collection==='cash'?'<button type="button" data-tax-source="advances">'+(row.type==='in'?'НДС с аванса':'Возврат аванса')+'</button> <button type="button" data-tax-source="obligations">'+(row.type==='out'?'Уплата налога':'Возврат налога')+'</button>':'<button type="button" data-tax-source="advances">Зачесть аванс при реализации</button>')+'<p data-tax-source-error role="alert" hidden></p>';
+   form.querySelector('[data-tax-fields]').after(actions);sourceSnapshots.set(form,{signature:signature(form),collection,id:row._id});
+  }else sourceSnapshots.delete(form);
+ };
  api.receiptFields=(host,source)=>{
   const d=document.createElement('details');d.className='tax-document-fields';d.dataset.receiptTax='';d.innerHTML='<summary>НДС товарной строки</summary><p>Цена строки указана с НДС. Изменение реквизитов не переоценивает исторические партии FIFO.</p><div class="tax-document-grid"><label>Ставка НДС<select name="vatRate"><option value="">Не проверено</option>'+[0,5,7,10,20,22].map(n=>'<option value="'+n+'">'+n+'%</option>').join('')+'</select></label>'+choice('vatDeductible','Входной НДС принимается к вычету')+input('vatInvoice','Счёт-фактура / УПД')+input('vatDeductionDate','Дата выполнения условий вычета','date')+'</div>';host.append(d);
   for(const name of ['vatRate','vatDeductible','vatInvoice','vatDeductionDate'])d.querySelector('[name='+name+']').value=String(source[name]??'');
  };
  api.receiptValues=host=>Object.fromEntries(['vatRate','vatDeductible','vatInvoice','vatDeductionDate'].map(name=>[name,host.querySelector('[data-receipt-tax] [name='+name+']')?.value||'']));
  for(const [id,collection] of Object.entries(forms)){const f=document.getElementById(id);if(!f)continue;const b=panel(),submit=f.querySelector('button[type=submit],button:not([type])');submit?submit.before(b):f.append(b);for(const part of b.querySelectorAll('[data-tax-event-editor]'))setupEvents(part);f.dataset.taxCollection=collection;refresh(f,collection);f.addEventListener('reset',()=>queueMicrotask(()=>refresh(f,collection)));}
- document.addEventListener('change',e=>{const f=e.target.closest('form');if(f?.dataset.taxCollection)refresh(f,f.dataset.taxCollection);});
+ for(const type of ['input','change'])document.addEventListener(type,e=>{const f=e.target.closest('form');if(f?.dataset.taxCollection)refresh(f,f.dataset.taxCollection);});
+ document.addEventListener('click',e=>{
+  const sourceAction=e.target.closest('[data-tax-source]');
+  if(sourceAction){const form=sourceAction.closest('form'),saved=sourceSnapshots.get(form),error=form.querySelector('[data-tax-source-error]');
+   if(!saved||saved.signature!==signature(form)){error.hidden=false;error.textContent='Сначала сохраните изменения операции, затем откройте налоговое событие.';return;}
+   const row=typeof db==='object'?(db[saved.collection]||[]).find(x=>x._id===saved.id):null;
+   if(row)root.ArbatTaxRegisterUI?.openFromDocument(saved.collection,row,sourceAction.dataset.taxSource);return;
+  }
+  const vatButton=e.target.closest('[data-tax-confirm-vat]');
+  if(vatButton){const form=vatButton.closest('form'),p=vatProposal(values(form),form.dataset.taxCollection),error=form.querySelector('[data-tax-form-error]');
+   if(!p){error.hidden=false;error.textContent='Для вычета выберите возможность вычета НДС, укажите счёт-фактуру / УПД и проверьте дату.';return;}
+   for(const [name,value]of Object.entries(p))form.elements.namedItem(name).value=value;
+   error.hidden=true;refresh(form,form.dataset.taxCollection);return;
+  }
+  const button=e.target.closest('[data-tax-confirm]');if(!button)return;
+  const form=button.closest('form'),row=values(form),prefix=button.dataset.taxConfirm,panel=form.querySelector('[data-tax-event-editor="'+prefix+'"]');
+  row[prefix+'RecognitionEvents']=panel.events();
+  const p=proposal(row,form.dataset.taxCollection),error=form.querySelector('[data-tax-form-error]');
+  const fail=message=>{error.textContent=message;error.hidden=false;form.querySelector('[data-tax-fields]').open=true;};
+  if(!p){fail('Проверьте сумму, дату и реквизиты операции. Для нескольких признаний используйте отдельные строки.');return;}
+  if(!p.document){fail('Укажите документ-основание расхода. Назначение платежа само по себе не подтверждает признание.');form.elements.namedItem(prefix+'Document').focus();return;}
+  const patch={[prefix+'Deductible']:'true',[prefix+'RecognitionDate']:p.date,[prefix+'RecognizedAmount']:p.amount,[prefix+'Document']:p.document},message=validate({...row,...patch},form.dataset.taxCollection);
+  if(message){fail(message);return;}
+  for(const [name,value]of Object.entries(patch))form.elements.namedItem(name).value=value;
+  error.hidden=true;refresh(form,form.dataset.taxCollection);
+ });
  const cleared=new WeakMap(),pending=new WeakSet();
  const signature=form=>JSON.stringify([...new FormData(form)]);
  api.forward=form=>cleared.set(form,signature(form));
@@ -117,7 +187,7 @@
  document.addEventListener('submit',e=>{
   const form=e.target,collection=form.dataset.taxCollection;if(!collection||!form.querySelector('[data-tax-fields]'))return;
   const row=values(form);for(const prefix of ['usn','profitTax']){const raw=row[prefix+'RecognitionEvents'];if(raw){try{row[prefix+'RecognitionEvents']=JSON.parse(raw)}catch{row[prefix+'RecognitionEvents']=[]}}}const message=checkEvents(form,row,collection)||validate(row,collection),error=form.querySelector('[data-tax-form-error]');
-  if(message){e.preventDefault();e.stopImmediatePropagation();error.hidden=false;error.textContent=message;form.querySelector('[data-tax-fields]').open=true;error.scrollIntoView({block:'nearest'});return;}
+  if(message){e.preventDefault();e.stopImmediatePropagation();error.hidden=false;error.textContent=message;form.querySelector('[data-tax-fields]').open=true;for(const d of form.querySelectorAll('[data-tax-manual]'))d.open=true;error.scrollIntoView({block:'nearest'});return;}
   error.hidden=true;
   if(cleared.get(form)===signature(form)){cleared.delete(form);return;}
   if(!root.arbatEnsureOpenPeriods)return;

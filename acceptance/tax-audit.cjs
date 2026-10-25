@@ -25,10 +25,27 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   const previous=await page.evaluate(()=>{const x=window.arbatDashboardSnapshot().taxes;return {income:x.air.income.toString(),vat:x.arbat.outputVat.toString(),profit:x.arbat.profitRevenue.toString()}});assert.deepEqual(previous,{income:'10000000',vat:'0',profit:'1000000'});
   assert.deepEqual(await page.evaluate(()=>({cash:JSON.stringify(db.cash),warehouse:localStorage.getItem('arbat-warehouse-v1')})),before,'audit and navigation never rewrite financial data');
   await selector.fill('2026-10-24');await selector.dispatchEvent('change');
+  // Guided recognition previews do not change financial data. Payment purpose is not documentary evidence.
+  await selector.fill('2026-10-24');await selector.dispatchEvent('change');
+  await page.evaluate(()=>openRecord('cash','advance'));
+  const guided=page.locator('#genericEditForm');await guided.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
+  assert.match(await guided.locator('[data-tax-proposal=usn]').innerText(),/80000,00/);
+  assert.equal(await guided.locator('[data-tax-scope=usnExpense] [data-tax-manual]').evaluate(el=>el.open),false);
+  assert.equal(await guided.locator('[data-tax-event-editor=usn]').evaluate(el=>el.open),false);
+  await guided.locator('[data-tax-confirm=usn]').click();assert.match(await guided.locator('[data-tax-form-error]').innerText(),/документ-основание/);
+  assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnDeductible),undefined);
+  await guided.locator('[name=usnDocument]').fill('УПД 42, условия признания выполнены');
+  await guided.locator('[data-tax-confirm=usn]').click();
+  assert.equal(await guided.locator('[name=usnDeductible]').inputValue(),'true');
+  assert.equal(await guided.locator('[name=usnRecognitionDate]').inputValue(),'2026-10-02');
+  assert.equal(await guided.locator('[name=usnRecognizedAmount]').inputValue(),'80000.00');
+  // Confirming changes the draft only; cancel must leave the actual record unchanged.
+  await page.locator('#genericClose').click();assert.deepEqual(await page.evaluate(()=>({cash:JSON.stringify(db.cash),warehouse:localStorage.getItem('arbat-warehouse-v1')})),before);
   // Resolve the issue through the actual editor, then verify persisted evidence and the recalculated audit.
   await page.locator('#dashboardTaxes [data-ux-tax]').click();
   await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();
   const form=page.locator('#genericEditForm');await form.locator('[data-tax-fields] summary').click();
+  await form.locator('[data-tax-scope=usnExpense] [data-tax-manual]').evaluate(el=>{el.open=true});
   await form.locator('[name=usnDeductible]').selectOption('true');
   await form.locator('[name=usnRecognitionDate]').fill('2026-10-03');
   await form.locator('[name=usnRecognizedAmount]').fill('80001');
@@ -46,6 +63,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   // Split one documented tax deduction into two dated recognition events.
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
   await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
+  await form.locator('[data-tax-event-editor=usn]').evaluate(el=>{el.open=true});
   await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
   await form.locator('[data-tax-event-editor=usn] [data-tax-event-add]').click();
   const events=form.locator('[data-tax-event-editor=usn] .tax-event-row');
@@ -87,6 +105,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
   assert.equal(await events.count(),1);
   await events.nth(0).locator('[data-event-remove]').click();
+  await form.locator('[data-tax-scope=usnExpense] [data-tax-manual]').evaluate(el=>{el.open=true});
   await form.locator('[name=usnDeductible]').selectOption('');
   await form.locator('[name=usnRecognitionDate]').fill('');
   await form.locator('[name=usnRecognizedAmount]').fill('');
