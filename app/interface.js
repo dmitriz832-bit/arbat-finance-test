@@ -23,7 +23,7 @@
   node.classList.remove('ui-form-source');node.classList.add('ui-sheet-content');sheetBody.append(node);
   $('ui-sheet-title').textContent=name;save.textContent=form?'Сохранить':'Готово';save.onclick=()=>{if(!active)return;if(!form){close();return}const submit=form.querySelector('button[type=submit],button:not([type])');form.requestSubmit(submit||undefined)};
   sheet.hidden=false;discard.hidden=true;document.body.classList.add('ui-sheet-open');sheetBody.scrollTop=0;
-  requestAnimationFrame(()=>{sheet.querySelector('.ui-sheet').focus({preventScroll:true});});
+  const opened=active;requestAnimationFrame(()=>{if(active!==opened||sheet.hidden||sheet.contains(document.activeElement))return;sheet.querySelector('.ui-sheet').focus({preventScroll:true});});
  }
  const legacySelector='.modal-backdrop.open,.whdialog.open,.cw-overlay,.arbat-delete-alert,#ab-profile-overlay.open';
  const topLegacy=()=>[...document.querySelectorAll(legacySelector)].filter(n=>n.getClientRects().length).sort((a,b)=>(Number(getComputedStyle(a).zIndex)||0)-(Number(getComputedStyle(b).zIndex)||0)).at(-1);
