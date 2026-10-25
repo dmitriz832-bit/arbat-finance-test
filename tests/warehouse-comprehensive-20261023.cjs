@@ -47,9 +47,9 @@ test('finance core requires expense reconciliation for direct project consumptio
  assert.deepEqual(core.warehouseCostAudit([], [move], fifo).map(x=>x.reason),['missing-expense']);
  const x=core.projectSnapshot({expenses:[],warehouse:{moves:[move]},fifo},deal,core.dealKey(deal));assert.ok(x.issues.includes('warehouse-fifo-mismatch'));
 });
-test('cascade deletion removes its linked expense from the active finance model',()=>{
+test('cascade deletion removes its linked expense from the active finance model',async()=>{
  const {c,d,data,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',kind:'consume',date:'2026-10-02',itemId:'bolt',from:'w',qty:3,dealId:'p'}];data.expenses=[{_id:'warehouse-consume-use',warehouseMoveId:'use',amount:30}];storage.set('arbat-warehouse-v1',JSON.stringify(d));storage.set('arbat-finance-demo-live',JSON.stringify(data));
- const start=html.indexOf('window.arbatCascadeRemove=function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal(c.window.arbatCascadeRemove({moveIds:['use']}).ok,true);assert.equal(data.expenses.length,0);assert.equal(JSON.parse(storage.get('arbat-finance-demo-live')).expenses.length,0);
+ const start=html.indexOf('window.arbatCascadeRemove=function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal((await require('./helpers/deletion-backup-fixture.cjs')(c.window,data,d,()=>c.window.arbatCascadeRemove({moveIds:['use']}))).ok,true);assert.equal(data.expenses.length,0);assert.equal(JSON.parse(storage.get('arbat-finance-demo-live')).expenses.length,0);
 });
 test('alternate deletion commit synchronizes the active finance model',()=>{
  const {c,d,data}=setup();data.expenses=[{_id:'warehouse-consume-use',warehouseMoveId:'use',amount:30}];vm.runInContext('const W=KEY,F="arbat-finance-demo-live";'+fn('commit'),c);c.commit(d,{expenses:[]});assert.equal(data.expenses.length,0);
