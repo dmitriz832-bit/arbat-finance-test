@@ -4,9 +4,9 @@
  if(!core?.documentVat)return;
  const rates=[0,5,7,10,20,22];
  const fmt=c=>core.rubles(c).replace('.',',');
- for(const id of ['dealForm','realizationForm','expenseForm','costForm']){
+ for(const id of ['dealForm','editDealForm','realizationForm','expenseForm','costForm']){
   const form=document.getElementById(id);if(!form)continue;
-  const amountName=id==='dealForm'?'contractTotal':'amount';
+  const amountName=(id==='dealForm'||id==='editDealForm')?'contractTotal':'amount';
   const anchor=form.elements.namedItem(amountName)?.closest('label');if(!anchor)continue;
   const label=document.createElement('label');label.textContent='Ставка НДС документа';
   const select=document.createElement('select');select.name='vatRate';select.required=true;
