@@ -23,7 +23,7 @@
   node.classList.remove('ui-form-source');node.classList.add('ui-sheet-content');sheetBody.append(node);
   $('ui-sheet-title').textContent=name;save.textContent=form?'Сохранить':'Готово';save.onclick=()=>{if(!active)return;if(!form){close();return}const submit=form.querySelector('button[type=submit],button:not([type])');form.requestSubmit(submit||undefined)};
   sheet.hidden=false;discard.hidden=true;document.body.classList.add('ui-sheet-open');sheetBody.scrollTop=0;
-  requestAnimationFrame(()=>{sheet.querySelector('.ui-sheet').focus({preventScroll:true});});
+  const opened=active;requestAnimationFrame(()=>{if(active!==opened||sheet.hidden||sheet.contains(document.activeElement))return;sheet.querySelector('.ui-sheet').focus({preventScroll:true});});
  }
  const legacySelector='.modal-backdrop.open,.whdialog.open,.cw-overlay,.arbat-delete-alert,#ab-profile-overlay.open';
  const topLegacy=()=>[...document.querySelectorAll(legacySelector)].filter(n=>n.getClientRects().length).sort((a,b)=>(Number(getComputedStyle(a).zIndex)||0)-(Number(getComputedStyle(b).zIndex)||0)).at(-1);
@@ -71,7 +71,7 @@
   ['pnl-articles','Статьи ОПиУ',cardFor('pnlArticleForm'),'pnlArticleForm','Новая статья ОПиУ'],
   ['backups','Резервные копии',$('export')?.closest('.card')]
  ];
- for(const [, ,card,formId,name] of settingGroups){if(!card||!formId)continue;const actions=document.createElement('div');actions.className='ui-card-actions';card.querySelector('h2').after(actions);prepareForm(formId,name,actions,'Добавить');card.classList.remove('ui-source-card');}
+ for(const [, ,card,formId,name] of settingGroups){if(!card||!formId)continue;const actions=document.createElement('div');actions.className='ui-card-actions';card.querySelector('h2').after(actions);const trigger=prepareForm(formId,name,actions,'Добавить');if(trigger)documentTriggers.set(formId,trigger);card.classList.remove('ui-source-card');}
  segments(settings,settingGroups.map(g=>[g[0],g[1],[g[2]].filter(Boolean)]),'settings');
  const backupCard=$('export')?.closest('.card'),settingsNote=backupCard?.querySelector('p');if(settingsNote)settingsNote.textContent='Экспорт создаёт локальную резервную копию общей базы. Используйте её только для аварийного восстановления.';if(backupCard?.querySelector('h2'))backupCard.querySelector('h2').textContent='Резервные копии';
  const workCards=[...work.querySelectorAll(':scope > .card')];

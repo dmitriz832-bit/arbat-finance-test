@@ -118,7 +118,7 @@
    title='Налоговый расчёт и замечания';scope='УСН и прибыль: '+data.taxes.yearBounds.from+' — '+data.taxes.yearBounds.to+' · НДС: '+data.taxes.bounds.label;
    const tax=data.taxes;
    body='';
-   const taxRow=row=>row.collection==='warehouse'?{...row,collection:'payables',id:window.ArbatPayables?.receiptKey(row.source),label:row.label||'Приход на склад'}:row;
+   const taxRow=row=>row.collection==='warehouse'?(row.source?.kind==='intercompany'?{...row,collection:'stockReview',id:row.source.id,label:'Межорганизационная передача'}:{...row,collection:'payables',id:window.ArbatPayables?.receiptKey(row.source),label:row.label||'Приход на склад'}):row;
    body='<p class="ux-explanation">Показаны суммы, которые вошли в расчёт, и причины, мешающие подтвердить результат. Расход ДДС, расход ОПиУ и налоговый расход имеют разные правила признания. Старые документы автоматически не переписываются.</p>';
    body+='<p><button type="button" data-open-tax-register="advances">НДС с авансов</button> <button type="button" data-open-tax-register="obligations">Сверка налоговых обязательств</button></p>';
    if(tax.issues.length)body+='<div data-tax-issues><h3>Требует проверки · '+tax.issues.length+'</h3><div class="ux-source-list">'+tax.issues.map(x=>{const row=taxRow({source:x.source,collection:x.collection,id:x.source?._id||x.source?.id,label:x.source?.note||x.source?.name||'Источник'});return '<div class="ux-source-row"><div>'+sourceButton(row)+'<small>'+esc([x.source?.date||x.source?.dt||'',x.source?.org||'',({usn:'УСН',vat:'НДС',profit:'Прибыль'})[x.scope]].filter(Boolean).join(' · '))+'</small><p>'+esc(x.message)+'</p></div></div>'}).join('')+'</div></div>';
@@ -140,6 +140,7 @@
   $('calendarNotice').textContent='Планы не подтверждают оплату. Привязанные расходы ДДС уменьшают долг поставщику; самостоятельный разовый план после исполнения нужно отключить. Зарплатные и налоговые сроки автоматически не добавляются. Без срока, на сверке или без банковской сверки прогноз неполный.';
  }
  function openSource(collection,id){
+  if(collection==='stockReview')return window.ArbatManagementUI?.openStockReview(id);
   if(collection==='payables')return window.arbatOpenPayables?.(id);
   if(collection==='calendar')return editCalendar(id);
   if(collection==='wallets')return showWallet(id);
