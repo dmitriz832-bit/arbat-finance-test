@@ -40,7 +40,7 @@
     costForm:[['Классификация',['date','name','org','dir','allocationPercentages']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],
     laborForm:[['Кому и за что',['date','personId','org','projectKey','pnlArticleId']],['Расчёт начисления',['ndfl','otherDeductions','employerContributions','amount']]],
     calendarForm:[['Обязательство',['org','articleId','payee','name']],['Сумма и график',['amount','dueDate','frequency','active']]],
-    editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','cost','dealStage','projectStatus','taxMode']]]
+    editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','vatRate','cost','dealStage','projectStatus','taxMode']]]
   };
   function organizeForm(form){
     if(!form||form.dataset.documentOrganized==='1')return;
