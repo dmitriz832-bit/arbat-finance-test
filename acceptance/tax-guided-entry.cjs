@@ -16,6 +16,8 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   await page.evaluate(()=>openRecord('expenses','purchase'));await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
   assert.match(await form.locator('[data-tax-proposal=profitTax]').innerText(),/1000,00.*2026-10-02.*УПД 42/);
   assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxDeductible),undefined);
+  assert.equal(await form.locator('[name=profitTaxDocument]').isVisible(),false,'source evidence needs no repeated entry');
+  assert.equal(await form.locator('[name=vatInvoice]').isVisible(),false,'VAT overrides are optional');
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});await form.locator('[data-tax-fields]').screenshot({path:path.join(root,'test-results',`tax-guided-document-${engine.name()}-${width}.png`)});
   await form.locator('[data-tax-confirm=profitTax]').click();await form.locator('[data-tax-confirm-vat]').click();
   assert.equal(await form.locator('[name=profitTaxDocument]').inputValue(),'УПД 42');assert.equal(await form.locator('[name=vatInvoice]').inputValue(),'УПД 42');
@@ -32,6 +34,7 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   await form.locator('[name=profitTaxRecognitionDate]').fill('');await form.locator('[name=profitTaxRecognizedAmount]').fill('');
   const parts=form.locator('[data-tax-event-editor=profitTax]');await parts.evaluate(el=>{el.open=true});await parts.locator('[data-tax-event-add]').click();
   await parts.locator('[data-event-date]').fill('2026-10-03');await parts.locator('[data-event-amount]').fill('1000');await parts.locator('[data-event-document]').fill('УПД 42');
+  await form.locator('[data-tax-vat-manual]').evaluate(el=>{el.open=true});
   await form.locator('[name=vatInvoice]').fill('');await form.locator('[name=vatDeductionDate]').fill('');await form.locator('[data-tax-confirm-vat]').click();
   assert.equal(await form.locator('[name=vatInvoice]').inputValue(),'УПД 42');assert.equal(await form.locator('[name=vatDeductionDate]').inputValue(),'2026-10-02');
   assert.equal(await parts.locator('.tax-event-row').count(),1);
