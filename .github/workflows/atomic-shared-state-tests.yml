@@ -5,6 +5,9 @@ on:
   pull_request:
     paths:
       - 'app/sync.js'
+      - 'app/finance-core.js'
+      - 'app/index.html'
+      - 'app/management-review*.js'
       - 'app/tax-document-fields.js'
       - 'app/tax-register-model.js'
       - 'app/tax-registers.js'
