@@ -4,7 +4,7 @@ const model=window.ArbatTaxRegisters,core=window.ArbatFinanceCore;if(!model)retu
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),id=x=>String(x?._id||x?.id||''),rub=x=>Number(core.rubles(x)).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
 const names={received:'Получен аванс',offset:'Зачёт',refund:'Возврат',openingDebt:'Начальная задолженность',openingCredit:'Начальная переплата',accrual:'Начислено',payment:'Уплачено',ensBalance:'Подтверждённое сальдо ЕНС'},taxNames={vat:'НДС',usn:'УСН',profit:'Налог на прибыль',ndfl:'НДФЛ',contributions:'Страховые взносы'};
 const dialog=document.createElement('dialog');dialog.id='taxRegistersDialog';dialog.className='tax-register-dialog';dialog.innerHTML='<header><h2 data-title></h2><button type="button" data-close>Закрыть</button></header><label>По состоянию на<input type="date" data-asof></label><div data-report></div><button type="button" data-new>Добавить событие</button><form data-editor hidden></form>';document.body.append(dialog);
-let mode='advances',collection='vatAdvanceEvents',editing=null,baseline='',busy=false;
+let mode='advances',collection='vatAdvanceEvents',editing=null,baseline='',busy=false,touched=new Set(),managed={};
 const allowed=()=>!window.abIdentity||['admin','accountant'].includes(window.abIdentity.role);
 const rows=()=>db[collection]||[],snapshot=()=>JSON.stringify(rows());
 const options=(values,current)=>values.map(([value,label])=>'<option value="'+esc(value)+'"'+(String(current??'')===String(value)?' selected':'')+'>'+esc(label)+'</option>').join('');
@@ -23,11 +23,22 @@ function report(){
  html+='<h3>События</h3><div class="tax-register-events">'+rows().map(e=>'<button type="button" data-event="'+esc(id(e))+'"><strong>'+esc(e.date)+' · '+esc(names[e.kind]||e.kind)+'</strong><span>'+esc(e.org)+' · '+esc(e.amount)+' ₽</span><span>'+esc(e.document)+'</span></button>').join('')+'</div>';
  dialog.querySelector('[data-report]').innerHTML=html;dialog.querySelector('[data-new]').disabled=!allowed();
 }
-function edit(row){
- editing=row?id(row):null;baseline=snapshot();const e=row||{org:'АРБАТ.ГК',date:dialog.querySelector('[data-asof]').value,kind:mode==='advances'?'received':'accrual'},form=dialog.querySelector('[data-editor]');
+function edit(row,draft={}){
+ editing=row?id(row):null;baseline=snapshot();touched=new Set();managed={};const e=row||{org:'АРБАТ.ГК',date:dialog.querySelector('[data-asof]').value,kind:mode==='advances'?'received':'accrual',...draft},form=dialog.querySelector('[data-editor]');
  const kinds=mode==='advances'?['received','offset','refund']:['openingDebt','openingCredit','accrual','payment','offset','refund','ensBalance'];
  form.innerHTML='<h3>'+(row?'Изменить событие':'Новое событие')+'</h3><div class="tax-register-fields">'+select('kind','Вид события',kinds.map(k=>[k,names[k]]),e.kind)+select('org','Организация',model.organizations.map(x=>[x,x]),e.org)+input('date','Дата события',e.date,'date')+input('amount','Сумма, ₽',e.amount)+input('document','Документ-основание',e.document)+(mode==='advances'?select('vatRate','Ставка НДС аванса',[['','Выберите'],...[0,5,7,10,20,22].map(n=>[n,n+'%'])],e.vatRate):select('tax','Налог',[['','Выберите'],...Object.entries(taxNames)],e.tax)+input('period','Налоговый период: 2026, 2026-01 или 2026-Q1',e.period)+select('confirmed','Подтверждено бухгалтером',[['','Не проверено'],['true','Да']],String(e.confirmed??''))+select('ensConfirmed','Принадлежность зачёта подтверждена данными ЕНС',[['','Не проверено'],['true','Да']],String(e.ensConfirmed??'')))+'<div data-references></div></div><p data-error role="alert" hidden></p><div class="tax-register-actions"><button type="submit">Сохранить событие</button><button type="button" data-cancel>Отмена</button>'+(row?'<button type="button" data-remove>Убрать событие</button>':'')+'</div>';
- form.hidden=false;references(e);form.scrollIntoView({block:'start'});
+ const hint=document.createElement('div');hint.className='tax-source-proposal';hint.innerHTML='<p data-source-proposal></p><button type="button" data-use-source hidden>Взять остаток и дату из документа</button>';form.querySelector('[data-references]').after(hint);
+ form.hidden=false;references(e);applyProposal();form.scrollIntoView({block:'start'});
+}
+function applyProposal(force=false){
+ const f=dialog.querySelector('form'),e={...Object.fromEntries(new FormData(f)),_id:editing},p=model.sourceProposal(db,mode,e),hint=f.querySelector('[data-source-proposal]'),button=f.querySelector('[data-use-source]');
+ hint.textContent=p.amount!==undefined?'Доступно по связанным документам: '+p.amount.replace('.',',')+' ₽ · '+p.date+'. Реквизиты подтверждения и налоговый период проверяет бухгалтер.':'';button.hidden=p.amount===undefined;
+ if(editing&&!force)return;
+ for(const name of ['amount','date','vatRate']){
+  const field=f.elements.namedItem(name==='amount'?'taxAmount':name);if(!field||!force&&touched.has(name))continue;
+  if(p[name]!==undefined){field.value=p[name];managed[name]=p[name];field.dispatchEvent(new Event('change'));}
+  else if(managed[name]!==undefined){field.value='';delete managed[name];field.dispatchEvent(new Event('change'));}
+ }
 }
 function references(existing={}){
  const f=dialog.querySelector('form'),kind=f.elements.kind.value,org=f.elements.org.value;
@@ -53,7 +64,15 @@ async function commit(remove=false){if(busy||!allowed())return;busy=true;const f
  if(remove){if(!confirm('Убрать налоговое событие? Будет сохранена резервная копия регистра.'))return;localStorage.setItem('arbat-tax-register-backup-'+Date.now(),snapshot())}
  db[collection]=next;save();f.hidden=true;report();
  }catch(e){error.hidden=false;error.textContent=e.message}finally{busy=false}}
-dialog.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-close'))dialog.close();if(b.hasAttribute('data-new'))edit();if(b.hasAttribute('data-event'))edit(rows().find(x=>id(x)===b.dataset.event));if(b.hasAttribute('data-cancel'))dialog.querySelector('form').hidden=true;if(b.hasAttribute('data-remove'))commit(true)});
-dialog.addEventListener('submit',e=>{e.preventDefault();commit()});dialog.addEventListener('change',e=>{if(e.target.hasAttribute('data-asof'))report();if(['kind','org'].includes(e.target.name))references()});dialog.addEventListener('input',e=>{const name=e.target.dataset.searchRef;if(!name)return;const select=dialog.querySelector('[name="'+name+'"]'),q=e.target.value.toLocaleLowerCase('ru-RU');for(const option of select.options)option.hidden=!!option.value&&!option.textContent.toLocaleLowerCase('ru-RU').includes(q)});
-document.addEventListener('click',e=>{const b=e.target.closest('[data-open-tax-register]');if(!b)return;mode=b.dataset.openTaxRegister;collection=mode==='advances'?'vatAdvanceEvents':'taxObligationEvents';dialog.querySelector('[data-title]').textContent=mode==='advances'?'НДС с авансов покупателей':'Сверка налоговых обязательств';dialog.querySelector('[data-asof]').value=document.querySelector('#uxTaxReference')?.value||new Date().toISOString().slice(0,10);dialog.querySelector('form').hidden=true;report();dialog.showModal()});
+dialog.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-close'))dialog.close();if(b.hasAttribute('data-new'))edit();if(b.hasAttribute('data-event'))edit(rows().find(x=>id(x)===b.dataset.event));if(b.hasAttribute('data-cancel'))dialog.querySelector('form').hidden=true;if(b.hasAttribute('data-remove'))commit(true);if(b.hasAttribute('data-use-source'))applyProposal(true)});
+dialog.addEventListener('submit',e=>{e.preventDefault();commit()});dialog.addEventListener('change',e=>{if(e.target.hasAttribute('data-asof'))report();if(['taxAmount','date','vatRate'].includes(e.target.name))touched.add(e.target.name==='taxAmount'?'amount':e.target.name);if(['kind','org'].includes(e.target.name)){references();applyProposal();}else if(['cashId','advanceId','realizationId'].includes(e.target.name))applyProposal()});dialog.addEventListener('input',e=>{if(['taxAmount','date','vatRate'].includes(e.target.name))touched.add(e.target.name==='taxAmount'?'amount':e.target.name);const name=e.target.dataset.searchRef;if(!name)return;const select=dialog.querySelector('[name="'+name+'"]'),q=e.target.value.toLocaleLowerCase('ru-RU');for(const option of select.options)option.hidden=!!option.value&&!option.textContent.toLocaleLowerCase('ru-RU').includes(q)});
+function open(nextMode){mode=nextMode;collection=mode==='advances'?'vatAdvanceEvents':'taxObligationEvents';dialog.querySelector('[data-title]').textContent=mode==='advances'?'НДС с авансов покупателей':'Сверка налоговых обязательств';dialog.querySelector('[data-asof]').value=document.querySelector('#uxTaxReference')?.value||new Date().toISOString().slice(0,10);dialog.querySelector('form').hidden=true;report();if(!dialog.open)dialog.showModal();}
+window.ArbatTaxRegisterUI={openFromDocument(key,row,nextMode){
+ const source=(db[key]||[]).find(x=>id(x)===id(row));if(!source||!model.organizations.includes(source.org))return;
+ open(nextMode);const draft={org:source.org};
+ if(key==='cash'){draft.cashId=id(source);draft.kind=mode==='advances'?(source.type==='in'?'received':'refund'):(source.type==='out'?'payment':'refund');}
+ if(key==='realizations'){draft.realizationId=id(source);draft.kind='offset';}
+ edit(null,draft);
+}};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-open-tax-register]');if(b)open(b.dataset.openTaxRegister)});
 })();

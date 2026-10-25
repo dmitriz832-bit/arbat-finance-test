@@ -13,3 +13,20 @@ test('zero and negative confirmed ENS balances are separate from tax debt',()=>{
 test('closed-quarter deduction depends on earlier partial offset rounding',()=>{const d=data();d.cash[0].amount='0.03';d.vatAdvanceEvents=[{...d.vatAdvanceEvents[0],amount:'0.03',vatRate:22},{_id:'early',kind:'offset',org,date:'2026-01-01',advanceId:'a',realizationId:'sale',amount:'0.01',document:'Ранний зачёт'},{_id:'late',kind:'refund',org,date:'2026-02-01',advanceId:'a',cashId:'out',amount:'0.01',document:'Поздний возврат'}];const r=m.advances(d,{from:'2026-02-01'});a.equal(r.deducted,1n);d.vatAdvanceEvents=d.vatAdvanceEvents.filter(e=>e._id!=='early');a.equal(m.advances(d,{from:'2026-02-01'}).deducted,0n)});
 test('AIR advance VAT enters its own register and is excluded from USN income; refund reduces net income',()=>{const core=require('../app/finance-core.js'),d=data();for(const c of d.cash)c.org='АИР-КЛИМАТ';d.cash[0].date='2026-01-01';d.cash[0].amount=105;d.cash[0].usnTaxable=true;d.vatAdvanceEvents=[{...d.vatAdvanceEvents[0],org:'АИР-КЛИМАТ',date:'2026-01-01',amount:105,vatRate:5},{_id:'r',org:'АИР-КЛИМАТ',kind:'refund',date:'2026-02-01',advanceId:'a',cashId:'out',amount:42,document:'Возврат'}];const r=core.quarterTaxSnapshot(d,'2026-03-01');a.equal(r.air.income,6000n);a.equal(r.air.outputVat,500n);a.equal(r.air.inputVat,200n);a.equal(r.arbat.outputVat,1100n);a.equal(r.rows.filter(x=>x.scope==='airVat').length,2)});
 test('prior-year AIR VAT is excluded from the following year exemption threshold',()=>{const org='АИР-КЛИМАТ',d={cash:[{_id:'p',org,type:'in',date:'2026-06-01',amount:15500000,usnTaxable:true}],vatAdvanceEvents:[{_id:'a',kind:'received',org,date:'2026-06-01',cashId:'p',amount:15500000,vatRate:5,document:'СФ 5%'}]};const r=require('../app/finance-core.js').quarterTaxSnapshot(d,'2027-01-01');a.equal(r.air.income,0n);a.equal(r.air.vatThreshold.previousIncome,1476190476n);a.equal(r.air.vatThreshold.effectiveFrom,null)});
+test('source proposals reuse remaining cash budgets across both registers without confirming',()=>{
+ const d={cash:[{_id:'c',org,type:'out',date:'2026-10-02',amount:100,note:'Назначение'}],taxObligationEvents:[{_id:'p',org,kind:'payment',cashId:'c',date:'2026-10-02',amount:40,document:'Платёж',tax:'vat',period:'2026-Q4',confirmed:true}]},before=JSON.stringify(d);
+ a.deepEqual(m.sourceProposal(d,'obligations',{org,kind:'payment',cashId:'c'}),{amount:'60.00',date:'2026-10-02'});
+ a.deepEqual(m.sourceProposal(d,'obligations',{_id:'p',org,kind:'payment',cashId:'c'}),{amount:'100.00',date:'2026-10-02'});
+ a.deepEqual(m.sourceProposal(d,'obligations',{org:'АИР-КЛИМАТ',kind:'payment',cashId:'c'}),{});
+ a.equal(JSON.stringify(d),before);
+});
+test('advance source proposal caps offset by both realization and remaining advance; never guesses VAT',()=>{
+ const d=data();
+ a.deepEqual(m.sourceProposal(d,'advances',{org,kind:'offset',advanceId:'a',realizationId:'sale'}),{amount:'1.00',date:d.realizations[0].date});
+ const p=m.sourceProposal(d,'advances',{org,kind:'received',cashId:'in'});a.equal(p.vatRate,undefined);a.equal(p.confirmed,undefined);a.equal(p.document,undefined);
+ d.cash[0].vatRate=22;a.equal(m.sourceProposal(d,'advances',{org,kind:'received',cashId:'in'}).vatRate,'22');
+});
+test('offset proposal uses historical amountGross without requiring redundant amount',()=>{
+ const d=data();d.realizations[0].amountGross=d.realizations[0].amount;delete d.realizations[0].amount;
+ a.equal(m.sourceProposal(d,'advances',{org,kind:'offset',advanceId:'a',realizationId:'sale'}).amount,'1.00');
+});
