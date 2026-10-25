@@ -48,7 +48,13 @@
   return null;
  }
  // A proposal is never evidence: only the explicit confirmation action applies it.
+ function eventValues(source){
+  const row={...source};
+  for(const prefix of ['usn','profitTax']){const name=prefix+'RecognitionEvents';if(typeof row[name]==='string'&&row[name].trim()){try{row[name]=JSON.parse(row[name]);if(!Array.isArray(row[name]))return null;}catch{return null;}}}
+  return row;
+ }
  function proposal(row,collection){
+  row=eventValues(row);if(!row)return null;
   const active=scopes(row,collection),prefix=active.includes('usnExpense')?'usn':active.includes('profitExpense')?'profitTax':null;
   if(!prefix||Array.isArray(row[prefix+'RecognitionEvents'])&&row[prefix+'RecognitionEvents'].length)return null;
   try{
@@ -65,7 +71,9 @@
   }catch{return null}
  }
  function vatProposal(row,collection){
+  row=eventValues(row);if(!row)return null;
   if(!scopes(row,collection).includes('vat')||!yes(row.vatDeductible))return null;
+  try{if(!text(row.vatRate)||core.documentVat(row.amountGross??row.amount,row.vatRate,true).vatAmount<=0n)return null;}catch{return null;}
   const patch={vatInvoice:text(row.vatInvoice)||text(row.profitTaxDocument)||text(row.document)||(collection==='expenses'?text(row.note):''),vatDeductionDate:text(row.vatDeductionDate)||row.date};
   return !patch.vatInvoice||validate({...row,...patch},collection)?null:patch;
  }
@@ -138,7 +146,9 @@
  const sourceSnapshots=new WeakMap();
  api.hydrate=(form,row,collection)=>{
   form.dataset.taxCollection=collection;
-  for(const panel of form.querySelectorAll('[data-tax-event-editor]')){if(typeof panel.load!=='function')setupEvents(panel);panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);}
+  const editors=form.querySelectorAll('[data-tax-event-editor]');
+  for(const panel of editors)if(typeof panel.load!=='function')setupEvents(panel);
+  for(const panel of editors)panel.load(row[panel.dataset.taxEventEditor+'RecognitionEvents']);
   for(const name of fields){const f=form.elements.namedItem(name);if(f&&!name.endsWith('RecognitionEvents'))f.value=row[name]===undefined?'':String(row[name]);}
   refresh(form,collection);
   form.querySelector('[data-tax-source-actions]')?.remove();

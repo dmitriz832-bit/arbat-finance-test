@@ -3,7 +3,7 @@ const {chromium,webkit}=require('playwright'),{fixture}=require('../tests/helper
 test('tax audit shows incomplete calculations honestly, includes prior quarters and opens source documents on phone and desktop',{timeout:120000},async()=>{
  const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(u.pathname.endsWith('/')?u.pathname+'index.html':u.pathname));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [390,768,1440]){
-  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
+  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.type()==='confirm'?d.accept():d.dismiss());
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(u.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:"window.abIdentity={user_id:'fixture',role:'admin'};document.body.classList.add('ab-ready');"});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return route.fulfill({body:''});return route.continue()});
   const data=fixture(),AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК';
   data.finance.cash=[{_id:'jan-income',org:AIR,date:'2026-01-02',type:'in',articleId:'in',walletId:'air',customerId:'customer',amount:100000,usnTaxable:true,note:'Поступление января'},{_id:'advance',org:AIR,date:'2026-10-02',type:'out',articleId:'out',walletId:'air',customerId:'supplier',amount:80000,note:'Аванс поставщику — расход не признан'},{_id:'arbat-advance',org:ARBAT,date:'2026-10-02',type:'in',articleId:'in',walletId:'arbat',customerId:'customer',amount:12200}];
@@ -44,7 +44,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   // Resolve the issue through the actual editor, then verify persisted evidence and the recalculated audit.
   await page.locator('#dashboardTaxes [data-ux-tax]').click();
   await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();
-  const form=page.locator('#genericEditForm');await form.locator('[data-tax-fields] summary').click();
+  const form=page.locator('#genericEditForm');await form.locator('[data-tax-fields] > summary').click();
   await form.locator('[data-tax-scope=usnExpense] [data-tax-manual]').evaluate(el=>{el.open=true});
   await form.locator('[name=usnDeductible]').selectOption('true');
   await form.locator('[name=usnRecognitionDate]').fill('2026-10-03');

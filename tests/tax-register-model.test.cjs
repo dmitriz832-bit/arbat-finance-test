@@ -26,3 +26,7 @@ test('advance source proposal caps offset by both realization and remaining adva
  const p=m.sourceProposal(d,'advances',{org,kind:'received',cashId:'in'});a.equal(p.vatRate,undefined);a.equal(p.confirmed,undefined);a.equal(p.document,undefined);
  d.cash[0].vatRate=22;a.equal(m.sourceProposal(d,'advances',{org,kind:'received',cashId:'in'}).vatRate,'22');
 });
+test('offset proposal uses historical amountGross without requiring redundant amount',()=>{
+ const d=data();d.realizations[0].amountGross=d.realizations[0].amount;delete d.realizations[0].amount;
+ a.equal(m.sourceProposal(d,'advances',{org,kind:'offset',advanceId:'a',realizationId:'sale'}).amount,'1.00');
+});

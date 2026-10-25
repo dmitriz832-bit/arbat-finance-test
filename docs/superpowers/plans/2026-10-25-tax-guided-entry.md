@@ -29,7 +29,7 @@ Interfaces: proposal(row,collection) -> {prefix,date,amount,document}|null, no m
 - [ ] Run unit suite and commit.
 
 ### Task 2: Linked register entry
-Files: app/tax-register-model.js, app/tax-registers.js, app/tax-document-fields.js, acceptance/tax-registers.cjs, tests/tax-registers.test.cjs.
+Files: app/tax-register-model.js, app/tax-registers.js, app/tax-document-fields.js, acceptance/tax-registers.cjs, tests/tax-register-model.test.cjs.
 Interfaces: sourceProposal(data,mode,event) -> patch for unsaved form, no confirmation. openFromDocument(collection,row) opens linked draft.
 - [ ] Add failing model tests for remaining cash/sale/advance budgets, explicit rate only, no guessed evidence or confirmation.
 - [ ] Implement source selection proposals and contextual entry from saved cash/realization cards; prevent stale-source saves using existing guards.

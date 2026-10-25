@@ -78,7 +78,7 @@ function sourceProposal(data,mode,event){
   if(mode==='advances'&&kind==='offset'){
    const matches=(data.realizations||[]).filter(x=>id(x)===event.realizationId&&x.org===event.org),b=a.balances.find(x=>x.id===event.advanceId&&x.org===event.org);
    if(matches.length!==1||!b)return {};
-   source=matches[0];remaining=core.cents(source.amount)-a.rows.filter(x=>x.kind==='offset'&&x.id===id(source)).reduce((s,x)=>s+x.amount,0n);
+   source=matches[0];remaining=core.cents(source.amountGross??source.amount)-a.rows.filter(x=>x.kind==='offset'&&x.id===id(source)).reduce((s,x)=>s+x.amount,0n);
    if(b.remaining<remaining)remaining=b.remaining;
   }else{
    const type=mode==='advances'?(kind==='received'?'in':kind==='refund'?'out':null):(kind==='payment'?'out':kind==='refund'?'in':null);

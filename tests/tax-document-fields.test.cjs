@@ -62,3 +62,11 @@ test('VAT deduction proposal reuses documentary evidence only when deduction was
  assert.equal(model().vatProposal({...row,vatDeductionDate:'2026-10-01'},'expenses'),null);
  assert.equal(JSON.stringify(row),before);
 });
+test('VAT proposal supports serialized partial events from document FormData',()=>{
+ const row={org:'АРБАТ.ГК',date:'2026-10-01',amount:'1220',vatRate:'22',vatDeductible:'true',profitTaxDeductible:'true',note:'УПД 42',profitTaxRecognitionEvents:JSON.stringify([{id:'e',date:'2026-10-02',amount:'1000',document:'УПД 42'}])};
+ assert.deepEqual(model().vatProposal(row,'expenses'),{vatInvoice:'УПД 42',vatDeductionDate:'2026-10-01'});
+ assert.equal(model().vatProposal({...row,vatRate:''},'expenses'),null);
+});
+test('single recognition proposal cannot replace serialized partial events',()=>{
+ assert.equal(model().proposal({org:'АИР-КЛИМАТ',type:'out',date:'2026-10-01',amount:100,usnRecognitionEvents:JSON.stringify([{id:'e',date:'2026-10-01',amount:50,document:'Акт'}])},'cash'),null);
+});

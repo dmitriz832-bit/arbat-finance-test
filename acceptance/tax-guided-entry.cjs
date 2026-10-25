@@ -3,7 +3,7 @@ const {chromium,webkit}=require('playwright'),{fixture}=require('../tests/helper
 test('guided tax entry confirms drafts once, preserves overrides and links source documents on six browser/device combinations',{timeout:180000},async()=>{
  const server=http.createServer(async(req,res)=>{try{const file=path.resolve(root,'.'+new URL(req.url,'http://local').pathname.replace(/\/$/,'/index.html'));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [390,768,1440]){
-  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.dismiss());
+  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.type()==='confirm'?d.accept():d.dismiss());
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(u.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:"window.abIdentity={user_id:'fixture',role:'admin'};document.body.classList.add('ab-ready');"});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return route.fulfill({body:''});return route.continue()});
   const data=fixture(),org='АРБАТ.ГК',projectKey=org+'::1C#CYCLE-arbat';
   data.finance.cash=[{_id:'advance',org,type:'in',date:'2026-10-01',amount:1220,vatRate:'22',walletId:'arbat',articleId:'in',customerId:'customer',note:'Аванс покупателя'},{_id:'tax',org,type:'out',date:'2026-10-03',amount:100,walletId:'arbat',articleId:'out',customerId:'supplier',note:'Налоговый платёж'}];
@@ -24,6 +24,15 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   await page.evaluate(()=>openRecord('expenses','purchase'));await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});await form.locator('[name=amount]').fill('2440');
   assert.equal(await form.locator('[name=profitTaxRecognizedAmount]').inputValue(),'1000.00','editing gross must not silently confirm extra expense');
   await page.locator('#genericClose').click();
+  // Existing partial recognition has no legacy single date. VAT confirmation still reuses the UПД.
+  await page.evaluate(()=>openRecord('expenses','purchase'));await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
+  await form.locator('[data-tax-scope=profitExpense] [data-tax-manual]').evaluate(el=>{el.open=true});
+  await form.locator('[name=profitTaxRecognitionDate]').fill('');await form.locator('[name=profitTaxRecognizedAmount]').fill('');
+  const parts=form.locator('[data-tax-event-editor=profitTax]');await parts.evaluate(el=>{el.open=true});await parts.locator('[data-tax-event-add]').click();
+  await parts.locator('[data-event-date]').fill('2026-10-03');await parts.locator('[data-event-amount]').fill('1000');await parts.locator('[data-event-document]').fill('УПД 42');
+  await form.locator('[name=vatInvoice]').fill('');await form.locator('[name=vatDeductionDate]').fill('');await form.locator('[data-tax-confirm-vat]').click();
+  assert.equal(await form.locator('[name=vatInvoice]').inputValue(),'УПД 42');assert.equal(await form.locator('[name=vatDeductionDate]').inputValue(),'2026-10-02');
+  await form.locator('button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});await page.reload();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognitionEvents.length),1);
   // Context action refuses unsaved document changes; source data is never silently saved.
   await page.evaluate(()=>openRecord('cash','advance'));await form.locator('[name=amount]').fill('1200');await form.locator('[data-tax-source=advances]').click();assert.match(await form.locator('[data-tax-source-error]').innerText(),/Сначала сохраните/);assert.equal(await dialog.evaluate(el=>el.open),false);await page.locator('#genericClose').click();
   await page.evaluate(()=>openRecord('cash','advance'));await form.locator('[data-tax-source=advances]').click();
