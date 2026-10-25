@@ -7,6 +7,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(u.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:"window.abIdentity={user_id:'fixture',role:'admin'};document.body.classList.add('ab-ready');"});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return route.fulfill({body:''});return route.continue()});
   const data=fixture(),AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК';
   data.finance.cash=[{_id:'jan-income',org:AIR,date:'2026-01-02',type:'in',articleId:'in',walletId:'air',customerId:'customer',amount:100000,usnTaxable:true,note:'Поступление января'},{_id:'advance',org:AIR,date:'2026-10-02',type:'out',articleId:'out',walletId:'air',customerId:'supplier',amount:80000,note:'Аванс поставщику — расход не признан'},{_id:'arbat-advance',org:ARBAT,date:'2026-10-02',type:'in',articleId:'in',walletId:'arbat',customerId:'customer',amount:12200}];
+  data.finance.deals[0].taxMode='review';data.finance.cash[0].projectKey=AIR+'::1C#CYCLE-air';
   data.finance.realizations=[{_id:'jan-sale',org:ARBAT,date:'2026-01-03',amount:12200,vatRate:22,document:'Январский акт',projectKey:ARBAT+'::1C#CYCLE-arbat'},{_id:'oct-sale',org:ARBAT,date:'2026-10-03',amount:24400,vatRate:22,document:'Октябрьский акт',projectKey:ARBAT+'::1C#CYCLE-arbat'}];
   data.warehouse.moves=[{id:'receipt-tax',n:1,kind:'receipt',org:ARBAT,date:'2026-10-01',qty:2,price:610,itemId:'unit',to:'arbat-store',note:'УПД без реквизитов НДС',documentId:'UPD-TAX'}];
   await context.addInitScript(data=>{if(!localStorage.getItem('arbat-finance-demo-live'))localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data.finance));if(!localStorage.getItem('arbat-warehouse-v1'))localStorage.setItem('arbat-warehouse-v1',JSON.stringify(data.warehouse));},data);
@@ -15,9 +16,14 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   const snapshot=await page.evaluate(()=>{const x=window.arbatDashboardSnapshot().taxes;return {air:x.air.income.toString(),expenses:x.air.expenses.toString(),vat:x.arbat.outputVat.toString(),profit:x.arbat.profitRevenue.toString(),warehouse:x.issues.some(x=>x.collection==='warehouse')}});
   assert.deepEqual(snapshot,{air:'10000000',expenses:'0',vat:'440000',profit:'3000000',warehouse:true});
   assert.match(await page.locator('#dashboardTaxes').innerText(),/Требует проверки/);assert.doesNotMatch(await page.locator('#dashboardTaxes').innerText(),/Предварительно к уплате|НДС к возмещению/);
+  const shown=async selector=>(await page.locator(selector+' strong').innerText()).replace(/\s/g,'');
+  for(const [scope,amount] of [['usn','15000,00₽'],['vat','4400,00₽'],['profit','7500,00₽']])assert.equal(await shown('#dashboardTaxes [data-tax-total='+scope+']'),amount);
+  assert.match(await page.locator('[data-tax-total=usn] [data-tax-completeness]').innerText(),/Расчёт неполный/);assert.match(await page.locator('[data-tax-total=vat] [data-tax-completeness]').innerText(),/Расчёт неполный/);
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.locator('#dashboardTaxes').screenshot({path:path.join(root,'test-results',`tax-panel-${engine.name()}-${width}.png`)});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true);const taxSize=await page.locator('#dashboardTaxes').evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth}));assert.ok(taxSize.scroll<=taxSize.client+2,JSON.stringify(taxSize));
   await page.locator('#dashboardTaxes [data-ux-tax]').click();await page.locator('#uxDetail:not([hidden])').waitFor();assert.match(await page.locator('[data-tax-issues]').innerText(),/Расход УСН не подтверждён/);assert.match(await page.locator('[data-tax-register=usn]').innerText(),/2026-01-02/);assert.match(await page.locator('[data-tax-register=profit]').innerText(),/Январский акт/);
+  for(const [scope,amount] of [['usn','15000,00₽'],['vat','4400,00₽'],['profit','7500,00₽']])assert.equal(await shown('[data-tax-calculated] [data-tax-summary='+scope+']'),amount);
+  assert.equal(await page.locator('[data-tax-calculated]').evaluate(el=>!!(el.compareDocumentPosition(document.querySelector('[data-tax-issues]'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
   assert.equal(await page.locator('#uxDetail').evaluate(el=>el.scrollWidth<=el.clientWidth+2),true);await page.screenshot({path:path.join(root,'test-results',`tax-detail-${engine.name()}-${width}.png`)});
   await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();await page.locator('#genericModal.open').waitFor();assert.equal(await page.locator('#genericEditForm [name=amount]').inputValue(),'80000');await page.locator('#genericClose').click();
   await page.locator('[data-tax-issues] [data-ux-source=payables]').first().click();await page.locator('#payablesDialog[open]').waitFor();assert.match(await page.locator('#payablesDialog').innerText(),/УПД без реквизитов НДС/);await page.keyboard.press('Escape');
@@ -56,6 +62,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await form.screenshot({path:path.join(root,'test-results',`tax-fields-${engine.name()}-${width}.png`)});
   await form.locator('button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'6000000');
+  assert.equal(await shown('[data-tax-summary=usn]'),'6000,00₽');
   assert.equal(await page.locator('[data-tax-issues] [data-ux-id=advance]').count(),0);
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
   assert.equal(await form.locator('[name=usnRecognizedAmount]').inputValue(),'60000');

@@ -141,3 +141,5 @@
 .dashboard-tax-due{flex-wrap:wrap;gap:6px 10px}
 .dashboard-tax-due strong{white-space:normal;overflow-wrap:anywhere;min-width:0;max-width:100%}
 .dashboard-tax-title{flex-wrap:wrap}
+
+.dashboard-tax-due{background:transparent}.dashboard-tax-due .dashboard-tax-status{flex-basis:100%;overflow-wrap:anywhere}
