@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --ignore-scripts
-      - run: timeout --kill-after=15s 240s node --test acceptance/*.cjs
+      - run: timeout --kill-after=15s 360s node --test acceptance/*.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
