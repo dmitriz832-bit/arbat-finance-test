@@ -71,7 +71,7 @@
   ['pnl-articles','Статьи ОПиУ',cardFor('pnlArticleForm'),'pnlArticleForm','Новая статья ОПиУ'],
   ['backups','Резервные копии',$('export')?.closest('.card')]
  ];
- for(const [, ,card,formId,name] of settingGroups){if(!card||!formId)continue;const actions=document.createElement('div');actions.className='ui-card-actions';card.querySelector('h2').after(actions);prepareForm(formId,name,actions,'Добавить');card.classList.remove('ui-source-card');}
+ for(const [, ,card,formId,name] of settingGroups){if(!card||!formId)continue;const actions=document.createElement('div');actions.className='ui-card-actions';card.querySelector('h2').after(actions);const trigger=prepareForm(formId,name,actions,'Добавить');if(trigger)documentTriggers.set(formId,trigger);card.classList.remove('ui-source-card');}
  segments(settings,settingGroups.map(g=>[g[0],g[1],[g[2]].filter(Boolean)]),'settings');
  const backupCard=$('export')?.closest('.card'),settingsNote=backupCard?.querySelector('p');if(settingsNote)settingsNote.textContent='Экспорт создаёт локальную резервную копию общей базы. Используйте её только для аварийного восстановления.';if(backupCard?.querySelector('h2'))backupCard.querySelector('h2').textContent='Резервные копии';
  const workCards=[...work.querySelectorAll(':scope > .card')];

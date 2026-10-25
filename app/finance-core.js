@@ -270,6 +270,8 @@
       'profit-expense-unconfirmed':'Подтвердите сумму и дату налогового расхода, включая прямые расходы и НЗП',
       'warehouse-tax-basis':'Сверьте входящий НДС и стоимость складской партии; складская себестоимость не заменяет налоговый регистр',
       'unsupported-tax-year':'Правила этого года требуют отдельной проверки',
+      'documentation-pending':'Документы по сделке не оформлены. Сверьте налоговую классификацию; операция сохранена в управленческом учёте',
+      'intercompany-tax-review':'Межорганизационная передача материалов требует проверки основания и налогового отражения обеих сторон; складское движение не заменяет реализацию',
       'air-vat-required':'По внесённым доходам возникает обязанность по НДС; подтвердите дату и выбранную ставку',
       'air-vat-document':'У АИР-КЛИМАТ есть документ с НДС: требуется сверка режима и отдельного расчёта НДС'
     };
@@ -442,6 +444,8 @@
     const knownAirVatDates=[...(data.realizations||[]).filter(x=>x.org===AIR&&Number(x.vatRate)>0).map(x=>date(x.date)),...(annualAdvances?.rows||[]).filter(x=>x.kind==='received'&&x.vat>0n).map(x=>x.date),effectiveFrom].filter(valid).sort();
     for(const source of data.cash||[])if(source.org===AIR&&source.type==='in'&&between(date(source.date),yearBounds)&&!no(source.usnTaxable)&&knownAirVatDates.some(d=>d<=date(source.date))&&!annualAdvances?.coveredCash.includes(String(source._id||source.id))&&!text(source.usnVatAmount))issue('usn-income-vat-unconfirmed','usn','cash',source);
     if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
+    const documentation=typeof module==='object'&&module.exports?require('./management-review-model.js'):globalThis.ArbatManagementReview;
+    for(const item of documentation?.reviewSources(data,yearBounds)||[]){const scopes=item.org===AIR?['usn']:item.org===ARBAT?['vat','profit']:['usn','vat','profit'];for(const scope of scopes)issue(item.reason==='documentation'?'documentation-pending':'intercompany-tax-review',scope,item.collection,item.source)}
     if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
     const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
     return {bounds,yearBounds,rows,issues,advanceRegister,obligationRegister,
