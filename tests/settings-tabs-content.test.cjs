@@ -20,7 +20,7 @@ test('tax cards use visible dashboard containers rather than globally hidden pag
 });
 
 test('updated UI assets have cache-busting versions and fresh finance core loads before dashboard',()=>{
- for(const asset of ['interface.css?v=15','dashboard.css?v=9','interface.js?v=15','document-ux.js?v=7','document-ux.css?v=5','business-system.js?v=15','dashboard.js?v=21','auth.js?v=9','payables-model.js?v=4','payables.js?v=6','payables.css?v=4'])assert.ok(html.includes(asset),asset);
+ for(const asset of ['interface.css?v=15','dashboard.css?v=9','interface.js?v=15','document-ux.js?v=8','document-ux.css?v=5','business-system.js?v=15','dashboard.js?v=21','auth.js?v=9','payables-model.js?v=4','payables.js?v=6','payables.css?v=4'])assert.ok(html.includes(asset),asset);
  const freshCore=html.lastIndexOf('finance-core.js?v=12'),dashboardScript=html.indexOf('dashboard.js?v=21');
  assert.ok(freshCore>=0&&freshCore<dashboardScript);
 });
