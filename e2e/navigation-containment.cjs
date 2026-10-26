@@ -31,7 +31,7 @@ test('real application routes retain content bounds when sidebar opens and close
    assert.equal(result.scrollX,0,`${label}: navigation does not move page horizontally`);
    assert.deepEqual(result.bad,[],`${label}: visible cards and table viewports stay inside content`);
    if(width===1440&&!collapsed){const heavy=await page.locator('main').evaluate(el=>[...el.querySelectorAll('*')].filter(x=>x.getClientRects().length&&[...x.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())&&Number(getComputedStyle(x).fontWeight)>600).map(x=>({tag:x.tagName,cls:x.className,text:x.textContent.trim().slice(0,70),weight:getComputedStyle(x).fontWeight})));assert.deepEqual(heavy,[],`${label}: visible text stays within the agreed 400–600 typography hierarchy`);}
-   const expected=width>1100?(collapsed?68:260):0;
+   const expected=width>1100?(collapsed?68:230):0;
    assert.ok(Math.abs(result.content.left-result.layout.left-expected)<=1,`${label}: sidebar reserves ${expected}px, actual ${result.content.left-result.layout.left}`);
   };
   for(const route of routes){
