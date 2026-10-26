@@ -28,6 +28,10 @@ jobs:
       - run: node --check app/finance-core.js
       - run: node --test tests/*.cjs
   browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
@@ -39,10 +43,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --ignore-scripts
-      - run: timeout --kill-after=15s 300s npm run test:browser
+      - run: timeout --kill-after=15s 300s node --test --test-concurrency=2 --test-shard=${{ matrix.shard }}/3 e2e/*.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: finance-browser-screenshots
-          path: test-results/*.png
+          name: finance-browser-screenshots-${{ matrix.shard }}
+          path: test-results/**/*.png
           if-no-files-found: ignore

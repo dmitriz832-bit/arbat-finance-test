@@ -28,7 +28,13 @@ test('two-month acceptance seed reconciles debt, advances and payroll payable',(
   assert.equal(rub(debt.advances),expected.clientAdvances);
   assert.equal(rub(debt.unallocated),expected.unallocatedReceipts);
   assert.equal(rub(debt.payrollPayable),expected.payrollPayable);
-  assert.deepEqual(debt.issues.map(x=>x.code),['unallocated-receipt']);
+  assert.deepEqual(debt.issues.map(x=>x.code),['unallocated-receipt','payroll-overpayment']);
+  assert.equal(rub(core.ownerDebtSnapshot(db,'АИР-КЛИМАТ').payrollPayable),28500);
+  assert.equal(rub(core.ownerDebtSnapshot(db,'АРБАТ.ГК').payrollPayable),10000);
+  const airPayroll=core.payrollReconciliation({accruals:db.labor.filter(x=>x.org==='АИР-КЛИМАТ'),payments:db.cash.filter(x=>x.org==='АИР-КЛИМАТ'),workActs:db.workActs.filter(x=>x.org==='АИР-КЛИМАТ')});
+  assert.equal(rub(airPayroll.overpaidTotal),expected.payrollOverpaid);
+  const solo=airPayroll.people.find(p=>p.personId==='person-1792056499104-ica3w');
+  assert.equal(rub(solo.gross),0);assert.equal(rub(solo.paid),10000);assert.equal(rub(solo.payable),-10000);
 });
 
 test('inactive zero-value deal does not create a false WIP warning',()=>{
