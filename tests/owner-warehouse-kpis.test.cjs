@@ -36,3 +36,9 @@ test('explicit zero issue and closed returned issue do not reserve stock; legacy
  const x=core.ownerWarehouseSnapshot(wh,{bins:new Map([['c::i',[{qty:5,cost:2}]]]),warnings:[]});
  assert.equal(x.rows[0].reserved,2);assert.equal(x.rows[0].free,3);
 });
+test('unassigned warehouse stock and shortages are not attributed to either organization',()=>{
+ const wh={places:[{id:'air',org:'АИР-КЛИМАТ'},{id:'arbat',org:'АРБАТ.ГК'},{id:'unknown'}],items:[],projectIssues:[{crewId:'missing',lines:[{itemId:'i',issued:3}]}]};
+ const fifo={bins:new Map([['air::i',[{qty:1,cost:10}]],['arbat::i',[{qty:1,cost:20}]],['unknown::i',[{qty:1,cost:30}]]]),warnings:[]};
+ const air=core.ownerWarehouseSnapshot(wh,fifo,'АИР-КЛИМАТ'),arbat=core.ownerWarehouseSnapshot(wh,fifo,'АРБАТ.ГК'),all=core.ownerWarehouseSnapshot(wh,fifo);
+ assert.equal(air.totalValue,1000n);assert.equal(arbat.totalValue,2000n);assert.equal(all.totalValue,6000n);assert.equal(air.deficitQty,0);assert.equal(arbat.deficitQty,0);assert.equal(all.deficitQty,3);
+});

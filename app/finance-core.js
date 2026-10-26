@@ -706,7 +706,7 @@
     for(const [key,lots] of fifo.bins){
       const divider=key.lastIndexOf('::');if(divider<0)continue;
       const placeId=key.slice(0,divider),itemId=key.slice(divider+2),place=places.get(placeId);
-      if(org&&place?.org&&place.org!==org)continue;
+      if(org&&place?.org!==org)continue;
       const item=(warehouse.items||[]).find(x=>String(x.id)===itemId);
       const qty=lots.reduce((v,l)=>v+Math.max(0,Number(l.qty||0)),0);
       const reserved=reservations.get(key)||0;
@@ -722,7 +722,7 @@
     for(const [key,reserved] of reservations){
       if(reserved<=0||fifo.bins.has(key))continue;
       const split=key.lastIndexOf('::'),placeId=key.slice(0,split),itemId=key.slice(split+2),place=places.get(placeId);
-      if(org&&place?.org&&place.org!==org)continue;
+      if(org&&place?.org!==org)continue;
       const item=(warehouse.items||[]).find(x=>String(x.id)===itemId);
       rows.push({placeId,itemId,name:item?.name||itemId,place:place?.name||placeId,qty:0,reserved,free:0,deficit:reserved,value:0n,unpriced:false});
       reservedQty+=reserved;deficitQty+=reserved;
