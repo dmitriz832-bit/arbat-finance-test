@@ -1,0 +1,35 @@
+/* Exact native financial matrices share the report-table-system sticky column. */
+#reports.ra-analysis{min-width:0;max-width:100%}
+#reports.ra-analysis>.ux-report-sources,#reports.ra-analysis .ux-report-period{display:none!important}
+#reports .ra-workspace{background:var(--ft-surface,#fff);border:1px solid var(--ft-primary-soft,#e1e8ed);padding:16px;border-radius:10px;margin:12px 0;min-width:0}
+#reports .ra-filter-grid{display:grid;grid-template-columns:repeat(3,minmax(130px,1fr));gap:12px}
+#reports .ra-filter-grid label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px;color:var(--ft-muted,#526877)}
+#reports .ra-filter-grid :is(input,select){width:100%;min-width:0;box-sizing:border-box;font-size:14px;margin:0}
+#reports .ra-switches{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px}
+#reports .ra-switches label{display:flex;align-items:center;gap:6px;font-size:13px;margin:0;white-space:normal}
+#reports .ra-switches input[type=checkbox]{width:16px!important;height:16px!important;min-width:16px!important;margin:0!important;accent-color:var(--ft-heading,#1b4f6e)}
+#reports #raCount{font-size:12px;color:var(--ft-muted,#526877);margin-left:auto}
+#reports #raError{color:var(--ft-danger,#b42318);font-size:14px;margin-bottom:0}
+#reports #reportKpis .stat{font-size:clamp(18px,2vw,28px);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#reports .ra-matrix-host{max-width:100%;min-width:0}
+#reports .ra-value{display:inline-flex;flex-direction:column;align-items:flex-end;gap:1px;text-align:right}
+#reports .ra-share{color:var(--ft-muted,#526877);font-size:11px;font-weight:400}
+#reports .ra-total{--rt-row-surface:var(--ft-primary-pale,#f0f5f7);font-weight:600}
+#reports .ra-row-label{display:inline;overflow-wrap:anywhere}
+#reports .ra-row-order{display:inline-flex;gap:2px;vertical-align:middle;margin-left:5px}
+#reports .ra-row-order button{font:inherit!important;line-height:18px!important;min-width:20px!important;min-height:20px!important;padding:0 3px!important;border:0!important;background:transparent!important;color:var(--ft-muted,#526877)!important;opacity:.65}
+#reports .ra-row-order button:focus-visible,#reports tr:hover .ra-row-order button{opacity:1}
+#reports .ra-source-panel{padding:18px;border:1px solid var(--ft-primary-soft,#e1e8ed);background:var(--ft-surface,#fff);border-radius:10px;margin-top:16px;min-width:0;scroll-margin-top:80px}
+#reports .ra-source-panel[hidden],#reports .ra-empty[hidden]{display:none!important}
+#reports .ra-source-panel h3{margin:14px 0 5px;font-size:20px}
+#reports #raSourceScope,#reports .ra-explanation{font-size:13px;color:var(--ft-muted,#526877);overflow-wrap:anywhere}
+#reports .ra-source-summary{display:flex;align-items:baseline;flex-wrap:wrap;gap:12px;margin-top:14px}
+#reports #raSourceTotal{font-size:24px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#reports #raSourceCount{font-size:12px;color:var(--ft-muted,#526877)}
+#reports .ra-source-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,auto);gap:14px;padding:12px 0;border-top:1px solid var(--ft-primary-soft,#e1e8ed);align-items:start}
+#reports .ra-source-row>strong{font-size:14px;text-align:right;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+#reports .ra-source-row small{display:block;font-size:12px;color:var(--ft-muted,#526877);margin-top:4px;overflow-wrap:anywhere}
+#reports .ra-source-row p{font-size:12px;margin:5px 0 0;color:var(--ft-muted,#526877)}
+#reports .ra-source-row button{max-width:100%;white-space:normal;text-align:left;overflow-wrap:anywhere}
+#reports .ra-empty{padding:16px;color:var(--ft-muted,#526877);font-size:14px;background:var(--ft-surface,#fff);border-radius:8px}
+@media(max-width:700px){#reports .ra-workspace{padding:12px}#reports .ra-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}#reports .ra-switches{gap:10px}#reports .ra-switches label{font-size:12px}#reports #raCount{margin-left:0;width:100%}#reports .ra-source-panel{padding:12px}#reports .ra-source-row{grid-template-columns:minmax(0,1fr);gap:7px}#reports .ra-source-row>strong{text-align:left}#reports #raSourceTotal{font-size:21px}#reports .ra-row-order{display:flex;margin:4px 0 0}}

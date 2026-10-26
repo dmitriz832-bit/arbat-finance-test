@@ -5,7 +5,7 @@ const {chromium,webkit}=require('playwright'),{fixture,specs}=require('../tests/
 const choose=(p,selector,value)=>p.locator(selector).selectOption(value,{force:true});
 const navigate=(p,route)=>p.evaluate(route=>window.arbatNavigate(route),route);
 async function openForm(p,id){await p.evaluate(id=>window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:id}})),id);await p.locator('#'+id).waitFor({state:'visible'})}
-async function dashboardDebt(p,amount){await navigate(p,'overview');await p.waitForFunction(amount=>{const value=document.querySelector('#supplierObligations .ux-value')?.textContent||'';return Number(value.replace(/[^\d,.-]/g,'').replace(',','.'))===amount},amount);assert.equal(await p.locator('#supplierObligations').isVisible(),true)}
+async function dashboardDebt(p,amount){await navigate(p,'overview');await p.waitForFunction(amount=>{const value=document.querySelector('#supplierObligations [data-pay-dashboard]')?.textContent||'';return Number(value.replace(/[^\d,.-]/g,'').replace(',','.'))===amount},amount);assert.equal(await p.locator('#supplierObligations').isVisible(),true)}
 async function closePay(p,expected=false){const d=p.locator('#payablesDialog');if(expected)await d.waitFor({state:'visible'});if(await d.isVisible()){await d.locator('[data-pay-close]').click();await d.waitFor({state:'hidden'})}}
 async function saveForm(p,id){const invalid=await p.locator('#'+id).evaluate(form=>[...form.elements].filter(f=>f.willValidate&&!f.checkValidity()).map(f=>({name:f.name,value:f.value})));assert.deepEqual(invalid,[],id+' required fields');await p.locator('[data-sheet-save]').click()}
 async function controls(p,s,expected,period='2026-10'){

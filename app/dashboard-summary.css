@@ -1,2 +1,107 @@
-/* Period cash summary uses the same card, typography and status roles as the charts. */
-#overview .dashboard-period-summary{margin:0 0 20px!important;min-width:0}.summary-period-grid,.summary-cash-bridge{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.summary-period-grid{padding:18px 0}.summary-period-card{display:flex;flex-direction:column;gap:8px;min-width:0}.summary-period-card small{color:var(--ft-muted,#787c80);font-size:14px;line-height:20px}.summary-period-card strong{color:var(--ft-text,#333);font-size:25px;font-weight:500;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.summary-period-card span{color:var(--ft-muted,#787c80);font-size:13px;line-height:20px}.summary-period-card.good strong{color:var(--ft-success,#179b34)}.summary-period-card.bad strong{color:var(--ft-danger,#d85b53)}.summary-cash-bridge{margin-top:16px;padding-top:18px;border-top:1px solid var(--ft-border,#dadde7)}.summary-cash-bridge strong{font-size:20px}.summary-cash-issues,.summary-cash-articles{margin-top:16px;padding-top:12px;border-top:1px solid var(--ft-border,#dadde7)}.summary-cash-issues summary,.summary-cash-articles summary{cursor:pointer;color:var(--ft-text,#333);font-size:14px;font-weight:500;line-height:20px}.summary-cash-issues li{color:var(--ft-muted,#787c80);font-size:13px;line-height:20px}.summary-cash-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;margin-top:12px}.summary-cash-scroll table{width:100%;border-collapse:collapse;font-size:14px}.summary-cash-scroll th,.summary-cash-scroll td{padding:10px 12px;border-bottom:1px solid var(--ft-border,#dadde7);text-align:right;white-space:nowrap;font-weight:400}.summary-cash-scroll th:first-child,.summary-cash-scroll td:first-child{min-width:140px;text-align:left;white-space:normal}.summary-cash-scroll th{color:var(--ft-muted,#787c80)}.summary-cash-scroll tfoot{background:var(--ft-chart-pane,#f5f7fa)}.summary-cash-scroll tfoot th{color:var(--ft-text,#333);font-weight:500}@media(max-width:700px){.summary-period-grid{grid-template-columns:1fr;gap:20px}.summary-period-card strong{font-size:24px}.summary-cash-bridge{grid-template-columns:1fr;gap:18px}.summary-cash-bridge .summary-period-card{display:grid;grid-template-columns:1fr auto;gap:6px}.summary-cash-bridge .summary-period-card span{grid-column:1/-1}.summary-cash-bridge strong{font-size:18px}.summary-cash-issues summary,.summary-cash-articles summary{min-height:44px;padding:8px 0}}
+/* The owner workspace keeps period cash, earned result and today's balance distinct. */
+#overview #dashboardVisuals.dashboard-decision-workspace{--decision-gap:16px}
+#overview #dashboardVisuals .dashboard-command{margin:0 0 10px!important;padding:0!important;gap:12px}
+#overview #dashboardVisuals .dashboard-command h2{font-size:16px!important;color:var(--ft-text)!important}
+#overview #dashboardVisuals .dashboard-command p{margin:4px 0 0!important;line-height:17px!important;font-size:12px!important}
+#overview #dashboardVisuals .dashboard-command-meta{gap:4px;min-width:145px}
+#overview #dashboardVisuals .ux-period-bar{margin-bottom:12px!important}
+#overview #dashboardVisuals .dashboard-priority-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--decision-gap);align-items:stretch;margin-bottom:var(--decision-gap)}
+#overview #dashboardVisuals #dashboardKpis,#overview #dashboardVisuals #dashboardPriorityKpis{display:contents!important}
+#overview #dashboardVisuals .dashboard-kpi{min-width:0;min-height:0!important;margin:0!important;padding:16px 18px!important;background:var(--ft-surface)!important;border:1px solid var(--ft-border)!important;border-radius:var(--ft-radius-card)!important;box-shadow:none!important}
+#overview #dashboardVisuals .dashboard-kpi-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-height:20px;line-height:20px}
+#overview #dashboardVisuals .dashboard-kpi-top>span{font-size:15px!important;font-weight:500!important;color:var(--ft-text)!important}
+#overview #dashboardVisuals .dashboard-kpi-top>small{font-size:12px;white-space:nowrap;color:var(--ft-muted)}
+#overview #dashboardVisuals .dashboard-kpi>.ux-value{display:block;max-width:100%;min-height:0!important;margin:8px 0!important;padding:0!important;line-height:1.2!important;font-size:28px!important;font-variant-numeric:tabular-nums;white-space:normal;overflow-wrap:anywhere;text-align:left;color:var(--ft-text)!important}
+#overview #dashboardVisuals .dashboard-kpi.bad>.ux-value,#overview #dashboardVisuals .dashboard-kpi>.ux-value.dashboard-negative{color:var(--ft-danger)!important}
+#overview #dashboardVisuals .dashboard-kpi>.dashboard-comparison{display:block;line-height:17px!important;font-size:12px!important;color:var(--ft-muted)!important}
+.dashboard-metric-context{max-width:300px;margin:14px 0 0;color:var(--ft-muted);font-size:13px;line-height:19px}
+.dashboard-cash-totals{display:grid;gap:5px;margin:12px 0 0;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}
+.dashboard-cash-totals>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.dashboard-cash-totals dt{color:var(--ft-muted);min-width:0}
+.dashboard-cash-totals dd{margin:0;text-align:right;overflow-wrap:anywhere;min-width:0;color:var(--ft-text)}
+#overview #dashboardVisuals .dashboard-cash-scope,#overview #dashboardVisuals .dashboard-result-status{display:block;margin-top:8px;font-size:11px!important;line-height:16px!important;color:var(--ft-muted)!important}
+#overview #dashboardVisuals .summary-cash-reconciliation,#overview #dashboardVisuals .summary-cash-articles{margin:6px 0 0;padding:0;border:0}
+#overview #dashboardVisuals .summary-cash-reconciliation>summary,#overview #dashboardVisuals .summary-cash-articles>summary{cursor:pointer;min-height:24px;padding:3px 0;color:var(--ft-primary);font-size:12px;line-height:18px}
+.summary-cash-bridge-values{display:grid;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--ft-border)}
+.summary-period-card{display:grid;gap:3px;min-width:0}
+.summary-period-card small,.summary-period-card span{color:var(--ft-muted);font-size:12px;line-height:17px}
+.summary-period-card strong{color:var(--ft-text);font-size:16px;line-height:21px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.summary-cash-issues{font-size:12px;color:var(--ft-muted);margin-top:10px;line-height:18px}
+.summary-cash-issues summary{cursor:pointer}
+.summary-cash-scroll,.dashboard-financial-scroll{max-width:100%;overflow:auto;overscroll-behavior-x:contain}
+.summary-cash-scroll table{width:100%;border-collapse:collapse;font-size:12px}
+.summary-cash-scroll th,.summary-cash-scroll td{padding:8px 10px;border-bottom:1px solid var(--ft-border);text-align:right;white-space:nowrap;font-weight:400}
+.summary-cash-scroll th:first-child,.summary-cash-scroll td:first-child{min-width:130px;max-width:180px;text-align:left;white-space:normal}
+.summary-cash-scroll tfoot th{font-weight:500}
+#overview #dashboardVisuals .dashboard-decision-main{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:var(--decision-gap);align-items:start;margin-bottom:18px}
+#overview #dashboardVisuals .dashboard-decision-main>.dashboard-panel{padding:16px 18px!important;margin:0!important;min-width:0;container-type:normal}
+#overview #dashboardVisuals .dashboard-panel-head{gap:8px;margin-bottom:10px!important;align-items:center}
+#overview #dashboardVisuals .dashboard-panel-head h2{font-size:17px!important;line-height:22px!important;margin:0!important}
+#overview #dashboardVisuals .dashboard-subtitle{display:block;padding:0;margin-top:3px;line-height:17px;font-size:12px;color:var(--ft-muted)}
+#overview #dashboardVisuals .dashboard-panel-head .dashboard-link{min-height:24px!important;line-height:20px!important;font-size:12px!important}
+#overview #dashboardVisuals .dashboard-chart-switch{display:flex;gap:4px;flex-wrap:wrap}
+#overview #dashboardVisuals .dashboard-chart-switch button{min-height:30px;padding:4px 9px;font:inherit;font-size:12px;line-height:20px;border:1px solid var(--ft-border);border-radius:var(--ft-radius-control);background:var(--ft-surface);box-shadow:none;color:var(--ft-muted)}
+#overview #dashboardVisuals .dashboard-chart-switch button[aria-pressed=true]{border-color:var(--ft-primary);color:var(--ft-primary);background:var(--ft-label-bg)}
+#overview #dashboardVisuals .dashboard-flow-panel>.ux-help{margin:6px 0 4px;font-size:11px;line-height:16px}
+#overview #dashboardVisuals .dashboard-legend{margin:4px 0 5px!important;gap:14px;flex-wrap:wrap;font-size:12px!important}
+#overview #dashboardVisuals .dashboard-chart{min-height:0;height:auto;min-width:0}
+#overview #dashboardVisuals .ft-cash-chart{display:block;width:100%;height:210px;max-height:244px}
+#overview #dashboardVisuals .ft-chart-data{margin-top:2px;font-size:12px}
+#overview #dashboardVisuals .ft-chart-data summary{min-height:24px;padding:3px 0;font-size:12px}
+#overview #dashboardVisuals #dashboardForecast{border-bottom:1px solid var(--ft-border);margin-bottom:8px;padding-bottom:8px}
+.dashboard-forecast-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dashboard-forecast-values>div{min-width:0}
+.dashboard-forecast-values small{display:block;color:var(--ft-muted);font-size:11px;line-height:16px}
+#overview #dashboardVisuals .dashboard-forecast-values .ux-value{margin:4px 0 0!important;min-height:24px!important;padding:0!important;font-size:16px!important;line-height:21px!important;text-align:left;white-space:normal;overflow-wrap:anywhere;color:var(--ft-text)!important}
+.dashboard-forecast-note{margin:7px 0 0;color:var(--ft-muted);font-size:11px;line-height:16px}
+#overview #dashboardVisuals .dashboard-attention-list{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+#overview #dashboardVisuals .dashboard-attention{display:grid;grid-template-columns:6px minmax(0,1fr) 10px;gap:8px;min-height:0!important;padding:8px 0!important;border:0!important;border-bottom:1px solid var(--ft-border)!important;border-radius:0!important;background:var(--ft-surface)!important}
+#overview #dashboardVisuals .dashboard-attention strong{font-size:13px;line-height:18px}
+#overview #dashboardVisuals .dashboard-attention small{font-size:11px;line-height:16px}
+#overview #dashboardVisuals .dashboard-attention>i{width:6px;height:6px;margin-top:6px}
+.dashboard-other-risks{margin-top:6px;min-width:0}
+.dashboard-other-risks>summary{cursor:pointer;padding:4px 0;color:var(--ft-primary);font-size:12px;line-height:20px}
+#overview #dashboardVisuals .dashboard-all-good{min-height:0;padding:10px!important;gap:5px}
+#overview #dashboardVisuals .dashboard-all-good>span{width:24px;height:24px;font-size:14px}
+#overview #dashboardVisuals .dashboard-all-good>small{font-size:11px;line-height:16px}
+.dashboard-detail-navigation{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--ft-border);overflow:auto}
+#overview #dashboardVisuals .dashboard-detail-navigation button{flex:0 0 auto;min-height:42px;padding:8px 18px;font:inherit;font-size:14px;line-height:22px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:var(--ft-muted)}
+#overview #dashboardVisuals .dashboard-detail-navigation button[aria-selected=true]{border-bottom-color:var(--ft-primary);color:var(--ft-primary);font-weight:500}
+#overview #dashboardVisuals .dashboard-layout,#overview #dashboardVisuals .dashboard-layout.is-packed{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-rows:auto!important;grid-auto-flow:row!important;gap:var(--decision-gap)!important;align-items:start}
+#overview #dashboardVisuals .dashboard-layout>.dashboard-panel{grid-row:auto!important;grid-column:auto!important;height:auto!important;margin:0!important;padding:18px!important}
+#overview #dashboardVisuals .dashboard-layout>.dashboard-panel[hidden]{display:none!important}
+#overview #dashboardVisuals .dashboard-layout>.dashboard-finance-panel,#overview #dashboardVisuals .dashboard-layout>.dashboard-direction-panel,#overview #dashboardVisuals .dashboard-layout>.dashboard-project-panel,#overview #dashboardVisuals .dashboard-layout>.dashboard-tax-panel{grid-column:1/-1!important}
+.dashboard-comparison-scope{margin:0 0 10px;font-size:12px;color:var(--ft-muted);line-height:18px}
+.dashboard-financial-comparison{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.dashboard-financial-comparison th,.dashboard-financial-comparison td{padding:10px 12px;border-bottom:1px solid var(--ft-border);font-weight:400;text-align:right;min-width:130px;white-space:nowrap}
+.dashboard-financial-comparison th:first-child{position:sticky;left:0;z-index:1;min-width:150px;max-width:230px;background:var(--ft-surface);text-align:left;white-space:normal;box-shadow:1px 0 var(--ft-border)}
+.dashboard-financial-comparison thead th{color:var(--ft-muted);font-size:12px}
+#overview #dashboardVisuals .dashboard-financial-comparison .ux-value{font-size:14px!important;line-height:20px!important;padding:0!important;margin:0!important;min-height:24px!important;text-align:right;white-space:nowrap}
+.dashboard-financial-comparison td small{display:block;color:var(--ft-muted);font-size:11px;line-height:17px}
+.dashboard-plan-sources{margin-top:12px;font-size:13px;color:var(--ft-muted)}
+.dashboard-plan-sources>summary{cursor:pointer;padding:5px 0;color:var(--ft-primary)}
+.dashboard-plan-sources p{margin:7px 0;line-height:19px}
+.dashboard-plan-sources p>small{display:block;font-size:12px}
+#overview #dashboardVisuals .dashboard-direction-panel{overflow-x:auto}
+#overview #dashboardVisuals.dashboard-calculation-error .dashboard-priority-grid,#overview #dashboardVisuals.dashboard-calculation-error .dashboard-decision-main,#overview #dashboardVisuals.dashboard-calculation-error .dashboard-detail-navigation{display:none!important}
+#overview #dashboardVisuals.dashboard-calculation-error .dashboard-tax-panel[hidden]{display:block!important}
+@media(max-width:1190px){#overview #dashboardVisuals .dashboard-kpi{padding:14px!important}#overview #dashboardVisuals .dashboard-kpi>.ux-value{font-size:25px!important}#overview #dashboardVisuals .dashboard-kpi-top{align-items:flex-start;flex-wrap:wrap;gap:0 8px}#overview #dashboardVisuals .dashboard-kpi-top>span{font-size:14px!important}.dashboard-forecast-values{grid-template-columns:1fr}.dashboard-forecast-values>div{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.dashboard-forecast-values small{font-size:11px}.dashboard-forecast-values{gap:4px}#overview #dashboardVisuals .dashboard-forecast-values .ux-value{margin:0!important;font-size:14px!important}}
+@media(max-width:999px){#overview #dashboardVisuals .dashboard-decision-main{grid-template-columns:minmax(0,1fr)}#overview #dashboardVisuals .dashboard-priority-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#overview #dashboardVisuals #dashboardPeriodSummary{grid-column:1/-1!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px}#overview #dashboardVisuals #dashboardPeriodSummary>.dashboard-kpi-top,#overview #dashboardVisuals #dashboardPeriodSummary>.summary-cash-reconciliation,#overview #dashboardVisuals #dashboardPeriodSummary>.summary-cash-articles{grid-column:1/-1}#overview #dashboardVisuals #dashboardPeriodSummary>.dashboard-cash-totals{grid-column:2;grid-row:2/4;margin:4px 0}#overview #dashboardVisuals #dashboardPeriodSummary>.dashboard-cash-scope{margin-top:0}.dashboard-forecast-values{grid-template-columns:repeat(3,minmax(0,1fr))}.dashboard-forecast-values>div{display:block}#overview #dashboardVisuals .dashboard-forecast-values .ux-value{margin-top:4px!important}#overview #dashboardVisuals .dashboard-layout{grid-template-columns:minmax(0,1fr)!important}#overview #dashboardVisuals .dashboard-layout>.dashboard-panel{grid-column:1!important}}
+@media(max-width:600px){#overview #dashboardVisuals .dashboard-command{display:block!important}#overview #dashboardVisuals .dashboard-command-meta{display:none}#overview #dashboardVisuals .dashboard-priority-grid{gap:10px}#overview #dashboardVisuals .dashboard-kpi{padding:12px!important}#overview #dashboardVisuals .dashboard-kpi-top>small{display:none}#overview #dashboardVisuals .dashboard-kpi-top>span{font-size:13px!important;line-height:18px!important}#overview #dashboardVisuals .dashboard-kpi>.ux-value{font-size:22px!important;margin:8px 0!important}.dashboard-metric-context{font-size:11px;line-height:16px;margin:10px 0 0}.dashboard-cash-totals{font-size:11px;line-height:16px}.dashboard-cash-totals>div{display:block}.dashboard-cash-totals dd{text-align:left;margin-top:2px}#overview #dashboardVisuals .dashboard-kpi>.dashboard-comparison{font-size:11px!important;line-height:16px!important}#overview #dashboardVisuals #dashboardPeriodSummary{gap:0 12px}#overview #dashboardVisuals #dashboardPeriodSummary>.dashboard-cash-totals>div{display:flex;gap:5px}#overview #dashboardVisuals .dashboard-decision-main>.dashboard-panel{padding:14px!important}#overview #dashboardVisuals .dashboard-panel-head h2{font-size:16px!important}#overview #dashboardVisuals .dashboard-flow-panel .dashboard-panel-head{align-items:flex-start}#overview #dashboardVisuals .ft-cash-chart{height:210px}#overview #dashboardVisuals .dashboard-chart-switch{gap:4px}#overview #dashboardVisuals .dashboard-chart-switch button{min-height:32px;padding:4px 8px;font-size:11px}#overview #dashboardVisuals .dashboard-legend{gap:9px;font-size:11px!important}#overview #dashboardVisuals .dashboard-forecast-values .ux-value{font-size:14px!important}#overview #dashboardVisuals .dashboard-detail-navigation button{padding:8px 13px;font-size:13px}.dashboard-financial-comparison th:first-child{min-width:125px;max-width:160px}.dashboard-financial-comparison th,.dashboard-financial-comparison td{padding:9px;min-width:110px}}
+
+#overview #dashboardVisuals .dashboard-wallet-order{margin-top:10px!important;font-size:12px!important;min-height:24px!important}
+#overview #dashboardVisuals .dashboard-supplier-status{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px}
+#overview #dashboardVisuals .dashboard-supplier-status .dashboard-link{font-size:11px!important;line-height:18px!important;min-height:20px!important}
+
+/* Source disclosures share a compact line; opening either reveals its full, exact detail. */
+#overview #dashboardVisuals .dashboard-cash-controls{display:flex;flex-wrap:wrap;gap:0 14px;margin-top:4px;min-width:0}
+#overview #dashboardVisuals .dashboard-cash-controls>details{min-width:0;margin:0!important;padding:0!important}
+#overview #dashboardVisuals .dashboard-cash-controls>details[open]{flex-basis:100%}
+#overview #dashboardVisuals .dashboard-cash-controls>details>summary{font-size:11px;line-height:17px;min-height:20px;padding:1px 0}
+#overview #dashboardVisuals .dashboard-kpi>.ux-value{margin:6px 0!important}
+#overview #dashboardVisuals .dashboard-kpi>.dashboard-cash-totals{margin-top:8px;gap:3px;line-height:17px}
+#overview #dashboardVisuals .dashboard-kpi>.dashboard-cash-scope{margin-top:4px;font-size:10px!important;line-height:14px!important}
+#overview #dashboardVisuals .dashboard-kpi{padding:14px 16px!important}
+#overview #dashboardVisuals #dashboardCashFlow>.ft-cash-chart{height:210px!important}
+@media(max-width:999px){#overview #dashboardVisuals #dashboardPeriodSummary>.dashboard-cash-controls{grid-column:1/-1}}
+@media(max-width:600px){#overview #dashboardVisuals .dashboard-kpi{padding:12px!important}#overview #dashboardVisuals .dashboard-cash-controls{margin-top:5px}}

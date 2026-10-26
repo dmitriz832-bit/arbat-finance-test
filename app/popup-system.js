@@ -2,7 +2,7 @@
 (()=>{
  'use strict';
  if(window.ArbatPopup)return;
- const queue=[];let active=null,sequence=0,approvedAction=false,region=null;
+ const queue=[];let active=null,sequence=0,approvedAction=false,region=null;const toastStates=new WeakMap();
  const element=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=String(text);return node};
  const restore=node=>{if(node?.isConnected&&!node.disabled)node.focus?.({preventScroll:true})};
  function request(kind,message,options={}){
@@ -58,12 +58,16 @@
  function toast(message,options={}){
   if(!document.body){document.addEventListener('DOMContentLoaded',()=>toast(message,options),{once:true});return}
   if(!region){region=element('section','ft-toast-region');region.setAttribute('aria-label','Уведомления');if(typeof region.showPopover==='function')region.setAttribute('popover','manual');document.body.append(region)}
-  placeToast();const ownerRegion=region;
+  placeToast();const ownerRegion=region,text=String(message??''),kind=String(options.kind||'');
+  const repeated=[...region.children].find(node=>{const state=toastStates.get(node);return state?.text===text&&state?.kind===kind});
+  if(repeated){toastStates.get(repeated).refresh(options);if(region.hasAttribute('popover')&&!region.matches(':popover-open'))region.showPopover();return}
   const node=element('article','ft-toast'+(options.kind?' ft-toast-'+options.kind:''));node.setAttribute('role',options.kind==='error'?'alert':'status');
   const content=element('div','ft-toast-message',String(message??'')),close=element('button','ft-toast-close','×');close.type='button';close.setAttribute('aria-label','Закрыть уведомление');node.append(content,close);region.append(node);
   if(region.hasAttribute('popover')&&!region.matches(':popover-open'))region.showPopover();
   let timeout=null;const remove=()=>{clearTimeout(timeout);node.remove();if(!ownerRegion.children.length&&ownerRegion.hasAttribute('popover')&&ownerRegion.matches(':popover-open'))ownerRegion.hidePopover()};close.onclick=remove;
-  const duration=options.duration===0?0:Number(options.duration)||7500;if(duration)timeout=setTimeout(remove,duration);
+  let duration=options.duration===0?0:Number(options.duration)||7500;
+  const refresh=next=>{clearTimeout(timeout);if(next?.duration!==undefined)duration=next.duration===0?0:Number(next.duration)||7500;if(duration&&!node.contains(document.activeElement))timeout=setTimeout(remove,duration)};
+  toastStates.set(node,{text,kind,refresh});refresh();
   node.addEventListener('mouseenter',()=>clearTimeout(timeout));node.addEventListener('focusin',()=>clearTimeout(timeout));node.addEventListener('mouseleave',()=>{if(duration&&!node.contains(document.activeElement)){clearTimeout(timeout);timeout=setTimeout(remove,duration)}});node.addEventListener('focusout',()=>{if(duration){clearTimeout(timeout);timeout=setTimeout(remove,duration)}});
   // Messages are never hidden by a rapid burst: keep the latest five visible.
   while(region.children.length>5)region.firstElementChild.remove();

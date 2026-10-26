@@ -29,7 +29,7 @@ test('all modal families share Fintablo surfaces, readable labels and unchanged 
   await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data.finance));localStorage.setItem('arbat-warehouse-v1',JSON.stringify(data.warehouse))},fixture());await page.goto(origin+'/app/');await page.addStyleTag({content:modalStyles});await page.evaluate(()=>document.body.classList.add('ft-app'));
   const baseline=await page.evaluate(()=>localStorage.getItem('arbat-finance-demo-live'));
   const cases=[
-   ['deal','#dealModal>.modal',()=>page.evaluate(()=>showDealModal('modal-project')),'#cancelDealEdit'],
+   ['deal','#dealModal>.modal',async()=>{await page.evaluate(()=>showDealModal('modal-project'));await page.getByRole('tab',{name:'Реквизиты',exact:true}).click()},'#cancelDealEdit'],
    ['generic','#genericModal>.modal',()=>page.evaluate(()=>openRecord('realizations','modal-sale')),'#genericCancel'],
    ['wallet','#walletModal>.modal',()=>page.evaluate(()=>showWallet('modal-wallet')),'#walletEditCancel'],
    ['calendar','#calendarModal>.modal',()=>page.evaluate(()=>editCalendar('modal-plan')),'#calendarModalCancel'],
