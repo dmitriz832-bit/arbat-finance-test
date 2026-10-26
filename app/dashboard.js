@@ -257,5 +257,5 @@
     render();return result;
   };
   document.getElementById('orgFilter')?.addEventListener('change',()=>requestAnimationFrame(render));render();
-  if(typeof ResizeObserver==='function'){let width=0;const target=document.getElementById('dashboardCashFlow');if(target)new ResizeObserver(entries=>{const next=Math.round(entries[0].contentRect.width);if(next&&next!==width&&displayedCashFlow){width=next;cashChart({flow:displayedCashFlow})}}).observe(target)}
+  if(typeof ResizeObserver==='function'){let width=0,frame=0;const target=document.getElementById('dashboardCashFlow');if(target)new ResizeObserver(entries=>{const next=Math.round(entries[0].contentRect.width);if(next&&next!==width){width=next;if(!frame)frame=requestAnimationFrame(()=>{frame=0;if(displayedCashFlow)cashChart({flow:displayedCashFlow})})}}).observe(target)}
 })();
