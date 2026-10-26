@@ -1,1 +1,97 @@
-body.ab-ready:not(.ab-profile-only) .corporate-cash-ledger{order:0;min-height:310px}body.ab-ready:not(.ab-profile-only) .corporate-ledger-tools{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:-2px 0 14px;flex-wrap:wrap}body.ab-ready:not(.ab-profile-only) .corporate-ledger-tools label{display:flex;flex-direction:column;font-size:12px;font-weight:500;color:var(--ft-primary);gap:6px;flex:1;min-width:220px;max-width:540px}body.ab-ready:not(.ab-profile-only) .corporate-ledger-tools input{width:100%;background:var(--ft-primary-pale)!important}body.ab-ready:not(.ab-profile-only) .corporate-ledger-count{color:var(--ft-primary);font-size:12px;white-space:nowrap}body.ab-ready:not(.ab-profile-only) #cashTable tbody tr[hidden]{display:none!important}
+/* DDS controls and analytics share one query; the original journal remains the source surface. */
+body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-legacy-toolbar{display:none!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) .corporate-cash-ledger{order:0;min-width:0;min-height:310px}
+body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace{margin-bottom:22px;min-width:0;color:var(--ft-heading)}
+.cash-workspace-heading,.cash-workspace-actions,.cash-workspace-query,.cash-workspace-filterline,.cash-workspace-result,.cash-workspace-charthead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cash-workspace-heading{align-items:flex-start;margin-bottom:18px}.cash-workspace-heading h2{margin:0 0 4px!important}.cash-workspace-heading p{font-size:12px;line-height:1.5;margin:0;color:var(--ft-muted)}
+.cash-workspace-actions{justify-content:flex-end;gap:8px}.cash-workspace-actions button{white-space:nowrap}
+.cash-workspace-query{align-items:end;justify-content:flex-start;margin-bottom:12px}
+.cash-workspace label{display:flex;flex-direction:column;gap:5px;color:var(--ft-muted);font-size:12px;min-width:0}
+.cash-workspace-query>label{flex:0 1 155px}.cash-workspace-query>.cash-workspace-search{flex:1 1 260px}
+.cash-workspace :is(input,select){width:100%;min-width:0;max-width:100%;font-size:14px!important}
+.cash-workspace [hidden],.cash-workspace-empty[hidden]{display:none!important}
+.cash-workspace-filterline{align-items:center;justify-content:flex-start;gap:10px;margin-bottom:10px}
+.cash-workspace-types{display:flex;gap:3px;flex-wrap:wrap;padding:3px;background:var(--ft-primary-pale);border-radius:var(--ft-radius-control)}
+body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace-types>button{font-size:12px!important;min-height:34px!important;padding:6px 11px!important;border:0!important;background:transparent!important;color:var(--ft-muted)!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace-types>button.active{background:var(--ft-surface,#fff)!important;color:var(--ft-primary)!important;box-shadow:0 1px 4px #00000012!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspaceReset{min-height:34px!important;font-size:12px!important;padding:6px 10px!important;border-color:transparent!important;color:var(--ft-muted)!important;margin-left:auto}
+.cash-workspace-more{position:relative}.cash-workspace-more>summary{font-size:13px;cursor:pointer;padding:8px;color:var(--ft-primary);list-style:none}
+.cash-workspace-more[open]{flex-basis:100%;order:3}.cash-workspace-more[open]>summary{padding-left:0}.cash-workspace-dimensions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px 0}
+.cash-workspace-result{justify-content:flex-start;min-height:26px;margin:0 0 8px;color:var(--ft-muted);font-size:12px}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspaceDay{min-height:28px!important;font-size:12px!important;padding:3px 9px!important}
+.cash-workspace-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:17px}
+.cash-workspace-total{border:1px solid var(--ft-border,var(--ft-primary-soft));border-radius:var(--ft-radius-control);background:var(--ft-surface,#fff);padding:12px 14px;min-width:0}
+.cash-workspace-total>span{display:block;font-size:12px;color:var(--ft-muted);margin-bottom:5px}.cash-workspace-total>strong{display:block;font-size:clamp(16px,1.5vw,23px);font-weight:600;line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.cash-workspace-total>small{display:block;color:var(--ft-muted);font-size:11px;margin-top:5px}
+.cash-total-income>strong,.cash-series-in{color:var(--ft-success,#159b75)}.cash-total-outgoing>strong,.cash-series-out{color:var(--ft-danger,#d45c64)}.cash-total-net>strong{color:var(--ft-heading)}.cash-total-transfers>strong,.cash-series-transfer{color:var(--ft-muted)}
+.cash-workspace-analytics{border-bottom:1px solid var(--ft-border,var(--ft-primary-soft));padding:0 0 14px}.cash-workspace-charthead{margin-bottom:8px}.cash-workspace-charthead h3{font-size:14px;font-weight:600;margin:0}.cash-workspace-charthead label{flex-direction:row;align-items:center;gap:8px}.cash-workspace-charthead select{width:auto;max-width:210px;font-size:12px!important;min-height:34px!important;padding:5px 26px 5px 8px!important}
+.cash-workspace-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;margin:6px 0 9px}.cash-workspace-legend span:before{content:'';display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;background:currentColor}
+.cash-workspace-chart{max-height:190px;overflow:auto;padding-right:4px;scrollbar-width:thin}
+body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace-group{display:grid!important;grid-template-columns:minmax(100px,22%) minmax(60px,1fr) minmax(110px,auto);gap:12px;align-items:center;width:100%;min-height:43px!important;padding:7px 4px!important;text-align:left!important;border:0!important;border-radius:0!important;background:transparent!important;border-bottom:1px solid var(--ft-border,var(--ft-primary-soft))!important;color:var(--ft-heading)!important;font-size:12px!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace-group:hover{background:var(--ft-primary-pale)!important}.cash-workspace-group-label{overflow-wrap:anywhere;line-height:1.3}.cash-workspace-group-label small{display:block;color:var(--ft-muted);font-size:10px;margin-top:3px}
+.cash-workspace-bars{display:flex;align-items:center;width:100%;height:12px;gap:2px}.cash-workspace-bars>i{display:block;height:100%;min-width:0;flex-shrink:1;border-radius:2px}.cash-bar-in{background:var(--ft-success,#159b75)}.cash-bar-out{background:var(--ft-danger,#d45c64)}.cash-bar-transfer{background:var(--ft-primary-muted,#9eacbb)}
+.cash-workspace-group-values{display:flex;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px}
+.cash-workspace-chartnote{font-size:11px;color:var(--ft-muted);margin:9px 0 0}.cash-workspace-nochart{font-size:13px;color:var(--ft-muted);padding:10px 0;margin:0}.cash-workspace-empty{padding:28px 18px;text-align:center;color:var(--ft-muted);font-size:14px}.cash-workspace-issue{grid-column:1/-1;font-size:12px;color:var(--ft-danger);margin:0}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable tbody tr[hidden]{display:none!important}
+/* Pin the existing amount cell at the viewport edge. Column settings retain DOM order and visibility. */
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr{overflow:visible!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td)[data-cash-party]:not(.tp-hidden){position:sticky!important;right:var(--cash-pinned-party-right,170px);z-index:2;background:var(--ft-surface,#fff)!important;box-shadow:-6px 0 7px -7px #304a6588!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td)[data-cash-amount]:not(.tp-hidden){position:sticky!important;right:var(--cash-pinned-amount-right,0px);z-index:2;background:var(--ft-surface,#fff)!important;box-shadow:-6px 0 7px -7px #304a6588!important;text-align:right!important;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap!important;overflow-wrap:normal!important}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>thead>tr>th[data-cash-amount]:not(.tp-hidden){z-index:3}
+body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable [data-cash-amount] .cell-text{white-space:nowrap!important;overflow-wrap:normal!important}
+@media(max-width:1100px){.cash-workspace-heading{gap:10px}.cash-workspace-actions{justify-content:flex-start}.cash-workspace-dimensions{grid-template-columns:repeat(2,minmax(0,1fr))}.cash-workspace-totals{gap:8px}.cash-workspace-total{padding:10px}}
+@media(max-width:700px){
+ .cash-workspace-heading{margin-bottom:14px}.cash-workspace-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.cash-workspace-actions button{width:100%;font-size:12px!important;min-height:38px!important;padding:6px!important}
+ .cash-workspace-query{gap:8px}.cash-workspace-query>label{flex:1 1 120px}.cash-workspace-query>.cash-workspace-search{flex-basis:100%}.cash-workspace-types{width:100%;display:grid;grid-template-columns:1fr 1fr}.cash-workspace-types>button{width:100%}
+ .cash-workspace-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.cash-workspace-total>strong{font-size:18px}.cash-workspace-charthead{align-items:flex-start}.cash-workspace-charthead label{font-size:11px}.cash-workspace-legend{gap:8px;font-size:10px}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .cash-workspace-group{grid-template-columns:minmax(80px,33%) minmax(25px,1fr) minmax(90px,auto);gap:6px;font-size:11px!important}.cash-workspace-group-values{font-size:11px}
+ .cash-workspace-dimensions{grid-template-columns:minmax(0,1fr)}
+ body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td)[data-cash-amount]:not(.tp-hidden){position:static!important;box-shadow:none!important;white-space:normal!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(th,td)[data-cash-party]:not(.tp-hidden){position:static!important;box-shadow:none!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable [data-cash-amount] .cell-text{white-space:normal!important;overflow-wrap:anywhere!important}
+}
+/* Compact desktop workspace keeps the journal in the first screen. */
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash>.corporate-cash-ledger{padding:14px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace{margin-bottom:10px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-heading{margin-bottom:10px!important;gap:8px}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-heading h2{font-size:20px!important;line-height:1.2!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-heading p{line-height:1.3!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-actions button{min-height:36px!important;font-size:12px!important;padding:7px 12px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace :is(input,select){min-height:36px!important;padding-top:6px!important;padding-bottom:6px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-query{margin-bottom:8px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-query>label{line-height:1.2!important;gap:4px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-filterline{gap:8px!important;margin-bottom:10px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-result{font-size:11px;min-height:0;margin:0;gap:5px}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-total{padding:8px 10px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-total>span{line-height:1.2!important;margin-bottom:4px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-total>strong{font-size:21px!important;line-height:1.15!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-total>small{line-height:1.1!important;margin-top:4px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-totals{margin-bottom:10px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-analytics{padding-bottom:8px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-charthead{gap:10px!important;margin-bottom:4px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-charthead label{margin-left:auto}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspaceToggleChart{min-height:28px!important;padding:3px 7px!important;font-size:11px!important;border:0!important;box-shadow:none!important;color:var(--ft-muted)!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-chart{max-height:100px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-group{min-height:38px!important;padding:5px 4px!important;box-shadow:none!important;outline-offset:-2px}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-chartnote{font-size:10px!important;line-height:1.2!important;margin-top:5px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-legend{margin:4px 0 5px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-chart-collapsed>:not(.cash-workspace-charthead){display:none!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash>.corporate-cash-ledger>h2{float:left;font-size:16px!important;line-height:1.3!important;margin:7px 0!important;padding:0!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash>.corporate-cash-ledger>.tp-toolbar{min-height:34px!important;margin:0 0 8px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable :is([data-tp-label="Статья"],[data-tp-label="Комментарий"]) .cell-text{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;max-height:2.8em!important;line-height:1.4!important;white-space:normal!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash>.cash-workspace-exceptions{padding:12px 14px!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-exception-details>summary{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none;min-height:30px}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-exception-details>summary:before{content:'›';font-size:22px;color:var(--ft-muted)}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-exception-details[open]>summary:before{transform:rotate(90deg)}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-exception-details>summary>h2{display:inline;font-size:14px!important;font-weight:600!important;line-height:1.3!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important}
+html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash .cash-workspace-exception-details>summary>small{font-size:11px;color:var(--ft-muted);margin-left:auto}
+.cash-exception-count{font-size:11px;color:var(--ft-muted)}
+@media(min-width:701px){
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable table.tp-table>tbody>tr{min-height:0!important;padding:0!important;margin:0!important;border-radius:0!important}
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashTable table.tp-table>:is(thead,tbody)>tr>:is(th,td){padding:9px 10px!important;line-height:1.4!important;font-size:12px!important}
+}
+@media(max-width:700px){
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-total>strong{font-size:18px!important}
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-result{flex-basis:100%}
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cash>.corporate-cash-ledger>h2{float:none;margin-bottom:8px!important}
+ html.ft-ui body.ab-ready.ui-modern:not(.ab-profile-only) #cashWorkspace .cash-workspace-charthead label{width:100%;margin-left:0}
+}

@@ -37,6 +37,8 @@
    handle.onclick=event=>event.stopPropagation();handle.ondblclick=event=>{event.stopPropagation();if(layouts[state.key]?.widths)delete layouts[state.key].widths[column.id];save();apply(table,state)};
    handle.onpointerdown=event=>{event.preventDefault();event.stopPropagation();handle.setPointerCapture(event.pointerId);const start=event.clientX,initial=th.getBoundingClientRect().width;const move=e=>{const current=config(state);layouts[state.key]={...layouts[state.key],order:current.order,hidden:[...current.hidden],widths:{...layouts[state.key]?.widths,[column.id]:Math.max(width(table,column),initial+e.clientX-start)}};apply(table,state)};const end=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',end);handle.removeEventListener('pointercancel',end);save()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end)};
   }
+  // Presentation helpers consume the real layout without reordering row.cells.
+  table.dispatchEvent(new CustomEvent('arbat:table-layout',{bubbles:true,detail:{columns:state.columns.map(column=>({index:column.index,label:column.label,order:order.indexOf(column.id),hidden:hidden.has(column.id),width:widths[visible.indexOf(column.id)]||0,sized:!!layouts[state.key]?.widths?.[column.id]}))}}));
  }
  const dialog=document.createElement('dialog');dialog.className='tp-dialog';dialog.setAttribute('aria-labelledby','tp-title');document.body.append(dialog);let active=null,opener=null;
  function renderDialog(focusId,action){

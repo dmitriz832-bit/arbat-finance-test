@@ -12,7 +12,7 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   data.finance.expenses=[{_id:'purchase',org,projectKey,date:'2026-10-02',amount:1220,amountGross:1220,vatRate:'22',vatDeductible:'true',category:'Материалы',note:'УПД 42'}];
   data.finance.realizations=[{_id:'sale',org,projectKey,date:'2026-10-04',amount:610,vatRate:'22',document:'Акт 12'}];
   await context.addInitScript(data=>{if(!localStorage.getItem('arbat-finance-demo-live'))localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data.finance));if(!localStorage.getItem('arbat-warehouse-v1'))localStorage.setItem('arbat-warehouse-v1',JSON.stringify(data.warehouse))},data);
-  await page.clock.setFixedTime(new Date('2026-10-24T10:00:00Z'));await page.goto(origin+'/app/');await page.locator('#dashboardTaxes').waitFor();
+  await page.clock.setFixedTime(new Date('2026-10-24T10:00:00Z'));await page.goto(origin+'/app/');await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();
   const form=page.locator('#genericEditForm'),dialog=page.locator('#taxRegistersDialog'),eventForm=dialog.locator('form');
   await page.evaluate(()=>openRecord('expenses','purchase'));await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
   assert.match(await form.locator('[data-tax-proposal=profitTax]').innerText(),/1000,00.*2026-10-02.*УПД 42/);
@@ -25,7 +25,7 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   assert.equal(await form.locator('[name=profitTaxRecognitionDate]').inputValue(),'2026-10-02');assert.equal(await form.locator('[name=vatDeductionDate]').inputValue(),'2026-10-02');
   assert.equal(await form.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true);
   await form.locator('button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
-  await page.reload();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognizedAmount),'1000.00');assert.equal(await page.evaluate(()=>db.expenses[0].vatInvoice),'УПД 42');
+  await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognizedAmount),'1000.00');assert.equal(await page.evaluate(()=>db.expenses[0].vatInvoice),'УПД 42');
   await page.evaluate(()=>openRecord('expenses','purchase'));await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});await form.locator('[name=amount]').fill('2440');
   assert.equal(await form.locator('[name=profitTaxRecognizedAmount]').inputValue(),'1000.00','editing gross must not silently confirm extra expense');
   await closeCard(page,'#genericClose');
@@ -42,7 +42,7 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   const draft=await form.evaluate(el=>Object.fromEntries(new FormData(el)));assert.equal(JSON.parse(draft.profitTaxRecognitionEvents).length,1,'event must reach FormData');
   await form.locator('button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
   const saved=await page.evaluate(()=>({row:db.expenses[0]}));assert.equal(saved.row.profitTaxRecognitionEvents?.length,1,JSON.stringify(saved));
-  await page.reload();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognitionEvents?.length),1);
+  await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.expenses[0].profitTaxRecognitionEvents?.length),1);
 
   // Context action refuses unsaved document changes; source data is never silently saved.
   await page.evaluate(()=>openRecord('cash','advance'));await form.locator('[name=amount]').fill('1200');await form.locator('[data-tax-source=advances]').click();assert.match(await form.locator('[data-tax-source-error]').innerText(),/Сначала сохраните/);assert.equal(await dialog.evaluate(el=>el.open),false);await closeCard(page,'#genericClose');
@@ -59,6 +59,6 @@ test('guided tax entry confirms drafts once, preserves overrides and links sourc
   assert.equal(await eventForm.locator('[name=taxAmount]').inputValue(),'100.00');assert.equal(await eventForm.locator('[name=confirmed]').inputValue(),'');assert.equal(await eventForm.locator('[name=period]').inputValue(),'');assert.equal(await eventForm.locator('[name=tax]').inputValue(),'');
   await eventForm.locator('[name=document]').fill('Подтверждённая уплата НДС');await eventForm.locator('[name=tax]').selectOption('vat');await eventForm.locator('[name=period]').fill('2026-Q4');await eventForm.locator('[name=confirmed]').selectOption('true');await eventForm.locator('button[type=submit]').click();await eventForm.waitFor({state:'hidden'});
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});await page.screenshot({path:path.join(root,'test-results',`tax-guided-${engine.name()}-${width}.png`)});assert.equal(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+2),true);
-  await dialog.locator('[data-close]').click();await closeCard(page,'#genericClose');await page.reload();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.vatAdvanceEvents.length),2);assert.equal(await page.evaluate(()=>db.taxObligationEvents.length),1);assert.equal(await page.evaluate(()=>ArbatTaxRegisters.advances(db).issues.length),0);assert.equal(await page.evaluate(()=>ArbatTaxRegisters.obligations(db).issues.length),0);assert.deepEqual(errors,[]);await context.close();
+  await dialog.locator('[data-close]').click();await closeCard(page,'#genericClose');await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();assert.equal(await page.evaluate(()=>db.vatAdvanceEvents.length),2);assert.equal(await page.evaluate(()=>db.taxObligationEvents.length),1);assert.equal(await page.evaluate(()=>ArbatTaxRegisters.advances(db).issues.length),0);assert.equal(await page.evaluate(()=>ArbatTaxRegisters.obligations(db).issues.length),0);assert.deepEqual(errors,[]);await context.close();
  } }finally{await browser.close()}}}finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
 });

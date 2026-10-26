@@ -12,7 +12,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   data.finance.realizations=[{_id:'jan-sale',org:ARBAT,date:'2026-01-03',amount:12200,vatRate:22,document:'Январский акт',projectKey:ARBAT+'::1C#CYCLE-arbat'},{_id:'oct-sale',org:ARBAT,date:'2026-10-03',amount:24400,vatRate:22,document:'Октябрьский акт',projectKey:ARBAT+'::1C#CYCLE-arbat'}];
   data.warehouse.moves=[{id:'receipt-tax',n:1,kind:'receipt',org:ARBAT,date:'2026-10-01',qty:2,price:610,itemId:'unit',to:'arbat-store',note:'УПД без реквизитов НДС',documentId:'UPD-TAX'}];
   await context.addInitScript(data=>{if(!localStorage.getItem('arbat-finance-demo-live'))localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data.finance));if(!localStorage.getItem('arbat-warehouse-v1'))localStorage.setItem('arbat-warehouse-v1',JSON.stringify(data.warehouse));},data);
-  await page.clock.setFixedTime(new Date('2026-10-24T10:00:00Z'));await page.goto(origin+'/app/');await page.locator('#dashboardTaxes').waitFor();
+  await page.clock.setFixedTime(new Date('2026-10-24T10:00:00Z'));await page.goto(origin+'/app/');await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();
   const before=await page.evaluate(()=>({cash:JSON.stringify(db.cash),warehouse:localStorage.getItem('arbat-warehouse-v1')}));
   const snapshot=await page.evaluate(()=>{const x=window.arbatDashboardSnapshot().taxes;return {air:x.air.income.toString(),expenses:x.air.expenses.toString(),vat:x.arbat.outputVat.toString(),profit:x.arbat.profitRevenue.toString(),warehouse:x.issues.some(x=>x.collection==='warehouse')}});
   assert.deepEqual(snapshot,{air:'10000000',expenses:'0',vat:'440000',profit:'3000000',warehouse:true});
@@ -97,7 +97,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await page.waitForFunction(()=>window.arbatTaxSnapshot().arbat.inputVat===22000n);
   assert.equal(await receipt.locator('[data-receipt-tax] [name=vatInvoice]').inputValue(),'УПД TAX-1');
   await page.keyboard.press('Escape');
-  await page.reload();await page.locator('#dashboardTaxes').waitFor();
+  await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();
   assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnDocument),'УПД 42, товар принят и оплачен');assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents.length),2);
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().arbat.inputVat.toString()),'22000');
   // Edit, remove one event, then remove all; legacy evidence must be explicitly cleared.
@@ -107,7 +107,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await events.nth(1).locator('[data-event-remove]').click();
   await form.locator('button[type=submit]').click();
   await page.locator('#genericModal.open').waitFor({state:'hidden'});
-  await page.reload();await page.locator('#dashboardTaxes').waitFor();
+  await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'1500000');
   await page.evaluate(()=>openRecord('cash','advance'));
   await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
@@ -120,7 +120,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   await form.locator('[name=usnDocument]').fill('');
   await form.locator('button[type=submit]').click();
   await page.locator('#genericModal.open').waitFor({state:'hidden'});
-  await page.reload();await page.locator('#dashboardTaxes').waitFor();
+  await page.reload();await page.locator('[data-dashboard-view=control]').click();await page.locator('#dashboardTaxes').waitFor();
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'0');
   assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents),null);
   await page.evaluate(()=>openRecord('cash','advance'));
