@@ -38,6 +38,23 @@ test('conflict recovery leaves merged documents in both cloud, local cache and u
  assert.deepEqual(h.read(F),h.getCloud(0).payload);
  assert.deepEqual(clone(h.events.at(-1).detail.finance),h.getCloud(0).payload);
 });
+test('sync diagnostics report results without sending document values or error messages',async()=>{
+ const h=harness(),events=[];
+ h.window.ArbatTelemetry={capture:(event,properties)=>events.push({event,properties})};
+ await h.window.arbatCloudBoot();
+ h.setCloud(0,{deals:[{_id:'private-remote'}]});h.save(F,{deals:[{_id:'private-local',amount:999999}]});
+ await wait();await wait();await wait();
+ assert.deepEqual(clone(events),[{event:'arbat_sync_result',properties:{status:'retry'}},{event:'arbat_sync_result',properties:{status:'success'}}]);
+ const failed=harness();const errors=[];failed.window.ArbatTelemetry={capture:(event,properties)=>errors.push({event,properties})};
+ await failed.window.arbatCloudBoot();failed.post(async()=>({ok:false,json:async()=>({message:'SECRET CUSTOMER DETAILS'})}));failed.save(F,{deals:[{_id:'private'}]});await wait();await wait();
+ assert.deepEqual(clone(errors),[{event:'arbat_sync_result',properties:{status:'failed'}}]);
+});
+test('broken diagnostics cannot prevent cloud save',async()=>{
+ const h=harness();h.window.ArbatTelemetry={capture(){throw Error('Diagnostics unavailable')}};
+ await h.window.arbatCloudBoot();h.save(F,{deals:[{_id:'saved'}]});await wait();await wait();
+ assert.equal(h.getCloud(0).payload.deals[0]._id,'saved');
+ assert(!h.messages.some(x=>x.includes('приостановлена')));
+});
 test('conflict recovery preserves newer same-store and other-store edits made during failed request',async()=>{
  const h=harness(),gate=deferred();await h.window.arbatCloudBoot();let first=true;
  h.post(async()=>{if(first){first=false;await gate.promise}return null});

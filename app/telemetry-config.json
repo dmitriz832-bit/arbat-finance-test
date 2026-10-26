@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "token": "phc_thRpgACCJivdvv7CR95UvUMhEHa7Kx6rWHmYztXLf9bV",
+  "apiHost": "https://eu.i.posthog.com",
+  "origin": "https://dmitriz832-bit.github.io",
+  "pathPrefix": "/arbat-finance-test/app/"
+}
