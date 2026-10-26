@@ -19,3 +19,11 @@ test('customer debt is valued gross with VAT rather than P&L net revenue',()=>{
  const x=core.ownerDebtSnapshot({deals:[deal],realizations:[{projectKey:key,org:'АРБАТ.ГК',amount:1220,vatRate:22}],cash:[{projectKey:key,org:'АРБАТ.ГК',type:'in',amount:1000}]});
  assert.equal(core.rubles(x.receivable),'220.00');
 });
+
+
+test('consolidated payroll debt cannot be discharged by another organization payment',()=>{
+ const data={labor:[{personId:'shared-person',org:'АИР-КЛИМАТ',amount:100}],cash:[{personId:'shared-person',org:'АРБАТ.ГК',type:'out',amount:100}]};
+ assert.equal(core.ownerDebtSnapshot(data).payrollPayable,10000n);
+ assert.equal(core.ownerDebtSnapshot(data,'АИР-КЛИМАТ').payrollPayable,10000n);
+ assert.equal(core.ownerDebtSnapshot(data,'АРБАТ.ГК').payrollPayable,0n);
+});

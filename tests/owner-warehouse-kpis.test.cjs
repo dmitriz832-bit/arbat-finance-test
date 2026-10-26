@@ -25,3 +25,14 @@ test('an open crew reservation without any FIFO lots is reported as shortage',()
  assert.equal(result.rows[0].deficit,4);
  assert.equal(result.deficitQty,4);
 });
+
+test('all stock committed by an open issue is reserved, including warehouse-issued materials',()=>{
+ const wh={items:[{id:'i'}],places:[{id:'crew'}],projectIssues:[{crewId:'crew',lines:[{itemId:'i',issued:7,fromCrew:2}]}]};
+ const x=core.ownerWarehouseSnapshot(wh,{bins:new Map([['crew::i',[{qty:10,cost:2}]]]),warnings:[]});
+ assert.equal(x.rows[0].reserved,7);assert.equal(x.rows[0].free,3);
+});
+test('explicit zero issue and closed returned issue do not reserve stock; legacy fromCrew remains supported',()=>{
+ const wh={items:[],places:[],projectIssues:[{crewId:'c',lines:[{itemId:'i',issued:0,fromCrew:8}]},{closed:true,crewId:'c',lines:[{itemId:'i',issued:9}]},{crewId:'c',lines:[{itemId:'i',fromCrew:2}]}]};
+ const x=core.ownerWarehouseSnapshot(wh,{bins:new Map([['c::i',[{qty:5,cost:2}]]]),warnings:[]});
+ assert.equal(x.rows[0].reserved,2);assert.equal(x.rows[0].free,3);
+});

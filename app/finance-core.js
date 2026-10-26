@@ -595,8 +595,8 @@
     const year=ref.slice(0,4),month=Number(ref.slice(5,7));
     if(month<1||month>12)throw new RangeError('Invalid reference month');
     if(mode==='all')return {from:'',to:'',label:'За всё время'};
-    if(mode==='month')return {from:year+'-'+ref.slice(5,7)+'-01',to:year+'-'+ref.slice(5,7)+'-31',label:'Месяц '+ref.slice(0,7)};
-    if(mode==='quarter'){const first=String(Math.floor((month-1)/3)*3+1).padStart(2,'0'),last=String(Math.floor((month-1)/3)*3+3).padStart(2,'0');return {from:year+'-'+first+'-01',to:year+'-'+last+'-31',label:'Квартал '+Math.ceil(month/3)+' / '+year}}
+    if(mode==='month')return {from:year+'-'+ref.slice(5,7)+'-01',to:new Date(Date.UTC(Number(year),month,0)).toISOString().slice(0,10),label:'Месяц '+ref.slice(0,7)};
+    if(mode==='quarter'){const first=String(Math.floor((month-1)/3)*3+1).padStart(2,'0'),last=String(Math.floor((month-1)/3)*3+3).padStart(2,'0');return {from:year+'-'+first+'-01',to:new Date(Date.UTC(Number(year),Number(last),0)).toISOString().slice(0,10),label:'Квартал '+Math.ceil(month/3)+' / '+year}}
     if(mode==='year')return {from:year+'-01-01',to:year+'-12-31',label:'Год '+year};
     if(mode==='range'&&/^\d{4}-\d{2}-\d{2}$/.test(from)&&/^\d{4}-\d{2}-\d{2}$/.test(to)&&from<=to)return {from,to,label:from+' — '+to};
     throw new RangeError('Invalid dashboard period');
@@ -684,8 +684,10 @@
     }
     const rows=[...projects.values()].map(p=>({...p,receivable:p.revenue>p.received?p.revenue-p.received:0n,advance:p.received>p.revenue?p.received-p.revenue:0n}));
     const total=name=>rows.reduce((v,p)=>v+p[name],0n);
-    const payrollState=payrollReconciliation({accruals:(data.labor||[]).filter(x=>!org||x.org===org),payments:(data.cash||[]).filter(x=>!org||x.org===org),settlements:data.crewSettlements||[],workActs:(data.workActs||[]).filter(x=>!org||x.org===org)});
-    return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.people.reduce((v,p)=>v+(p.payable>0n?p.payable:0n),0n),issues:[...issues,...payrollState.issues]};
+    // One employee can work for both companies. A payment by one company must
+    // never discharge another company's liability in the consolidated view.
+    const payrollState=payrollByOrganization({accruals:data.labor||[],payments:data.cash||[],settlements:data.crewSettlements||[],workActs:data.workActs||[]},org);
+    return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.payableTotal,issues:[...issues,...payrollState.issues]};
   }
   function ownerWarehouseSnapshot(warehouse,fifo,org=''){
     const rows=[],issues=[...(fifo?.warnings||[])],places=new Map((warehouse?.places||[]).map(x=>[String(x.id),x]));
@@ -696,7 +698,8 @@
       const place=String(issue.crewId||'');
       for(const line of issue.lines||[]){
         const key=place+'::'+String(line.itemId||'');
-        reservations.set(key,(reservations.get(key)||0)+Number(line.fromCrew||0));
+        // Full issued quantity is committed until the issue closes; fromCrew is only its origin.
+        reservations.set(key,(reservations.get(key)||0)+Math.max(0,Number(line.issued??line.fromCrew??0)));
       }
     }
     let totalValue=0n,reservedQty=0,deficitQty=0,unpriced=false;
@@ -882,15 +885,22 @@
     const paidTotal=people.reduce((a,x)=>a+x.paid,0n);
     return {people,issues,unallocatedPayments,unallocatedTotal,overpaidTotal,grossTotal,paidTotal,expense:people.reduce((a,x)=>a+x.expense,0n)};
   }
+  function payrollByOrganization({accruals=[],payments=[],settlements=[],workActs=[]}={},org=''){
+    const owners=org?[String(org)]:[...new Set([...accruals,...payments,...workActs].map(x=>String(x.org||'')))];
+    const states=owners.map(owner=>({org:owner,state:payrollReconciliation({accruals:accruals.filter(x=>String(x.org||'')===owner),payments:payments.filter(x=>String(x.org||'')===owner),workActs:workActs.filter(x=>String(x.org||'')===owner),settlements})}));
+    const people=states.flatMap(({org,state})=>state.people.map(p=>({...p,org}))),total=key=>states.reduce((n,{state})=>n+state[key],0n);
+    return {people,issues:states.flatMap(({org,state})=>state.issues.map(issue=>({...issue,org}))),unallocatedPayments:states.flatMap(({org,state})=>state.unallocatedPayments.map(payment=>({...payment,org}))),unallocatedTotal:total('unallocatedTotal'),overpaidTotal:total('overpaidTotal'),grossTotal:total('grossTotal'),paidTotal:total('paidTotal'),expense:total('expense'),payableTotal:people.reduce((n,p)=>n+(p.payable>0n?p.payable:0n),0n)};
+  }
   function paymentExceptionRegister({cash=[],labor=[],deals=[],people=[],articles=[],expenses=[],crewSettlements=[],workActs=[]}={}){
     const issues=[],add=(code,source,detail='')=>issues.push({code,source,detail});
     const keySet=new Set(deals.map(dealKey));
     const personSet=new Set(people.map(x=>String(x.id)));
     const articleSet=new Set(articles.map(x=>String(x.id)));
     const seen=new Map();
-    const payrollState=payrollReconciliation({accruals:labor,payments:cash,settlements:crewSettlements,workActs});
+    const payrollState=payrollByOrganization({accruals:labor,payments:cash,settlements:crewSettlements,workActs});
     for(const issue of payrollState.issues){
       if(['payroll-unallocated-payment','payroll-overallocated-payment','payroll-invalid-allocation','payroll-invalid-payment'].includes(issue.code))add(issue.code,issue.source,issue.amount==null?'':rubles(issue.amount));
+      if(issue.code==='payroll-overpayment')add(issue.code,{org:issue.org,personId:issue.personId,amount:rubles(issue.amount),note:'Совокупная переплата исполнителю'},[issue.org,people.find(p=>String(p.id)===issue.personId)?.name||issue.personId,rubles(issue.amount)+' ₽'].filter(Boolean).join(' · '));
     }
     for(const item of cash){
       const id=String(item._id||item.id||'');let amount;
@@ -975,5 +985,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });
