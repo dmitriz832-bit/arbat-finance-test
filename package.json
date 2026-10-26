@@ -2,10 +2,14 @@
   "name": "arbat-finance-validation",
   "private": true,
   "scripts": {
+    "build:telemetry": "node --env-file=.env.local scripts/build-telemetry.cjs",
     "test": "node --test tests/*.cjs",
     "test:browser": "node --test e2e/*.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
+  },
+  "dependencies": {
+    "posthog-js": "^1.438.23"
   }
 }

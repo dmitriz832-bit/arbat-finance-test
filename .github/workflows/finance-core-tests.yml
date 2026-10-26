@@ -43,6 +43,8 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci --ignore-scripts
+      - name: Verify vendored diagnostics SDK
+        run: cmp node_modules/posthog-js/dist/array.no-external.js app/vendor/posthog.js
       - run: timeout --kill-after=15s 300s node --test --test-concurrency=2 --test-shard=${{ matrix.shard }}/3 e2e/*.cjs
       - uses: actions/upload-artifact@v4
         if: always()

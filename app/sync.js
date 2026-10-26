@@ -159,7 +159,9 @@
     (auth?.querySelector('.card')||document.body).append(box);
   }
 
+  function reportSync(status){try{window.ArbatTelemetry?.capture('arbat_sync_result',{status})}catch{}}
   function fail(error){
+    reportSync('failed');
     active=false;
     halt=true;
     document.body.classList.remove('ab-ready');
@@ -216,9 +218,10 @@
       const next=await api('rpc/update_shared_state_batch',{p_changes:changes});
       for(const change of changes)if(!Number.isSafeInteger(next?.[change.store])||next[change.store]<=change.expected_revision)throw Error('Некорректный ответ сервера при сохранении общей версии');
       for(let i=0;i<K.length;i++)if(K[i] in batch){previous[i]=JSON.parse(batch[K[i]]);rev[T[i]]=next[i===0?'finance':'warehouse']}
-      put(B,rev);conflictRetries=0;
+      put(B,rev);conflictRetries=0;reportSync('success');
     }catch(error){
       if(conflictRetries<2&&/revision|conflict|expected|измен/i.test(error.message)){
+        reportSync('retry');
         try{
           const fresh=await fetchAll(),visible=fresh.map(row=>row.payload),recovered={...batch,...pending};
           // Read pending after the fetch: the user may have saved again while it ran.

@@ -13,7 +13,7 @@ jobs:
         run: |
           set -euo pipefail
           base="https://dmitriz832-bit.github.io/arbat-finance-test/app"
-          for file in index.html finance-core.js vat-forms.js dashboard.js sync.js auth.js; do
+          for file in index.html finance-core.js vat-forms.js dashboard.js sync.js auth.js telemetry.js telemetry-config.json vendor/posthog.js; do
             url="$base/$file"
             echo "Checking $url"
             body="$(mktemp)"

@@ -24,7 +24,13 @@ test('recovery controls are visible with actual application CSS and survive relo
       window.abIdentity={user_id:${JSON.stringify(owner)},email:'recovery@example.test',role:'admin',full_name:'Тест восстановления'};
       const gate=document.createElement('div');gate.id='ab-auth';gate.innerHTML='<div class="card"><h2>ARBAT FINANCE</h2><p id="ab-message"></p><form id="ab-form"></form></div>';document.body.append(gate);
       const logout=document.createElement('button');logout.id='ab-logout';logout.textContent='Выйти';logout.hidden=true;document.body.append(logout);
-      window.__recoveryFetchCount=0;window.fetch=async()=>{window.__recoveryFetchCount++;throw Error('Unexpected fetch during recovery boot')};
+      // Loading a same-origin static diagnostics config is not a cloud-state request.
+      const originalFetch=window.fetch.bind(window);
+      window.__recoveryFetchCount=0;window.fetch=async(input,options)=>{
+       const url=new URL(input instanceof Request?input.url:String(input),location.href);
+       if(url.origin===location.origin&&url.pathname==='/app/telemetry-config.json')return originalFetch(input,options);
+       window.__recoveryFetchCount++;throw Error('Unexpected fetch during recovery boot');
+      };
       window.abGetToken=async()=>{throw Error('Recovery boot must not request a token')};window.abMessage=text=>document.getElementById('ab-message').textContent=text;
       window.__recoveryBoot=window.arbatCloudBoot();
      `});
