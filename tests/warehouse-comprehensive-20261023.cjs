@@ -5,7 +5,7 @@ function setup(){
  const org='АИР-КЛИМАТ',d={items:[{id:'bolt',name:'Bolt',unit:'шт'}],places:[{id:'w',org,type:'warehouse'},{id:'c',org,type:'crew'}],moves:[],plans:[],projectIssues:[]},data={deals:[{_id:'p',org,order1c:'P'}],expenses:[]},storage=new Map(),listeners={},nodes=new Map();
  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',elements:{itemId:{}},querySelector(){return null},dispatchEvent(){},querySelectorAll(){return []}});return nodes.get(id)};
  const c=vm.createContext({console,db:data,initial:d,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},Event:class{constructor(type){this.type=type}},document:{getElementById:node},alert(){},confirm:()=>true});
- c.window={ArbatManagementReview:require('../app/management-review-model.js'),arbatDealKey:core.dealKey,addEventListener:(type,cb)=>(listeners[type]||=[]).push(cb),dispatchEvent:e=>(listeners[e.type]||[]).forEach(cb=>cb(e))};
+ c.window={ArbatPopup:{confirm:async()=>true},ArbatManagementReview:require('../app/management-review-model.js'),arbatDealKey:core.dealKey,addEventListener:(type,cb)=>(listeners[type]||=[]).push(cb),dispatchEvent:e=>(listeners[e.type]||[]).forEach(cb=>cb(e))};
  vm.runInContext(fn('calc')+';window.arbatFifo=calc;const KEY="arbat-warehouse-v1",$=id=>document.getElementById(id);let wh=initial;function draw(){};const read=()=>JSON.parse(localStorage.getItem(KEY));function render(){};function renderReservations(){};',c);
  storage.set('arbat-warehouse-v1',JSON.stringify(d));storage.set('arbat-finance-demo-live',JSON.stringify(data));
  const receipt=(id,qty,price=10)=>({id,date:'2026-10-01',kind:'receipt',org,itemId:'bolt',to:'w',qty,price});
@@ -20,10 +20,10 @@ test('FIFO reconciliation refreshes expense date after source movement correctio
  const {c,d,data,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',date:'2026-10-02',kind:'consume',org:data.deals[0].org,itemId:'bolt',from:'w',qty:3,dealId:'p',projectIssueId:'issue'}];storage.set('arbat-warehouse-v1',JSON.stringify(d));
  vm.runInContext(fn('reconcileProjectExpenses'),c);c.reconcileProjectExpenses();d.moves[1].date='2026-10-03';storage.set('arbat-warehouse-v1',JSON.stringify(d));c.reconcileProjectExpenses();assert.equal(data.expenses[0].date,'2026-10-03');
 });
-test('cascade deletion rejects removing receipt needed by later transfer and preserves both stores',()=>{
+test('cascade deletion rejects removing receipt needed by later transfer and preserves both stores',async()=>{
  const {c,d,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'transfer',date:'2026-10-02',kind:'transfer',itemId:'bolt',from:'w',to:'c',qty:4}];storage.set('arbat-warehouse-v1',JSON.stringify(d));const before=storage.get('arbat-warehouse-v1'),f=storage.get('arbat-finance-demo-live');
- const start=html.indexOf('window.arbatCascadeRemove=function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);
- const result=c.window.arbatCascadeRemove({moveIds:['r']});assert.equal(result.ok,false);assert.equal(storage.get('arbat-warehouse-v1'),before);assert.equal(storage.get('arbat-finance-demo-live'),f);
+ const start=html.indexOf('window.arbatCascadeRemove=async function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);
+ const result=await c.window.arbatCascadeRemove({moveIds:['r']});assert.equal(result.ok,false);assert.equal(storage.get('arbat-warehouse-v1'),before);assert.equal(storage.get('arbat-finance-demo-live'),f);
 });
 test('alternate deletion commit rejects a FIFO shortage before writing either store',()=>{
  const {c,d,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',date:'2026-10-02',kind:'consume',itemId:'bolt',from:'w',qty:4}];storage.set('arbat-warehouse-v1',JSON.stringify(d));const before=storage.get('arbat-warehouse-v1'),f=storage.get('arbat-finance-demo-live');vm.runInContext('const W=KEY,F="arbat-finance-demo-live";'+fn('commit'),c);
@@ -49,7 +49,7 @@ test('finance core requires expense reconciliation for direct project consumptio
 });
 test('cascade deletion removes its linked expense from the active finance model',async()=>{
  const {c,d,data,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',kind:'consume',date:'2026-10-02',itemId:'bolt',from:'w',qty:3,dealId:'p'}];data.expenses=[{_id:'warehouse-consume-use',warehouseMoveId:'use',amount:30}];storage.set('arbat-warehouse-v1',JSON.stringify(d));storage.set('arbat-finance-demo-live',JSON.stringify(data));
- const start=html.indexOf('window.arbatCascadeRemove=function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal((await require('./helpers/deletion-backup-fixture.cjs')(c.window,data,d,()=>c.window.arbatCascadeRemove({moveIds:['use']}))).ok,true);assert.equal(data.expenses.length,0);assert.equal(JSON.parse(storage.get('arbat-finance-demo-live')).expenses.length,0);
+ const start=html.indexOf('window.arbatCascadeRemove=async function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal((await require('./helpers/deletion-backup-fixture.cjs')(c.window,data,d,()=>c.window.arbatCascadeRemove({moveIds:['use']}))).ok,true);assert.equal(data.expenses.length,0);assert.equal(JSON.parse(storage.get('arbat-finance-demo-live')).expenses.length,0);
 });
 test('alternate deletion commit synchronizes the active finance model',()=>{
  const {c,d,data}=setup();data.expenses=[{_id:'warehouse-consume-use',warehouseMoveId:'use',amount:30}];vm.runInContext('const W=KEY,F="arbat-finance-demo-live";'+fn('commit'),c);c.commit(d,{expenses:[]});assert.equal(data.expenses.length,0);
@@ -63,8 +63,8 @@ test('multiitem receipt correction retains payable key and payment while total a
 test('switching warehouse document kind clears values hidden by the new operation',()=>{
  const field=value=>({value,closest:()=>({style:{}})}),ctx=vm.createContext({kind:field('receipt'),from:field('c'),to:field('w'),deal:field('p'),host:{querySelectorAll:()=>[]}}),start=html.indexOf('const mode=()=>{const receipt'),end=html.indexOf(';kind.onchange=mode',start);vm.runInContext(html.slice(start,end)+';mode()',ctx);assert.equal(ctx.from.value,'');assert.equal(ctx.deal.value,'');ctx.kind.value='consume';ctx.from.value='w';ctx.to.value='c';vm.runInContext('mode()',ctx);assert.equal(ctx.to.value,'');assert.equal(ctx.from.value,'w');
 });
-test('deleting receipt cannot worsen a pre-existing FIFO shortage on the same movement',()=>{
- const {c,d,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',date:'2026-10-02',kind:'consume',itemId:'bolt',from:'w',qty:6}];storage.set('arbat-warehouse-v1',JSON.stringify(d));const start=html.indexOf('window.arbatCascadeRemove=function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal(c.window.arbatCascadeRemove({moveIds:['r']}).ok,false);
+test('deleting receipt cannot worsen a pre-existing FIFO shortage on the same movement',async()=>{
+ const {c,d,receipt,storage}=setup();d.moves=[receipt('r',5),{id:'use',date:'2026-10-02',kind:'consume',itemId:'bolt',from:'w',qty:6}];storage.set('arbat-warehouse-v1',JSON.stringify(d));const start=html.indexOf('window.arbatCascadeRemove=async function'),end=html.indexOf(';window.arbatBulkDeleteWarehouseMoves=',start);vm.runInContext(html.slice(start,end),c);assert.equal((await c.window.arbatCascadeRemove({moveIds:['r']})).ok,false);
 });
 test('project issue collects split warehouse stock, then closes with FIFO consumption and return',()=>{
  const {c,d,data,receipt,storage,org}=setup();d.places.push({id:'w2',org,type:'warehouse'});d.moves=[receipt('r',2),{...receipt('r2',4),to:'w2'}];d.plans=[{dealId:'p',lines:[{itemId:'bolt',qty:5}]}];storage.set('arbat-warehouse-v1',JSON.stringify(d));

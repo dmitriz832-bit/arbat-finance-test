@@ -1,9 +1,10 @@
+const {acceptConfirmation,closeCard,dismissToast,rejectNativeDialogs}=require('../tests/helpers/popup-ui.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path');
 const {chromium,webkit}=require('playwright'),{fixture}=require('../tests/helpers/business-cycle.cjs'),root=path.resolve(__dirname,'..');
 test('tax audit shows incomplete calculations honestly, includes prior quarters and opens source documents on phone and desktop',{timeout:120000},async()=>{
  const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(u.pathname.endsWith('/')?u.pathname+'index.html':u.pathname));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
- try{for(const engine of [chromium,webkit]){const browser=await engine.launch();try{for(const width of [390,768,1440]){
-  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.type()==='confirm'?d.accept():d.dismiss());
+ try{for(const engine of (process.env.ARBAT_BROWSER==='chromium'?[chromium]:[chromium,webkit])){const browser=await engine.launch();try{for(const width of [390,768,1440]){
+  const context=await browser.newContext({viewport:{width,height:950},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));rejectNativeDialogs(page,errors);
   await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(u.pathname==='/app/auth.js')return route.fulfill({contentType:'text/javascript',body:"window.abIdentity={user_id:'fixture',role:'admin'};document.body.classList.add('ab-ready');"});if(['/app/sync.js','/app/profile.js'].includes(u.pathname))return route.fulfill({body:''});return route.continue()});
   const data=fixture(),AIR='АИР-КЛИМАТ',ARBAT='АРБАТ.ГК';
   data.finance.cash=[{_id:'jan-income',org:AIR,date:'2026-01-02',type:'in',articleId:'in',walletId:'air',customerId:'customer',amount:100000,usnTaxable:true,note:'Поступление января'},{_id:'advance',org:AIR,date:'2026-10-02',type:'out',articleId:'out',walletId:'air',customerId:'supplier',amount:80000,note:'Аванс поставщику — расход не признан'},{_id:'arbat-advance',org:ARBAT,date:'2026-10-02',type:'in',articleId:'in',walletId:'arbat',customerId:'customer',amount:12200}];
@@ -25,7 +26,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   for(const [scope,amount] of [['usn','15000,00₽'],['vat','4400,00₽'],['profit','7500,00₽']])assert.equal(await shown('[data-tax-calculated] [data-tax-summary='+scope+']'),amount);
   assert.equal(await page.locator('[data-tax-calculated]').evaluate(el=>!!(el.compareDocumentPosition(document.querySelector('[data-tax-issues]'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
   assert.equal(await page.locator('#uxDetail').evaluate(el=>el.scrollWidth<=el.clientWidth+2),true);await page.screenshot({path:path.join(root,'test-results',`tax-detail-${engine.name()}-${width}.png`)});
-  await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();await page.locator('#genericModal.open').waitFor();assert.equal(await page.locator('#genericEditForm [name=amount]').inputValue(),'80000');await page.locator('#genericClose').click();
+  await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();await page.locator('#genericModal.open').waitFor();assert.equal(await page.locator('#genericEditForm [name=amount]').inputValue(),'80000');await closeCard(page,'#genericClose');
   await page.locator('[data-tax-issues] [data-ux-source=payables]').first().click();await page.locator('#payablesDialog[open]').waitFor();assert.match(await page.locator('#payablesDialog').innerText(),/УПД без реквизитов НДС/);await page.keyboard.press('Escape');
   await page.locator('#uxDetailBack').click();const selector=page.locator('#uxTaxReference');await selector.fill('2026-07-01');await selector.dispatchEvent('change');
   const previous=await page.evaluate(()=>{const x=window.arbatDashboardSnapshot().taxes;return {income:x.air.income.toString(),vat:x.arbat.outputVat.toString(),profit:x.arbat.profitRevenue.toString()}});assert.deepEqual(previous,{income:'10000000',vat:'0',profit:'1000000'});
@@ -46,7 +47,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await guided.locator('[name=usnRecognitionDate]').inputValue(),'2026-10-02');
   assert.equal(await guided.locator('[name=usnRecognizedAmount]').inputValue(),'80000.00');
   // Confirming changes the draft only; cancel must leave the actual record unchanged.
-  await page.locator('#genericClose').click();assert.deepEqual(await page.evaluate(()=>({cash:JSON.stringify(db.cash),warehouse:localStorage.getItem('arbat-warehouse-v1')})),before);
+  await closeCard(page,'#genericClose');assert.deepEqual(await page.evaluate(()=>({cash:JSON.stringify(db.cash),warehouse:localStorage.getItem('arbat-warehouse-v1')})),before);
   // Resolve the issue through the actual editor, then verify persisted evidence and the recalculated audit.
   await page.locator('#dashboardTaxes [data-ux-tax]').click();
   await page.locator('[data-tax-issues] [data-ux-id=advance]').first().click();
@@ -66,7 +67,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await page.locator('[data-tax-issues] [data-ux-id=advance]').count(),0);
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
   assert.equal(await form.locator('[name=usnRecognizedAmount]').inputValue(),'60000');
-  assert.equal(await form.locator('[name=usnDocument]').inputValue(),'УПД 42, товар принят и оплачен');await page.locator('#genericClose').click();
+  assert.equal(await form.locator('[name=usnDocument]').inputValue(),'УПД 42, товар принят и оплачен');await closeCard(page,'#genericClose');
   // Split one documented tax deduction into two dated recognition events.
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').click();
   await form.locator('[data-tax-fields]').evaluate(el=>{el.open=true});
@@ -85,7 +86,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'3000000');
   await page.locator('[data-tax-register=usn] [data-ux-id=advance]').first().click();
   assert.equal(await form.locator('[data-tax-event-editor=usn] .tax-event-row').count(),2);
-  await page.locator('#genericClose').click();
+  await closeCard(page,'#genericClose');
   await page.locator('[data-tax-issues] [data-ux-source=payables]').first().click();
   const receipt=page.locator('#payablesDialog');await receipt.locator('[data-receipt-open]').click();await receipt.locator('[data-receipt-form]').waitFor();await receipt.locator('[data-receipt-tax] summary').click();
   await receipt.locator('[data-receipt-tax] [name=vatRate]').selectOption('22');
@@ -123,7 +124,7 @@ test('tax audit shows incomplete calculations honestly, includes prior quarters 
   assert.equal(await page.evaluate(()=>window.arbatTaxSnapshot().air.expenses.toString()),'0');
   assert.equal(await page.evaluate(()=>db.cash.find(x=>x._id==='advance').usnRecognitionEvents),null);
   await page.evaluate(()=>openRecord('cash','advance'));
-  assert.equal(await events.count(),0);await page.locator('#genericClose').click();
+  assert.equal(await events.count(),0);await closeCard(page,'#genericClose');
 
   await page.evaluate(()=>{db.expenses.push({_id:'invalid-vat',org:'АРБАТ.ГК',date:'2026-10-01',amountGross:'1220',vatRate:18,note:'Повреждённые реквизиты НДС'});window.render()});
   assert.match(await page.locator('#dashboardTaxes').innerText(),/Требует проверки/);assert.equal(await page.locator('#dashboardVisuals').evaluate(el=>el.classList.contains('dashboard-calculation-error')),true);

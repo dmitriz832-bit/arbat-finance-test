@@ -105,7 +105,8 @@
     const discard=document.createElement('button');discard.id='ab-recovery-discard';discard.type='button';discard.textContent='Отказаться от локальных изменений';discard.style.cssText='margin-top:10px';
     discard.onclick=async()=>{
       if(discarded||retrying||recoveryOwner()!==owner||(!recoveryFor(owner)&&!snapshot.storageError))return;
-      if(!confirm('Отказаться от несохранённых локальных изменений и загрузить серверную версию? Сначала скачайте копию, если она нужна для сверки.'))return;
+      if(!await window.ArbatPopup.confirm('Отказаться от несохранённых локальных изменений и загрузить серверную версию? Сначала скачайте копию, если она нужна для сверки.'))return;
+      if(discarded||retrying||recoveryOwner()!==owner||(!recoveryFor(owner)&&!snapshot.storageError))return;
       discard.disabled=true;
       try{
         const fresh=await fetchAll();
@@ -141,7 +142,8 @@
         if(discarded||retrying||recoveryOwner()!==owner||window.abIdentity?.role!=='admin')return;
         const explanation=String(reason.value||'').trim();
         if(explanation.length<10){window.abMessage('Укажите причину открытия периода: не менее 10 символов.');return;}
-        if(!confirm('Открыть финансовый период '+period+' для исправления? Причина будет записана в журнале.'))return;
+        if(!await window.ArbatPopup.confirm('Открыть финансовый период '+period+' для исправления? Причина будет записана в журнале.'))return;
+        if(discarded||retrying||recoveryOwner()!==owner||window.abIdentity?.role!=='admin')return;
         retrying=true;reopen.disabled=true;discard.disabled=true;
         try{
           await api('rpc/set_finance_period_status',{p_period:period,p_status:'open',p_reason:explanation});

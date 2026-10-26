@@ -12,7 +12,7 @@
   logoutButton.textContent='Выйти';
   logoutButton.hidden=true;
   logoutButton.onclick=async()=>{
-    if(!confirm('Выйти из ARBAT FINANCE?'))return;
+    if(!await window.ArbatPopup.confirm('Выйти из ARBAT FINANCE?'))return;
     logoutButton.disabled=true;
     try{if(session?.access_token)await call('/auth/v1/logout',{})}catch(e){}
     finally{

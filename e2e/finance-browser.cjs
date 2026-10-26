@@ -40,7 +40,7 @@ test('document editing and searchable lists fit desktop, tablet and phone in Chr
    await page.locator('.ui-sheet-overlay:not([hidden])').waitFor();
    await page.waitForFunction(()=>document.activeElement?.classList.contains('ui-sheet'));
    assert.equal(await page.locator(':focus').evaluate(el=>el.classList.contains('ui-sheet')),true,'opening does not focus input and summon keyboard');
-   if(width<=700){const sheet=await page.locator('.ui-sheet').boundingBox();assert.ok(sheet.width>=width-2);assert.ok(sheet.height>=930);assert.equal(await page.locator('#cashForm').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1)}
+   if(width<=700){const sheet=await page.locator('.ui-sheet').boundingBox();assert.ok(sheet.width>=width-20&&sheet.width<=width-12);assert.ok(sheet.height>250&&sheet.height<=932-16);assert.ok(sheet.x>=6&&sheet.y>=6&&sheet.y+sheet.height<=932-6);assert.equal(await page.locator('#cashForm').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),1)}
    await context.close();
   }}finally{await browser.close()}
  }}finally{await new Promise(resolve=>server.close(resolve))}
@@ -70,13 +70,12 @@ test('offline full application reconciles report, dashboard and project at deskt
    await context.addInitScript(data=>{localStorage.setItem('arbat-finance-demo-live',JSON.stringify(data));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],folders:[],places:[],moves:[],plans:[],projectIssues:[],imports:[]}))},fixture());
    const page=await context.newPage();page.on('pageerror',e=>errors.push(e.stack||e.message));await page.goto(origin+'/app/',{waitUntil:'load'});
    await page.waitForFunction(()=>typeof window.arbatDashboardSnapshot==='function');
-   const spendingChart=await page.locator('#dashboardSpending').evaluate(el=>({gradient:el.querySelector('.executive-donut')?.style.background||'',values:[...el.querySelectorAll('.executive-spend-list>div')].map(row=>({amount:Number(row.querySelector('strong').textContent.replace(/[^0-9,.-]/g,'').replace(',','.')),percentage:Number(row.querySelector('small').textContent.replace(',','.').replace('%',''))}))}));
+   const spendingChart=await page.locator('#dashboardSpending').evaluate(el=>({sectors:[...el.querySelectorAll('.ft-donut-segment')].map(el=>({share:Number(el.getAttribute('stroke-dasharray').split(' ')[0]),offset:Number(el.getAttribute('stroke-dashoffset'))})),values:[...el.querySelectorAll('.executive-spend-list>div')].map(row=>({amount:Number(row.querySelector('strong').textContent.replace(/[^0-9,.-]/g,'').replace(',','.')),percentage:Number(row.querySelector('small').textContent.replace(',','.').replace('%',''))}))}));
    assert.ok(spendingChart.values.length>=2,'fixture exercises multiple expense categories');
    const totalSpending=spendingChart.values.reduce((sum,row)=>sum+row.amount,0);
    for(const row of spendingChart.values)assert.ok(Math.abs(row.percentage-row.amount/totalSpending*100)<0.11,'legend percentage reconciles to displayed amounts');
-   const stops=[...spendingChart.gradient.matchAll(/([0-9.]+)%/g)].map(m=>Number(m[1]));
-   assert.equal(stops.length,spendingChart.values.length*2,'chart has one actual sector per displayed category');
-   for(let i=0;i<spendingChart.values.length;i++)assert.ok(Math.abs((stops[i*2+1]-stops[i*2])-spendingChart.values[i].amount/totalSpending*100)<0.01,'sector angle matches actual amount');
+   assert.equal(spendingChart.sectors.length,spendingChart.values.length,'chart has one actual sector per displayed category');
+   let offset=0;for(let i=0;i<spendingChart.values.length;i++){const share=spendingChart.values[i].amount/totalSpending*100;assert.ok(Math.abs(spendingChart.sectors[i].share-share)<0.01,'sector angle matches actual amount');assert.ok(Math.abs(spendingChart.sectors[i].offset+offset)<0.01,'sectors begin where the previous one ends');offset+=share;}
    const vatForm=await page.evaluate(()=>{
     const form=document.getElementById('dealForm'),amount=form.elements.contractTotal,rate=form.elements.vatRate;
     amount.value='122000';rate.value='22';rate.dispatchEvent(new Event('change',{bubbles:true}));

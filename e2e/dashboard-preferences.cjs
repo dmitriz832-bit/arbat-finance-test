@@ -17,7 +17,7 @@ test('dashboard period dialog and personal wallet order work in the actual appli
   await page.goto(origin+'/app/');
   await page.locator('#dashboardKpis .ux-value').first().waitFor({state:'visible'});
   const type=await page.evaluate(()=>({title:getComputedStyle(document.querySelector('#title')).fontWeight,body:getComputedStyle(document.body).fontWeight,kpi:getComputedStyle(document.querySelector('#dashboardKpis .dashboard-kpi .ux-value')).fontWeight,button:getComputedStyle(document.querySelector('#uxPeriodTrigger')).fontWeight}));
-  assert.deepEqual(type,{title:'600',body:'400',kpi:'600',button:'500'},'typography uses a consistent regular/medium/semibold hierarchy');
+  assert.deepEqual(type,{title:'500',body:'400',kpi:'500',button:'400'},'typography follows Source Sans regular controls and medium headings/amounts');
   await fs.mkdir(path.join(root,'test-results'),{recursive:true});
   // Disable only animation for deterministic geometry; retain all production sizing rules.
   await page.addStyleTag({content:'#layout{transition:none!important}'});

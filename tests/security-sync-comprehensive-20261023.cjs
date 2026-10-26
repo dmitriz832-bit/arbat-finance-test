@@ -14,7 +14,7 @@ function harness(finance={deals:[]},warehouse={items:[]},options={}){
  let cloud=options.cloud?clone(options.cloud):[{payload:clone(finance),revision:1},{payload:clone(warehouse),revision:1}],postHook=null,getHook=null;
  const writes=[];
  if(!options.data){localStorage.setItem(F,JSON.stringify(finance));localStorage.setItem(W,JSON.stringify(warehouse));localStorage.setItem(B,JSON.stringify({finance_state:1,warehouse_state:1}))}
- const window={abIdentity:options.identity,abGetToken:async()=> 'mock-token',abMessage:x=>messages.push(x),dispatchEvent:e=>events.push(e),addEventListener(){}};
+ const window={ArbatPopup:{confirm:options.confirm||(async()=>true)},abIdentity:options.identity,abGetToken:async()=> 'mock-token',abMessage:x=>messages.push(x),dispatchEvent:e=>events.push(e),addEventListener(){}};
  const context={Storage,localStorage,sessionStorage,window,document:{body:{classList:{remove(){}},append(){}},createElement:element,getElementById:id=>nodes.find(n=>n.id===id&&!n.removed)||null,addEventListener(){}},Blob,URL:{createObjectURL:blob=>{downloads.push(blob);return 'blob:mock'},revokeObjectURL(){}},setTimeout(){},confirm:()=>true,location:{reload(){}},CustomEvent:class{constructor(type,{detail}){this.type=type;this.detail=detail}},setInterval:fn=>intervals.push(fn),queueMicrotask,console,fetch:async(url,options)=>{
   const respond=x=>({ok:true,json:async()=>clone(x)});
   if(options.method==='GET'&&url.includes('/finance_periods?'))return respond(periodRows);
@@ -271,4 +271,9 @@ test('closed-period recovery explains the rejection and lets an admin reopen wit
 });
 test('accountant cannot reopen a closed period from recovery',async()=>{
  const h=harness({},{},{identity:{user_id:'b',email:'b@example.test',role:'accountant'}});await h.window.arbatCloudBoot();h.post(async()=>({ok:false,status:400,json:async()=>({message:'Financial period 2026-09 is closed: realizations cannot be changed.'})}));h.save(F,{realizations:[{_id:'act',date:'2026-09-12'}]});await wait();await wait();assert.equal(h.nodes.some(n=>n.id==='ab-recovery-open-period'),false);
+});
+test('recovery period approval cannot act after the account changes while its dialog is open',async()=>{
+ const approval=deferred(),identity={user_id:'approval-owner',email:'owner@example.test',role:'admin'},h=harness({realizations:[{_id:'act',date:'2026-09-12',amount:10}]},{},{identity,confirm:()=>approval.promise});await h.window.arbatCloudBoot();
+ h.post(async()=>({ok:false,status:400,json:async()=>({message:'Financial period 2026-09 is closed: realizations cannot be changed.'})}));h.save(F,{realizations:[{_id:'act',date:'2026-09-12',amount:20}]});await wait();await wait();
+ h.nodes.find(node=>node.id==='ab-recovery-period-reason').value='Исправление по согласованному акту';const action=h.nodes.find(node=>node.id==='ab-recovery-open-period').onclick(),before=h.writes.length;await wait();h.window.abIdentity={user_id:'another-owner',email:'another@example.test',role:'admin'};approval.resolve(true);await action;assert.equal(h.writes.length,before,'a stale approval cannot send a period mutation under another account');assert.ok(h.localStorage.getItem('arbat-unsynced-recovery-v1:approval-owner'));
 });
