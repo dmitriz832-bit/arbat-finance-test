@@ -18,7 +18,7 @@
   future.sort((a,b)=>a.occurrence.localeCompare(b.occurrence));overdue.sort((a,b)=>a.occurrence.localeCompare(b.occurrence));
   return {from:today,to,future,week:future.filter(x=>x.occurrence<=to),overdue};
  }
- const kinds={'project-expense':['expenses','Расход проекта'],'general-expense':['costs','Общий расход'],'work-act':['workActs','Выполненная работа'],payroll:['labor','Начисление']};
+ const kinds={'management-tax':['taxPnl','Начисление налога для ОПиУ'],'project-expense':['expenses','Расход проекта'],'general-expense':['costs','Общий расход'],'work-act':['workActs','Выполненная работа'],payroll:['labor','Начисление']};
  function expenseSourceRow(row){
   const calculated=row.calculated===true;
   return {source:row.source,collection:calculated?null:kinds[row.kind]?.[0]||null,id:calculated?null:row.source?._id||row.source?.id,date:row.date,label:row.label||kinds[row.kind]?.[1]||row.kind,category:row.category,amount:row.amount,calculated,adjustment:row.adjustment||null,explanation:row.explanation||(calculated?'Расчётная корректировка финансового ядра за выбранный период. Отдельного первичного документа нет; исходное начисление не изменяется.':'')};
@@ -28,6 +28,7 @@
   const expenses=snapshot.rows.map(expenseSourceRow);
   if(metric==='revenue')return revenue;
   if(metric==='direct'){const rows=expenses.filter(x=>x.category==='direct');if(snapshot.deferredChange)rows.push({collection:null,id:null,date:'',label:'Изменение НЗП: уменьшение признанных затрат',amount:-snapshot.deferredChange});return rows;}
+  if(metric==='taxPnl')return expenses.filter(x=>x.source?.managementTax===true);
   if(metric==='production')return expenses.filter(x=>x.category==='production');
   if(metric==='expenses')return expenses.filter(x=>x.category!=='belowIncome');
   if(metric==='cash')return snapshot.cash.rows.filter(x=>x.type!=='transfer').map(source=>({source,collection:'cash',id:source._id||source.id,date:source.date,label:source.type==='in'?'Поступление':'Платёж',amount:core.cents(source.amount)*(source.type==='out'?-1n:1n)}));
@@ -39,6 +40,7 @@
  function reportRows(snapshot,label,core){
   if(label==='ВЫРУЧКА ПО РЕАЛИЗАЦИЯМ БЕЗ НДС')return financialRows(snapshot,'revenue',core);
   if(['ВАЛОВАЯ ПРИБЫЛЬ','ПРИБЫЛЬ НАПРАВЛЕНИЙ ДО ОБЩИХ'].includes(label))return financialRows({...snapshot,rows:snapshot.rows.filter(x=>x.category==='direct')},'gross',core);
+  if(label==='↳ Налог на доход (прибыль)')return financialRows(snapshot,'taxPnl',core);
   if(label==='EBITDA')return financialRows(snapshot,'ebitda',core);
   if(['ИТОГОВЫЙ УПРАВЛЕНЧЕСКИЙ РЕЗУЛЬТАТ','ПРЕДВАРИТЕЛЬНЫЙ РЕЗУЛЬТАТ'].includes(label))return financialRows(snapshot,'result',core);
   if(label.startsWith('Изменение НЗП'))return financialRows({...snapshot,rows:[],revenueDocuments:[]},'result',core);

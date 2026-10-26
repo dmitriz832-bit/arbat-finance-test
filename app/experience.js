@@ -76,7 +76,7 @@
   }
   const data=kind==='tax'?{taxes:window.arbatTaxSnapshot()}:window.arbatDashboardSnapshot();let title='',scope='',body='';
   if(kind==='metric'){
-   title=({revenue:'Реализации без НДС',direct:'Признанные прямые затраты',production:'Общепроизводственные расходы',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
+   title=({taxPnl:'Налог на доход (прибыль) для ОПиУ',revenue:'Реализации без НДС',direct:'Признанные прямые затраты',production:'Общепроизводственные расходы',gross:'Валовый результат',ebitda:'EBITDA',result:'Управленческий результат',expenses:'Расходы по документам',cash:'Чистый денежный поток'})[value];
    const rows=model.financialRows(data.financial,value,core),total=rows.reduce((v,x)=>v+x.amount,0n);scope=data.bounds.label+' · '+(data.org||'Весь бизнес');
    body='<div class="ux-detail-summary"><strong>'+rub(total)+'</strong><p>Источник: документы выбранного периода. В результате расходы показаны со знаком минус, доходы — плюс. Корректировка НЗП выделена отдельно.</p></div>'+sourceRows(rows);
   }else if(kind==='report'){
@@ -142,6 +142,7 @@
  }
  function openSource(collection,id){
   if(collection==='stockReview')return window.ArbatManagementUI?.openStockReview(id);
+  if(collection==='taxPnl')return window.ArbatTaxPnlUI?.openDocument(id);
   if(collection==='payables')return window.arbatOpenPayables?.(id);
   if(collection==='calendar')return editCalendar(id);
   if(collection==='wallets')return showWallet(id);
