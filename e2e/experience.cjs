@@ -45,12 +45,13 @@ test('approved navigation, periods, source documents and every section fit all s
    await page.evaluate(route=>window.arbatNavigate(route),route);
    const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(overflow.scroll<=width+2,`${engine.name()} ${width} ${route}: page overflow ${overflow.scroll}`);
   }
+  const reportReady=kind=>page.waitForFunction(kind=>{const host=document.getElementById('reportTable'),table=host?.querySelector('table[data-ra-matrix="1"].rt-table'),view=window.ArbatReportAnalysisUI?.getSnapshot();return !!(table&&view&&view.kind===kind&&view.scope.granularity==='month'&&host.getAttribute('aria-busy')==='false'&&view.scope.from===document.getElementById('raFrom').value&&view.scope.to===document.getElementById('raTo').value&&table.tHead.rows[0].cells.length===14&&[...table.tBodies[0].rows].every(row=>row.cells.length===14))},kind);
   await page.evaluate(()=>window.arbatNavigate('reports:pnl'));
   const month=await page.evaluate(()=>new Date().getMonth()+1);
-  await page.locator('#raGranularity').selectOption('month');
+  await page.locator('#raGranularity').selectOption('month');await reportReady('pnl');
   if(width<=700){
    for(const kind of ['cash','pnl']){
-    await page.evaluate(kind=>window.arbatNavigate('reports:'+kind),kind);
+    await page.evaluate(kind=>window.arbatNavigate('reports:'+kind),kind);await reportReady(kind);
     const row=page.locator('#reportTable tbody tr').first();
     assert.equal(await row.locator('td:visible').count(),14,'mobile report keeps all periods in the horizontally scrolling matrix');
     assert.ok(await row.evaluate(el=>el.getBoundingClientRect().height)<180,'report rows remain readable without stacking twelve months');
@@ -64,13 +65,13 @@ test('approved navigation, periods, source documents and every section fit all s
     await page.screenshot({path:path.join(root,'test-results',`mobile-report-${kind}-${engine.name()}-${width}.png`),fullPage:true});
    }
   }
-  await page.evaluate(()=>window.arbatNavigate('reports:pnl'));
+  await page.evaluate(()=>window.arbatNavigate('reports:pnl'));await reportReady('pnl');
   await page.locator('#reportTable [data-ra-row-id="revenue"] [data-ra-column="'+(month-1)+'"]').click();
   assert.deepEqual(errors,[],engine.name()+' '+width+': report drilldown errors');
   assert.equal(await page.locator('#raSources').isVisible(),true);assert.match(await page.locator('#raSourceTotal').innerText(),/60\s?000/);
   await page.locator('#raSources [data-ra-open-collection="realizations"]').click();
   await page.locator('#genericEditForm [name=amount]').fill('70000');
-  await page.locator('#genericEditForm button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});
+  await page.locator('#genericEditForm button[type=submit]').click();await page.locator('#genericModal.open').waitFor({state:'hidden'});await reportReady('pnl');
   assert.match(await page.locator('#raSourceTotal').innerText(),/70\s?000/,'summary updates after editing the exact report source');
   await page.locator('#raSourceBack').click();
   assert.equal(await page.locator('#reports').evaluate(el=>el.classList.contains('active')),true,'return to the original report');

@@ -55,7 +55,7 @@
    $('reportCsv').onclick=exportCsv;refreshSources();dirty=false;
   }catch(error){view=null;host.replaceChildren();$('reportKpis').replaceChildren();$('raError').hidden=false;$('raError').textContent=error.message||'Не удалось рассчитать отчёт';$('raCount').textContent='';empty.hidden=true;refreshSources();dirty=false}finally{host.setAttribute('aria-busy','false')}
  }
- function queue(){dirty=true;if(!active()){controls();return}host.setAttribute('aria-busy','true');if(!pending)pending=requestAnimationFrame(refresh)}
+ function queue(){dirty=true;controls();if(!active())return;host.setAttribute('aria-busy','true');if(!pending)pending=requestAnimationFrame(refresh)}
  function exportCsv(){if(!view)return;const url=URL.createObjectURL(new Blob([model.csv(view,core)],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='ARBAT_'+view.kind+'_'+state.from+'_'+state.to+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
  function openSources(button){const row=view?.rows.find(x=>x.id===button.dataset.raRow);if(!row)return;const index=button.dataset.raColumn,column=index==='total'?null:view.columns[Number(index)];detail={scope:{...view.scope},rowId:row.id,label:row.label,column:index,columnId:column?.id,from:column?.from||state.from,to:column?.to||state.to,trigger:button};panel.hidden=false;refreshSources();$('raSourceTitle').focus({preventScroll:true});panel.scrollIntoView({block:'nearest',behavior:'auto'})}
  function sourceScopeKey(scope){return JSON.stringify([scope?.kind,scope?.org||'',scope?.from,scope?.to,scope?.granularity,scope?.groupBy,scope?.groupFilter||'',scope?.search||'',!!scope?.hideZero,!!scope?.hideTransfers])}

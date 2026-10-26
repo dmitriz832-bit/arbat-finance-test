@@ -52,9 +52,15 @@
   if(view.issues.length){const notice=document.createElement('p');notice.className='cash-workspace-issue';notice.textContent='В '+view.issues.length+' операциях некорректная сумма или тип. Итоги требуют сверки с документами.';$('cashWorkspaceTotals').append(notice)}
  }
  const schedule=()=>{if(!frame)frame=requestAnimationFrame(render)};
+ // Native renders replace the journal with unfiltered source rows. Complete the
+ // active cash projection in the same turn so no caller sees mixed scopes.
+ const refresh=()=>section.classList.contains('active')?render():schedule(),sourceRender=window.render;
+ if(typeof sourceRender==='function')window.render=function(...args){const result=sourceRender.apply(this,args);refresh();return result};
  for(const [key,id] of Object.entries(fields))$(id).addEventListener(key==='search'?'input':'change',()=>{if(synchronizing)return;state[key]=$(id).value;if(key==='mode'&&state.mode==='range'&&(!state.from||!state.to)){const bounds=core.ownerPeriodBounds('month',state.reference||today());state.from=bounds.from;state.to=bounds.to}if(['mode','reference','from','to','groupBy'].includes(key))state.day='';persist();render()});
  root.addEventListener('click',event=>{const create=event.target.closest('[data-cash-create]');if(create){const values={type:create.dataset.cashCreate};const org=$('orgFilter')?.value;if(org)values.org=org;window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'cashForm',values,trigger:create}}));return}const type=event.target.closest('[data-cash-type]');if(type){state.type=type.dataset.cashType;persist();render();return}const group=event.target.closest('[data-cash-group-key]');if(group){const key=group.dataset.cashGroupKey;if(state.groupBy==='article')state.articleId=key;else if(state.groupBy==='wallet')state.walletId=key;else if(state.groupBy==='party')state.partyId=key;else if(state.groupBy==='month'){state.mode='month';state.reference=key+'-01';state.day=''}else state.day=key;persist();render()}});
  $('cashWorkspaceReset').onclick=()=>{for(const key of ['search','articleId','walletId','partyId','projectKey','day'])state[key]='';state.type='all';persist();render()};$('cashWorkspaceDay').onclick=()=>{state.day='';persist();render()};
- new MutationObserver(schedule).observe(table,{childList:true,subtree:true});new MutationObserver(updatePins).observe(table,{attributes:true,subtree:true,attributeFilter:['class','style']});$('orgFilter')?.addEventListener('change',schedule);window.addEventListener('arbat:cloud-update',schedule);window.addEventListener('arbat:identity',()=>{load();schedule()});
+ new MutationObserver(schedule).observe(table,{childList:true,subtree:true});new MutationObserver(updatePins).observe(table,{attributes:true,subtree:true,attributeFilter:['class','style']});$('orgFilter')?.addEventListener('change',refresh);window.addEventListener('arbat:cloud-update',schedule);window.addEventListener('arbat:identity',()=>{load();schedule()});
+ for(const name of ['type','org','walletId'])$('cashForm')?.elements.namedItem(name)?.addEventListener('change',refresh);
+ document.addEventListener('arbat:navigate',event=>{if(event.detail?.section==='cash')render()});
  window.arbatRenderCashWorkspace=render;render();
 })();
