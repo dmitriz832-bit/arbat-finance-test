@@ -1,5 +1,5 @@
 (()=>{
-  const COLORS=['#168b68','#2385c7','#d88b22','#755bc2','#c85b8e','#4b8d8a','#8c6b49'];
+  const COLORS=['var(--ft-chart-blue,#3a369b)','var(--ft-chart-purple,#804ad7)','var(--ft-chart-teal,#75c2c7)','var(--ft-chart-sky,#7d76cf)','var(--ft-chart-lilac,#9399c0)','var(--ft-chart-slate,#b2bad8)','var(--ft-chart-sand,#afa6c6)'];
   const money=value=>Number(value||0);
   const validWalletDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
   const sum=(rows,selector=item=>money(item.amount))=>Number(window.ArbatFinanceCore.rubles(window.ArbatFinanceCore.sum(rows.map(selector))));
@@ -125,19 +125,25 @@
     target.textContent=text;status.className='dashboard-status '+tone;status.textContent=label;
     document.getElementById('dashboardUpdated').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   }
+  let displayedCashFlow=null;
   function cashChart(data){
     const target=document.getElementById('dashboardCashFlow');if(!target)return;
-    const flow=data.flow,maximum=Math.max(1,...flow.flatMap(x=>[x.income,x.outcome,Math.abs(x.income-x.outcome)]));
-    const top=25,zero=135,half=87,step=112,start=64,bar=25;
-    let points=[],svg='<svg viewBox="0 0 760 260" role="img" aria-label="Движение денег: положительный и отрицательный чистый поток"><line class="axis" x1="42" y1="'+zero+'" x2="744" y2="'+zero+'"/>';
-    for(let level=-1;level<=1;level++){const y=zero-level*half;svg+='<line class="grid" x1="42" y1="'+y+'" x2="744" y2="'+y+'"/><text x="2" y="'+(y+4)+'">'+esc(new Intl.NumberFormat('ru-RU',{notation:'compact'}).format(maximum*level))+'</text>'}
+    const flow=data.flow;displayedCashFlow=flow;
+    const maximum=Math.max(1,...flow.flatMap(x=>[Math.abs(x.income),Math.abs(x.outcome),Math.abs(x.income-x.outcome)]));
+    if(!flow.some(item=>item.income||item.outcome)){target.innerHTML='<div class="dashboard-empty ft-chart-empty">Нет движения денег за последние 6 месяцев.</div>';return}
+    // Only geometry uses the existing snapshot numbers; financial values are never read back from the SVG.
+    const width=Math.max(260,Math.round(target.getBoundingClientRect().width||560)),zero=120,half=84,left=48,right=10,step=(width-left-right)/Math.max(1,flow.length),bar=Math.min(22,step*.28);
+    let points=[],groups=[],svg='<svg class="ft-cash-chart" viewBox="0 0 '+width+' 244" role="group" aria-label="Движение денег за последние 6 месяцев. Поступления, платежи и чистый поток.">';
+    for(let level=-1;level<=1;level++){const y=zero-level*half;svg+='<line class="'+(level===0?'axis':'grid')+'" x1="'+left+'" y1="'+y+'" x2="'+(width-right)+'" y2="'+y+'"/><text class="ft-chart-axis-label" x="'+(left-7)+'" y="'+(y+4)+'" text-anchor="end">'+esc(new Intl.NumberFormat('ru-RU',{notation:'compact',maximumFractionDigits:1}).format(maximum*level))+'</text>'}
     flow.forEach((item,index)=>{
-      const x=start+index*step,income=half*item.income/maximum,outcome=half*item.outcome/maximum,net=item.income-item.outcome,netY=zero-net/maximum*half;
-      points.push((x+27)+','+netY);
-      svg+='<rect x="'+x+'" y="'+(zero-income)+'" width="'+bar+'" height="'+income+'" rx="3" class="cash-in"><title>'+esc(item.label+': поступления '+rub(item.income))+'</title></rect><rect x="'+(x+30)+'" y="'+(zero-outcome)+'" width="'+bar+'" height="'+outcome+'" rx="3" class="cash-out"><title>'+esc(item.label+': выплаты '+rub(item.outcome))+'</title></rect><text x="'+(x+27)+'" y="248" text-anchor="middle">'+esc(item.label)+'</text>';
+      const x=left+step*(index+.5),income=half*item.income/maximum,outcome=half*item.outcome/maximum,net=item.income-item.outcome,netY=zero-net/maximum*half;
+      points.push(x+','+netY);
+      const label=item.label+'\nПоступления: '+rub(item.income)+'\nПлатежи: '+rub(item.outcome)+'\nЧистый поток: '+rub(net);
+      groups.push('<g class="ft-chart-point" tabindex="0" role="img" aria-label="'+esc(label.replace(/\n/g,'. '))+'" data-chart-tooltip="'+esc(label)+'" data-chart-month="'+index+'" data-chart-income="'+item.income+'" data-chart-outcome="'+item.outcome+'" data-chart-net="'+net+'"><rect class="ft-chart-hit" x="'+(left+step*index)+'" y="24" width="'+step+'" height="205" rx="5"/><rect x="'+(x-bar-2)+'" y="'+Math.min(zero,zero-income)+'" width="'+bar+'" height="'+Math.abs(income)+'" rx="2" class="cash-in"/><rect x="'+(x+2)+'" y="'+Math.min(zero,zero-outcome)+'" width="'+bar+'" height="'+Math.abs(outcome)+'" rx="2" class="cash-out"/><circle cx="'+x+'" cy="'+netY+'" r="3.5" class="net-dot"/><text x="'+x+'" y="232" text-anchor="middle">'+esc(item.label)+'</text></g>');
     });
-    if(points.length>1)svg+='<polyline points="'+points.join(' ')+'" class="net-line"/>'+points.map(point=>{const [x,y]=point.split(',');return '<circle cx="'+x+'" cy="'+y+'" r="4" class="net-dot"/>'}).join('');
-    target.innerHTML=svg+'</svg>';
+    if(points.length>1)svg+='<polyline points="'+points.join(' ')+'" class="net-line"/>';
+    const values='<details class="ft-chart-data"><summary>Данные графика</summary><div class="ft-chart-data-scroll"><table><caption>Движение денег за последние 6 месяцев</caption><thead><tr><th>Месяц</th><th>Поступления</th><th>Платежи</th><th>Чистый поток</th></tr></thead><tbody>'+flow.map(item=>'<tr><th scope="row">'+esc(item.label)+'</th><td>'+rub(item.income)+'</td><td>'+rub(item.outcome)+'</td><td>'+rub(item.income-item.outcome)+'</td></tr>').join('')+'</tbody></table></div></details>';
+    target.innerHTML=svg+groups.join('')+'</svg>'+values;
   }
   function attention(data){
     const target=document.getElementById('dashboardAttention');if(!target)return;const issues=[];
@@ -161,7 +167,7 @@
   function directions(data){
     const target=document.getElementById('dashboardDirections');if(!target)return;const active=data.directions.filter(item=>item.revenue||item.cost).sort((a,b)=>b.revenue-a.revenue);
     if(!active.length){target.innerHTML='<div class="dashboard-empty">Добавьте реализации и расходы — здесь появится сравнение направлений.</div>';return}
-    const max=Math.max(1,...active.flatMap(item=>[item.revenue,item.cost]));target.innerHTML='<div class="dashboard-direction-table"><div class="dashboard-direction-row head"><span>Направление</span><span>Выручка</span><span>Затраты</span><span>Результат</span><span>Маржа</span></div>'+active.map(item=>'<div class="dashboard-direction-row"><span class="direction-name" title="'+esc(item.name)+'">'+esc(item.name)+'<i><b style="width:'+Math.max(item.revenue?2:0,item.revenue/max*100)+'%"></b></i></span><span>'+rub(item.revenue)+'</span><span>'+rub(item.cost)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><em class="'+(item.margin<0?'dashboard-negative':'')+'">'+percent(item.margin)+'</em></div>').join('')+'</div>';
+    const max=Math.max(1,...active.flatMap(item=>[Math.abs(item.revenue),Math.abs(item.cost)]));target.innerHTML='<div class="dashboard-direction-table"><div class="dashboard-direction-row head"><span>Направление</span><span>Выручка</span><span>Затраты</span><span>Результат</span><span>Маржа</span></div>'+active.map(item=>'<div class="dashboard-direction-row" tabindex="0" data-chart-tooltip="'+esc(item.name+'\nВыручка: '+rub(item.revenue)+'\nЗатраты: '+rub(item.cost)+'\nРезультат: '+rub(item.result))+'"><span class="direction-name" title="'+esc(item.name)+'">'+esc(item.name)+'<i><b style="width:'+Math.max(0,Math.min(100,item.revenue/max*100))+'%"></b></i></span><span>'+rub(item.revenue)+'</span><span>'+rub(item.cost)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+rub(item.result)+'</strong><em class="'+(item.margin<0?'dashboard-negative':'')+'">'+percent(item.margin)+'</em></div>').join('')+'</div>';
   }
   function wallets(data){
     const target=document.getElementById('dashboardWallets');if(!target)return;const rows=window.arbatOrderedWallets?window.arbatOrderedWallets(data.wallets):[...data.wallets];
@@ -186,10 +192,11 @@
     const deals=db.deals||[];
     const projectLabels={planned:'Планируется',active:'В работе',paused:'Приостановлен',completed:'Завершён'};
     const rows=[...data.projects].sort((a,b)=>(a.result<0?0:1)-(b.result<0?0:1)||b.remaining-a.remaining).slice(0,6);
+    const field=(label,value)=>'<dl class="dashboard-project-field"><dt>'+esc(label)+'</dt><dd>'+value+'</dd></dl>';
     target.innerHTML='<div class="dashboard-project-table executive-project-table"><div class="dashboard-project-row head"><span>Проект</span><span>Договор</span><span>План затрат</span><span>Расходы: начислено / признано</span><span>НЗП</span><span>Реализация</span><span>Прибыль</span><span>Маржа</span><span>Статус</span></div>'+rows.map(item=>{
       const deal=deals.find(d=>projectKey(d)===item.key),plan=Number(deal?.cost??deal?.directCostPlan??deal?.plannedDirectCosts??deal?.planCosts??NaN);
       const known=Number.isFinite(plan),left=plan-item.cost,margin=item.revenue?item.result/item.revenue*100:NaN;
-      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><button type="button" class="ux-text-link" data-ux-project="'+esc(deal?._id||'')+'">'+esc(item.name)+'</button><small>'+esc(item.org||'')+'</small></span><span>'+rub(item.contract)+'</span><span>'+(known?rub(plan)+'<small>остаток '+rub(left)+'</small>':'—')+'</span><span><strong>'+rub(item.cost)+'</strong><small>признано '+(item.recognizedCost===null?'—':rub(item.recognizedCost))+'</small></span><span>'+(item.wipCost===null?'—':rub(item.wipCost))+'</span><span>'+rub(item.realized)+'</span><strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+(item.reviewRequired?'Требует проверки':rub(item.result))+'</strong><span>'+(item.reviewRequired?'—':percent(margin))+'</span><span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+esc(projectLabels[deal?.projectStatus]||'Не указан')+'</span></div>'
+      return '<div class="dashboard-project-row"><span class="project-name" title="'+esc(item.name)+'"><button type="button" class="ux-text-link" data-ux-project="'+esc(deal?._id||'')+'">'+esc(item.name)+'</button><small>'+esc(item.org||'')+'</small></span>'+field('Договор',rub(item.contract))+field('План затрат',known?rub(plan)+'<small>остаток '+rub(left)+'</small>':'—')+field('Расходы: начислено / признано','<strong>'+rub(item.cost)+'</strong><small>признано '+(item.recognizedCost===null?'—':rub(item.recognizedCost))+'</small>')+field('НЗП',item.wipCost===null?'—':rub(item.wipCost))+field('Реализация',rub(item.realized))+field('Прибыль','<strong class="'+(item.result<0?'dashboard-negative':'dashboard-positive')+'">'+(item.reviewRequired?'Требует проверки':rub(item.result))+'</strong>')+field('Маржа',item.reviewRequired?'—':percent(margin))+field('Статус','<span class="executive-project-status '+(item.result<0?'risk':'normal')+'">'+esc(projectLabels[deal?.projectStatus]||'Не указан')+'</span>')+'</div>'
     }).join('')+'</div>';
   }
   function calendar(data){
@@ -210,14 +217,16 @@
     const groups=new Map();
     const categoryNames={direct:'Прямые расходы',production:'Производственные расходы',administrative:'Административные расходы',commercial:'Коммерческие расходы',belowIncome:'Прочие доходы',belowExpenses:'Расходы ниже операционного результата'};
     for(const x of spends){const key=categoryNames[x.category]||String(x.category||'Без категории');groups.set(key,(groups.get(key)||0)+Number(core.rubles(x.amount)))}
-    const total=spends.reduce((v,x)=>v+Number(core.rubles(x.amount)),0),top=[...groups].sort((a,b)=>b[1]-a[1]).slice(0,6),spend=document.getElementById('dashboardSpending');
-    let offset=0;const hasNegative=top.some(([,value])=>value<0),segments=top.map(([,value],i)=>{const from=offset;offset+=total>0?value/total*100:0;return COLORS[i%COLORS.length]+' '+from+'% '+offset+'%'});
-    if(spend)spend.innerHTML=top.length?'<div class="executive-spend"><div class="executive-donut" style="background:'+(hasNegative||total<=0?'#e3edf4':'conic-gradient('+segments.join(',')+')')+'"><strong>'+rub(total)+'</strong><small>Расходы за период</small></div><div class="executive-spend-list">'+top.map(([name,value],i)=>'<div><i style="background:'+COLORS[i%COLORS.length]+'"></i><span>'+esc(name)+'</span><strong>'+rub(value)+'</strong><small>'+(hasNegative||total<=0?'':percent(value/total*100))+'</small></div>').join('')+'</div></div>'+(hasNegative?'<p class="ux-help">Есть корректировки со знаком минус — круговая диаграмма не строится.</p>':''):'<div class="dashboard-empty">Нет расходов за выбранный период.</div>';
+    const total=spends.reduce((v,x)=>v+Number(core.rubles(x.amount)),0),top=[...groups].sort((a,b)=>b[1]-a[1]),spend=document.getElementById('dashboardSpending');
+    const hasNegative=top.some(([,value])=>value<0),canDraw=total>0&&!hasNegative;
+    let offset=0;
+    const segments=canDraw?top.filter(([,value])=>value>0).map(([name,value],i)=>{const share=value/total*100,from=offset;offset+=share;return '<circle class="ft-donut-segment" cx="90" cy="90" r="65" pathLength="100" fill="none" stroke="'+COLORS[i%COLORS.length]+'" stroke-width="25" stroke-dasharray="'+share+' '+(100-share)+'" stroke-dashoffset="'+(-from)+'" transform="rotate(-90 90 90)" tabindex="0" role="img" aria-label="'+esc(name+': '+rub(value)+', '+percent(share))+'" data-chart-tooltip="'+esc(name+'\n'+rub(value)+' · '+percent(share))+'"/>'}).join(''):'';
+    if(spend)spend.innerHTML=top.length?'<div class="executive-spend"><div class="ft-donut-chart" data-chart-total="'+total+'"><svg viewBox="0 0 180 180" role="group" aria-label="Расходы за период: '+esc(rub(total))+'"><circle class="ft-donut-track" cx="90" cy="90" r="65" fill="none" stroke-width="25"/>'+segments+'</svg><div class="ft-donut-total"><strong>'+rub(total)+'</strong><small>Расходы за период</small></div></div><div class="executive-spend-list ft-chart-legend" role="list" aria-label="Категории расходов">'+top.map(([name,value],i)=>'<div role="listitem" tabindex="0" data-chart-value="'+value+'" data-chart-tooltip="'+esc(name+'\n'+rub(value)+(canDraw?' · '+percent(value/total*100):''))+'"><i style="background:'+COLORS[i%COLORS.length]+'"></i><span>'+esc(name)+'</span><strong>'+rub(value)+'</strong><small>'+(canDraw?percent(value/total*100):'')+'</small></div>').join('')+'</div></div>'+(hasNegative?'<p class="ux-help ft-chart-state">Есть корректировки со знаком минус — круговая диаграмма не строится. Суммы показаны в легенде.</p>':total<=0?'<p class="ux-help ft-chart-state">Итог расходов не положительный — суммы показаны в легенде.</p>':''):'<div class="dashboard-empty ft-chart-empty">Нет расходов за выбранный период.</div>';
     const sales=document.getElementById('dashboardSales'),stages=new Map();
     const stageLabels={new:'Новая',negotiations:'Переговоры',proposal:'Коммерческое предложение',contract:'Договор',realization:'Реализация',completed:'Завершена',cancelled:'Отменена'};
     for(const d of (db.deals||[]).filter(x=>matchesOrg(x,data.org))){const label=stageLabels[d.dealStage]||'Этап не указан';const v=stages.get(label)||{count:0,total:0};v.count++;v.total+=money(d.contractTotal??d.revenue);stages.set(label,v)}
     const sorted=[...stages].sort((a,b)=>b[1].total-a[1].total),max=Math.max(1,...sorted.map(x=>x[1].total));
-    if(sales)sales.innerHTML=sorted.length?'<div class="executive-sales">'+sorted.slice(0,6).map(([name,v])=>'<div><span>'+esc(name)+'</span><strong>'+v.count+'</strong><i><b style="width:'+Math.max(2,v.total/max*100)+'%"></b></i><em>'+rub(v.total)+'</em></div>').join('')+'</div>':'<div class="dashboard-empty">Пока нет сделок.</div>';
+    if(sales)sales.innerHTML=sorted.length?'<div class="executive-sales">'+sorted.slice(0,6).map(([name,v])=>'<button type="button" class="ft-sales-row" data-dashboard-route="deals" data-chart-tooltip="'+esc(name+'\nСделок: '+v.count+'\nСумма договоров: '+rub(v.total))+'"><span>'+esc(name)+'</span><strong>'+v.count+'</strong><i aria-hidden="true"><b style="width:'+Math.max(0,Math.min(100,v.total/max*100))+'%"></b></i><em>'+rub(v.total)+'</em></button>').join('')+'</div>':'<div class="dashboard-empty">Пока нет сделок.</div>';
     const wh=document.getElementById('dashboardWarehouse');
     if(wh)wh.innerHTML='<div class="executive-warehouse"><div><small>Стоимость остатков</small><button type="button" class="ux-value" data-ux-stock>'+(data.stock.totalValue===null?'Требует оценки':rub(Number(core.rubles(data.stock.totalValue))))+'</button></div><div><small>Позиции по местам хранения</small><button type="button" class="ux-value" data-ux-stock>'+data.stock.rows.filter(x=>x.qty>0).length+'</button></div><div><small>Замечания к оценке</small><strong>'+data.stock.issues.length+'</strong></div></div><div class="executive-note">Источник: движения материалов и оценка FIFO. Нажмите остаток для расшифровки.</div>';
     const ev=document.getElementById('dashboardEvents');
@@ -248,4 +257,5 @@
     render();return result;
   };
   document.getElementById('orgFilter')?.addEventListener('change',()=>requestAnimationFrame(render));render();
+  if(typeof ResizeObserver==='function'){let width=0;const target=document.getElementById('dashboardCashFlow');if(target)new ResizeObserver(entries=>{const next=Math.round(entries[0].contentRect.width);if(next&&next!==width&&displayedCashFlow){width=next;cashChart({flow:displayedCashFlow})}}).observe(target)}
 })();

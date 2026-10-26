@@ -29,11 +29,32 @@
  const trackModal=node=>{if(!node.matches(modalSelector))return;const active=node.classList.contains('open');if(active){dirtyModals.set(node,{initial:formValues(node),focus:document.activeElement})}else dirtyModals.delete(node)};
  const modalChanges=new MutationObserver(records=>{for(const record of records)trackModal(record.target)});
  for(const node of document.querySelectorAll(modalSelector)){modalChanges.observe(node,{attributes:true,attributeFilter:['class']});trackModal(node)}
+ let approvedClose=null,pendingClose=null;
+ const isDirty=node=>dirtyModals.has(node)&&formValues(node)!==dirtyModals.get(node).initial;
+ async function requestClose(node,action){
+  if(pendingClose)return false;
+  if(isDirty(node)){
+   pendingClose=node;let accepted=false;
+   try{accepted=await window.ArbatPopup.confirm('Закрыть карточку без сохранения изменений?',{confirmLabel:'Закрыть без сохранения'})}finally{pendingClose=null}
+   if(!accepted||!node.isConnected||!node.classList.contains('open'))return false;
+  }
+  approvedClose=node;try{action()}finally{approvedClose=null}
+  return !node.classList.contains('open');
+ }
+ // Consumers opening another document must wait for the discard decision.
+ window.arbatRequestModalClose=async button=>{
+  if(!button)return false;const node=button.closest(modalSelector);
+  if(!node){button.click();return true}return requestClose(node,()=>button.click());
+ };
  function guardClose(event){
   if(event.type==='keydown'&&(event.key!=='Escape'||document.querySelector('.smart-combobox-list[data-open="1"]')))return;
-  const node=[...dirtyModals.keys()].filter(x=>x.getClientRects().length).sort((a,b)=>(+getComputedStyle(a).zIndex||0)-(+getComputedStyle(b).zIndex||0)).at(-1);if(!node)return;
+  if(document.querySelector('.ft-confirm-dialog[open]'))return;
+  const node=[...dirtyModals.keys()].filter(x=>x.getClientRects().length).sort((a,b)=>(+getComputedStyle(a).zIndex||0)-(+getComputedStyle(b).zIndex||0)).at(-1);if(!node||approvedClose===node)return;
   if(event.type==='click'&&event.target!==node&&!event.target.closest('#closeDealModal,#cancelDealEdit,#genericCancel,#genericClose,#calendarModalCancel,#calendarModalClose,#walletEditCancel,#walletModalClose,#workEditCancel,#workEditClose,#batchCancel,#batchClose,#allocCancel,#allocClose,#whCancel'))return;
-  if(formValues(node)!==dirtyModals.get(node).initial&&!confirm('Закрыть карточку без сохранения изменений?')){event.preventDefault();event.stopImmediatePropagation()}
+  if(!isDirty(node))return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const target=event.target,type=event.type;
+  requestClose(node,()=>{if(!target?.isConnected)return;if(type==='click')target.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));else target.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true}))});
  }
  window.addEventListener('click',guardClose,true);window.addEventListener('keydown',guardClose,true);
  const overview=$('overview'),visuals=$('dashboardVisuals');if(!visuals)return;

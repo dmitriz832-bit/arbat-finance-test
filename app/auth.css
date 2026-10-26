@@ -1,9 +1,21 @@
-body:not(.ab-ready)>*:not(#ab-auth){visibility:hidden!important}#ab-auth{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:#102339;padding:20px;color:#172337;visibility:visible!important}#ab-auth .card{width:min(420px,100%);background:#fff;padding:30px;border-radius:17px;box-shadow:0 20px 80px #0006}#ab-auth form{display:grid;gap:10px}#ab-auth input,#ab-auth button{width:100%}#ab-auth [hidden]{display:none!important}body.ab-ready #ab-auth{display:none}#ab-logout{position:fixed;right:12px;bottom:12px;z-index:9999;box-shadow:0 3px 9px #0004}
-body.ab-profile-only>*:not(#ab-auth):not(#ab-logout):not(#ab-profile-open):not(#ab-profile-overlay){display:none!important}body.ab-profile-only{background:#f2f5f9!important}body.ab-profile-only #ab-profile-open{right:108px}
-#ab-profile-logout-area #ab-logout{position:static!important;right:auto!important;bottom:auto!important;z-index:auto!important;box-shadow:none!important;background:#fff;color:#a12323;border:1px solid #e3c5c5}body.ab-profile-only #ab-profile-open{position:fixed;right:12px;bottom:12px;z-index:9999;width:auto;background:#102339;color:white;padding:11px 15px;border-radius:9px}
-#ab-auth .ab-secondary{background:#fff!important;color:#176fae!important;border:1px solid #b9d2e5!important}#ab-auth .ab-auth-help{margin:2px 0 0;color:#61758a;font-size:13px;line-height:1.45}#ab-auth #ab-message{line-height:1.4}#ab-auth input[hidden],#ab-auth label[hidden]{display:none!important}
+body:not(.ab-ready)>*:not(#ab-auth):not(.ft-confirm-dialog):not(.ft-toast-region):not(#ftTooltip){visibility:hidden!important}#ab-auth{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:var(--ft-bg);padding:20px;color:var(--ft-heading);visibility:visible!important}#ab-auth .card{width:min(420px,100%);background:var(--ft-surface);padding:30px;border-radius:var(--ft-radius-modal);border:1px solid var(--ft-border);box-shadow:0 5px 15px rgba(var(--ft-text-rgb),.08)}#ab-auth form{display:grid;gap:10px}#ab-auth input,#ab-auth button{width:100%}#ab-auth [hidden]{display:none!important}body.ab-ready #ab-auth{display:none}#ab-logout{position:fixed;right:12px;bottom:12px;z-index:9999;box-shadow:0 3px 9px rgba(var(--ft-text-rgb),0.267)}
+body.ab-profile-only>*:not(#ab-auth):not(#ab-logout):not(#ab-profile-open):not(#ab-profile-overlay):not(.ft-confirm-dialog):not(.ft-toast-region):not(#ftTooltip){display:none!important}body.ab-profile-only{background:var(--ft-primary-pale)!important}body.ab-profile-only #ab-profile-open{right:108px}
+#ab-profile-logout-area #ab-logout{position:static!important;right:auto!important;bottom:auto!important;z-index:auto!important;box-shadow:none!important;background:var(--ft-surface);color:var(--ft-danger);border:1px solid var(--ft-danger-border)}body.ab-profile-only #ab-profile-open{position:fixed;right:12px;bottom:12px;z-index:9999;width:auto;background:var(--ft-heading);color:white;padding:11px 15px;border-radius:var(--ft-radius-control)}
+#ab-auth .ab-secondary{background:var(--ft-surface)!important;color:var(--ft-primary)!important;border:1px solid var(--ft-primary-border)!important}#ab-auth .ab-auth-help{margin:2px 0 0;color:var(--ft-muted);font-size:13px;line-height:1.45}#ab-auth #ab-message{line-height:1.4}#ab-auth input[hidden],#ab-auth label[hidden]{display:none!important}
 
 #ab-auth .card{max-height:calc(100dvh - 32px);overflow-y:auto;max-width:100%;box-sizing:border-box}
 #ab-auth #ab-password-link{white-space:normal;min-height:42px;cursor:pointer}
 #ab-auth #ab-password-link:disabled{opacity:.65;cursor:wait}
-@media(max-width:375px){#ab-auth{padding:12px}#ab-auth .card{padding:20px 16px;border-radius:14px}#ab-auth h2{font-size:21px}}
+@media(max-width:375px){#ab-auth{padding:12px}#ab-auth .card{padding:20px 16px;border-radius:var(--ft-radius-card)}#ab-auth h2{font-size:21px}}
+
+/* The access gate follows the same controls before ab-ready is set. */
+#ab-auth{font:400 14px/20px var(--ft-font);color:var(--ft-text)}
+#ab-auth h2{font-size:24px;font-weight:500;color:var(--ft-text)}
+#ab-auth :is(input,button){font:400 14px/20px var(--ft-font);border:1px solid var(--ft-control-border);border-radius:var(--ft-radius-control);min-height:34px;padding:6px 12px;background:var(--ft-surface);color:var(--ft-text);transition:border-color var(--ft-transition),background-color var(--ft-transition)}
+#ab-auth button{min-height:37px;padding:5px 20px;line-height:25px;color:var(--ft-primary);border-color:var(--ft-primary-border)}
+#ab-auth button[type=submit]{background:var(--ft-primary);border-color:var(--ft-primary);color:white}
+#ab-auth button[type=submit]:hover{background:var(--ft-primary-hover);border-color:var(--ft-primary-hover)}
+#ab-auth button[type=submit]:disabled{background:var(--ft-primary-muted);border-color:var(--ft-primary-muted)}
+#ab-auth :is(input,button):focus-visible{outline:2px solid var(--ft-primary);outline-offset:2px}
+#ab-auth [aria-invalid=true]{border-color:var(--ft-danger)}
+@media(max-width:700px){#ab-auth :is(input,button){min-height:44px;font-size:16px}#ab-auth .card{border-radius:var(--ft-radius-modal)}}

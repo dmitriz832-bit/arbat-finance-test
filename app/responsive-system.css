@@ -1,5 +1,5 @@
 /* ARBAT FINANCE responsive contract — desktop, iPad and iPhone. */
-:root{--ios-blue:#007aff;--ios-green:#34c759;--ios-red:#ff3b30;--ios-orange:#ff9500;--ios-bg:#f2f2f7;--ios-surface:#fff;--ios-label:#1c1c1e;--ios-secondary:#6c6c70;--ios-separator:rgba(60,60,67,.18);--ios-radius:16px;--ios-touch:44px;color-scheme:light}
+:root{--ios-blue:var(--ft-primary);--ios-green:var(--ft-success);--ios-red:var(--ft-danger);--ios-orange:var(--ft-warning);--ios-bg:var(--ft-primary-pale);--ios-surface:var(--ft-surface);--ios-label:var(--ft-text);--ios-secondary:var(--ft-muted);--ios-separator:rgba(60,60,67,.18);--ios-radius:16px;--ios-touch:44px;color-scheme:light}
 html{min-width:0;max-width:100%;overflow-x:clip;-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 body.ab-ready.ui-modern:not(.ab-profile-only){min-width:0;max-width:100%;overflow-x:clip;background:var(--ios-bg)!important;color:var(--ios-label);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",sans-serif!important;-webkit-tap-highlight-color:transparent}
 body.ab-ready.ui-modern:not(.ab-profile-only) *{min-width:0}
@@ -14,7 +14,6 @@ body.ab-ready.ui-modern:not(.ab-profile-only) table :is(th,td){font-variant-nume
 body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs{display:none}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-backdrop,.whdialog,.cw-overlay,.ui-sheet-overlay){box-sizing:border-box!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-actions,.cw-actions,.whbuttonrow,.arbat-modal-actions)>*{max-width:100%}
-body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px,calc(100vw - 40px))!important;max-width:1080px!important;max-height:calc(100dvh - 32px)!important}
 
 /* Desktop: permanent navigation and dense financial grids. */
 @media(min-width:1101px){
@@ -40,7 +39,6 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.fields,.whform,.whgrid,.deal-create-form),body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal #editDealForm{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .layout.mobile-open .sidebar{padding-top:max(16px,env(safe-area-inset-top))!important;padding-bottom:max(16px,env(safe-area-inset-bottom))!important;overflow-y:auto!important;overscroll-behavior:contain}
  body.ab-ready.ui-modern:not(.ab-profile-only) .layout .sidebar #tabs .arbat-nav-main,body.ab-ready.ui-modern:not(.ab-profile-only) .layout .sidebar #tabs .arbat-nav-sub{min-height:var(--ios-touch)!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(920px,calc(100vw - 28px))!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-backdrop,.whdialog,.cw-overlay){padding:14px!important}
 }
 
@@ -48,7 +46,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
 @media(max-width:650px){
  #ui-nav-toggle{display:none!important}
  #ab-auth{min-height:100dvh!important;height:auto!important;align-items:center!important;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))!important}
- #ab-auth>.card{width:100%;max-width:430px;padding:24px 20px!important;border-radius:22px!important}
+ #ab-auth>.card{width:100%;max-width:430px;padding:24px 20px!important;border-radius:var(--ft-radius-card)!important}
  #ab-auth input,#ab-auth button{min-height:48px;font-size:16px}
  body.ab-ready.ui-modern:not(.ab-profile-only)>header{padding:8px 12px!important;padding-top:max(8px,env(safe-area-inset-top))!important}
  body.ab-ready.ui-modern:not(.ab-profile-only)>header b{font-size:16px!important}
@@ -63,7 +61,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
  body.ab-ready.ui-modern:not(.ab-profile-only) #overview .dashboard-kpi:last-child{grid-column:auto!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.card,.dashboard-panel){padding:16px!important;border-radius:var(--ios-radius)!important;margin-bottom:12px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.fields,.whform,.whgrid,.work-filters,.deal-create-form),body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal #editDealForm,body.ab-ready.ui-modern:not(.ab-profile-only) form.ui-sheet-content,body.ab-ready.ui-modern:not(.ab-profile-only) .cw-dialog form{grid-template-columns:minmax(0,1fr)!important;gap:16px!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) :is(input,select,textarea){min-height:48px!important;font-size:16px!important;border-radius:12px!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(input,select,textarea){min-height:48px!important;font-size:16px!important;border-radius:var(--ft-radius-control)!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) textarea{min-height:112px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) button{min-height:var(--ios-touch)}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-toolbar-actions{display:grid!important;grid-template-columns:minmax(0,1fr)!important;width:100%}
@@ -71,14 +69,13 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-segments{display:flex;flex-wrap:nowrap!important;overflow-x:auto!important;scroll-snap-type:x proximity;padding:4px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-segments button{flex:0 0 auto!important;min-height:40px;white-space:nowrap!important;scroll-snap-align:start}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs{position:fixed;z-index:1250;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));min-height:calc(58px + env(safe-area-inset-bottom));padding:5px 6px max(5px,env(safe-area-inset-bottom));background:rgba(249,249,251,.92);border-top:1px solid var(--ios-separator);box-shadow:0 -8px 30px rgba(20,35,55,.08);backdrop-filter:saturate(180%) blur(24px);-webkit-backdrop-filter:saturate(180%) blur(24px)}
- body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button{display:flex;min-width:0;min-height:52px;padding:3px 2px!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0!important;border-radius:10px!important;background:transparent!important;color:#737780!important;font-size:10px!important;font-weight:600;line-height:1.1}
+ body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button{display:flex;min-width:0;min-height:52px;padding:3px 2px!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0!important;border-radius:var(--ft-radius-control)!important;background:transparent!important;color:var(--ft-muted)!important;font-size:10px!important;font-weight:500;line-height:1.1}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button.active{color:var(--ios-blue)!important;background:rgba(0,122,255,.08)!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button:active{transform:scale(.96)}
  body.ab-ready.ui-modern.ui-nav-open:not(.ab-profile-only) .ui-mobile-tabs{visibility:hidden}
  body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal-backdrop,.whdialog,.cw-overlay,.ui-sheet-overlay){padding:12px 0 0!important;align-items:flex-end!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal,.whmodal,.cw-dialog,.ui-sheet),body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:100%!important;max-width:100%!important;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)))!important;margin:0!important;padding:18px 16px calc(18px + env(safe-area-inset-bottom))!important;border-radius:22px 22px 0 0!important;overscroll-behavior:contain}
- body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet{padding:0 0 env(safe-area-inset-bottom)!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) :is(.modal,.whmodal,.cw-dialog,.ui-sheet),body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{overscroll-behavior:contain}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header{grid-template-columns:72px minmax(0,1fr) 104px!important;padding:12px 14px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-header h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) .ui-sheet-body{padding:18px 16px!important}
@@ -92,20 +89,20 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #dealModal .modal{width:min(1080px
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;border:0!important;background:transparent!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>colgroup,body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>thead{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;width:100%!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr{display:block!important;width:100%!important;padding:5px 14px!important;border:1px solid var(--ios-separator)!important;border-radius:14px!important;background:var(--ios-surface)!important;box-shadow:0 1px 3px rgba(20,35,55,.04)!important;overflow:hidden!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr:active{background:#f2f2f7!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr{display:block!important;width:100%!important;padding:5px 14px!important;border:1px solid var(--ios-separator)!important;border-radius:var(--ft-radius-card)!important;background:var(--ios-surface)!important;box-shadow:0 1px 3px rgba(20,35,55,.04)!important;overflow:hidden!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr:active{background:var(--ft-primary-pale)!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr:empty{display:none!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td{display:grid!important;grid-template-columns:minmax(104px,40%) minmax(0,1fr)!important;align-items:center!important;gap:12px!important;width:100%!important;max-width:none!important;min-height:42px!important;padding:9px 0!important;border:0!important;border-bottom:1px solid var(--ios-separator)!important;background:transparent!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;text-align:right!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td:last-child{border-bottom:0!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td::before{content:attr(data-column-label);display:block;color:var(--ios-secondary);font-size:12px;font-weight:600;line-height:1.25;text-align:left;white-space:normal}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td::before{content:attr(data-column-label);display:block;color:var(--ios-secondary);font-size:12px;font-weight:500;line-height:1.25;text-align:left;white-space:normal}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td:empty::after{content:'—';color:var(--ios-secondary)}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td :is(.cell-text,.metric,.metric-caption){max-width:100%!important;white-space:normal!important;text-align:right!important;overflow-wrap:anywhere!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-data-cards>tbody>tr>td :is(button,input,select){justify-self:end;max-width:100%!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table{width:max-content!important;min-width:100%!important;max-width:none!important;table-layout:auto!important}
  body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table :is(th,td){min-width:112px!important;white-space:nowrap!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table :is(th,td):first-child{position:sticky!important;left:0!important;z-index:4;background:#fff!important;min-width:190px!important;white-space:normal!important}
- body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table th:first-child{z-index:6;background:#f7f8fa!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table :is(th,td):first-child{position:sticky!important;left:0!important;z-index:4;background:var(--ft-surface)!important;min-width:190px!important;white-space:normal!important}
+ body.ab-ready.ui-modern:not(.ab-profile-only) table.ui-wide-table th:first-child{z-index:6;background:var(--ft-primary-pale)!important}
 }
-@media(max-width:374px){body.ab-ready.ui-modern:not(.ab-profile-only) .content .wrap{padding-inline:9px!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-page-heading #title{font-size:23px!important}body.ab-ready.ui-modern:not(.ab-profile-only) :is(.card,.dashboard-panel){padding:14px!important;border-radius:14px!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button{font-size:9px!important}}
+@media(max-width:374px){body.ab-ready.ui-modern:not(.ab-profile-only) .content .wrap{padding-inline:9px!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-page-heading #title{font-size:23px!important}body.ab-ready.ui-modern:not(.ab-profile-only) :is(.card,.dashboard-panel){padding:14px!important;border-radius:var(--ft-radius-card)!important}body.ab-ready.ui-modern:not(.ab-profile-only) .ui-mobile-tabs button{font-size:9px!important}}
 @media(hover:hover) and (pointer:fine){body.ab-ready.ui-modern:not(.ab-profile-only) button:hover{filter:brightness(.985)}}
 @media(prefers-reduced-motion:reduce){body.ui-modern *,body.ui-modern *::before,body.ui-modern *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}

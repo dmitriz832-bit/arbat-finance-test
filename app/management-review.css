@@ -2,5 +2,5 @@
 .management-document-review summary{cursor:pointer;min-height:44px;line-height:1.5;display:list-item}
 .management-document-review [data-management-list]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px}
 .management-document-review button{text-align:left;min-height:44px;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
-.management-document-review small{display:block;color:#62738a;line-height:1.6}
+.management-document-review small{display:block;color:var(--ft-muted);line-height:1.6}
 [data-management-number],[data-create-cash-wallet]{min-height:44px;max-width:100%;white-space:normal}
