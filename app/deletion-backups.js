@@ -20,7 +20,7 @@
   }
   async function prepare(state,action='Удаление'){
    await migrateLegacy();await save('deletion',JSON.stringify({format:'arbat-deletion-backup-v1',action,...state}));
-   return {matches:current=>['finance','warehouse','financeModel','warehouseModel'].every(k=>current[k]===state[k]),run(fn){if(active)throw Error('Уже выполняется другое удаление');active=state;try{return fn()}finally{active=null}}};
+   return {matches:current=>['finance','warehouse','financeModel','warehouseModel'].every(k=>current[k]===state[k]),run(fn){if(active)throw Error('Уже выполняется другое удаление');active=state;try{const result=fn();if(result&&typeof result.then==='function')return Promise.resolve(result).finally(()=>{active=null});active=null;return result}catch(error){active=null;throw error}}};
   }
   function checkpoint(key,value){
    if(!financial.test(key)&&!warehouse.test(key))throw Error('Неизвестный ключ резервной копии');

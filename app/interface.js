@@ -7,7 +7,7 @@
  const title=$('title'),org=$('orgFilter').closest('label');
  const heading=document.createElement('div');heading.className='ui-page-heading';title.before(heading);heading.append(title,org);
  const sheet=document.createElement('div');sheet.className='ui-sheet-overlay';sheet.hidden=true;
- sheet.innerHTML='<div class="ui-sheet" role="dialog" aria-modal="true" aria-labelledby="ui-sheet-title" tabindex="-1"><header class="ui-sheet-header"><button type="button" data-sheet-cancel>Отмена</button><h2 id="ui-sheet-title"></h2><button type="button" class="primary" data-sheet-save>Сохранить</button></header><div class="ui-sheet-body"></div><div class="ui-discard" hidden><p>Закрыть без сохранения изменений?</p><button type="button" data-sheet-stay>Продолжить ввод</button><button type="button" class="danger" data-sheet-discard>Не сохранять</button></div></div>';
+ sheet.innerHTML='<div class="ui-sheet" role="dialog" aria-modal="true" aria-labelledby="ui-sheet-title" tabindex="-1"><header class="ui-sheet-header"><h2 id="ui-sheet-title"></h2><button type="button" class="ui-sheet-close" data-sheet-close aria-label="Закрыть">×</button></header><div class="ui-sheet-body"></div><footer class="ui-sheet-footer"><button type="button" data-sheet-cancel>Отмена</button><button type="button" class="primary" data-sheet-save>Сохранить</button></footer><div class="ui-discard" hidden><p>Закрыть без сохранения изменений?</p><button type="button" data-sheet-stay>Продолжить ввод</button><button type="button" class="danger" data-sheet-discard>Не сохранять</button></div></div>';
  document.body.append(sheet);
  const sheetBody=sheet.querySelector('.ui-sheet-body'),save=sheet.querySelector('[data-sheet-save]'),discard=sheet.querySelector('.ui-discard');let active=null;
  const values=form=>form?[...form.elements].filter(e=>e.name||e.id).map(e=>[e.name||e.id,e.type,e.checked,e.multiple?[...e.selectedOptions].map(o=>o.value):e.value]):[];
@@ -15,6 +15,7 @@
  function close(rollback=false){if(!active)return;const state=active;active=null;if(rollback&&state.form)restore(state.form,state.snapshot);state.anchor.replaceWith(state.node);state.node.classList.remove('ui-sheet-content');state.node.classList.add('ui-form-source');sheet.hidden=true;discard.hidden=true;document.body.classList.remove('ui-sheet-open');state.trigger?.focus({preventScroll:true});}
  function cancel(){if(!active)return;if(active.form&&JSON.stringify(values(active.form))!==JSON.stringify(active.snapshot)){discard.hidden=false;sheet.querySelector('[data-sheet-stay]').focus();}else close(true);}
  sheet.querySelector('[data-sheet-cancel]').onclick=cancel;
+ sheet.querySelector('[data-sheet-close]').onclick=cancel;
  sheet.querySelector('[data-sheet-stay]').onclick=()=>{discard.hidden=true;sheet.querySelector('[data-sheet-cancel]').focus()};
  sheet.querySelector('[data-sheet-discard]').onclick=()=>close(true);
  sheet.addEventListener('click',e=>{if(e.target===sheet)cancel()});
