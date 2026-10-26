@@ -86,7 +86,16 @@
     }
     return {total,unresolved,conflicts,possibleOverlaps,issues:[...new Set(issues)]};
   }
-  function expenseLedger(data){
+  function managementTaxAmount(item){
+    const regime={'АИР-КЛИМАТ':'usn','АРБАТ.ГК':'profit'},period=String(item.managementTaxPeriod||''),identity=String(item._id||item.id||'');
+    if(item.managementTax!==true||regime[item.org]!==item.managementTaxType||!regime[item.org]||!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))throw Error('Проверьте организацию, налог и месяц начисления');
+    const end=new Date(Date.UTC(Number(period.slice(0,4)),Number(period.slice(5)),0)).toISOString().slice(0,10);
+    if(item.date!==end||!identity||!String(item.document||'').trim()||Number(item.vatRate)!==0)throw Error('Проверьте дату, документ и отсутствие НДС в начислении');
+    if(item.amount==null||String(item.amount).trim()==='')throw Error('Укажите сумму начисления');
+    const value=cents(item.amount);if(value<0n)throw Error('Сумма начисления не может быть отрицательной');
+    return value;
+  }
+  function expenseLedger(data,taxSourceCosts=data.costs||[]){
     const rows=[],issues=[],deals=data.deals||[],acts=data.workActs||[];
     const push=(source,kind,amount,projectKey=source.projectKey||'',category='direct')=>{
       const deal=deals.find(d=>dealKey(d)===projectKey);
@@ -95,6 +104,13 @@
     for(const item of data.expenses||[])push(item,'project-expense',documentPnlAmount(item,true));
     for(const item of acts.filter(a=>a.status==='approved'))push(item,'work-act',workAmount(item));
     for(const item of data.costs||[]){
+      if(item.managementTax===true){
+        try{const value=managementTaxAmount(item),identity=String(item._id||item.id||'');
+          if(taxSourceCosts.filter(x=>String(x._id||x.id||'')===identity).length!==1||taxSourceCosts.filter(x=>x.managementTax===true&&x.org===item.org&&x.managementTaxType===item.managementTaxType&&x.managementTaxPeriod===item.managementTaxPeriod).length!==1)throw Error('Дублирующее начисление налога');
+          push(item,'management-tax',value,'','belowExpenses');
+        }catch(error){issues.push({code:'invalid-management-tax',source:item,message:error.message});}
+        continue;
+      }
       const article=(data.pnlArticles||[]).find(a=>a.id===item.pnlArticleId)||(data.pnlArticles||[]).find(a=>a.name===item.name);
       const type=String(item.pnlType||article?.type||'expense').toLowerCase();
       const group=String(item.pnlGroup||article?.group||'').toLowerCase();
@@ -146,7 +162,7 @@
       return inclusive?date<=cutoff:date<cutoff;
     };
     for(const field of ['expenses','costs','labor','workActs'])scoped[field]=(data[field]||[]).filter(inScope);
-    return expenseLedger(scoped);
+    return expenseLedger(scoped,data.costs||[]);
   }
   function expenseLedgerRange(data,from='',to=''){
     const end=expenseLedgerAt(data,to);
@@ -363,9 +379,10 @@
     const usnBase=positive(usnIncome-usnExpenses),regularTax=pct(usnBase,15),minimumTax=pct(usnIncome,1),minimumApplicable=bounds.to===year+'-12-31';
     const usnAccrued=minimumApplicable&&minimumTax>regularTax?minimumTax:regularTax;
     const incomeCosts=(data.costs||[]).filter(item=>{
+      if(item.managementTax===true)return false;
       const article=(data.pnlArticles||[]).find(a=>a.id===item.pnlArticleId)||(data.pnlArticles||[]).find(a=>a.name===item.name);
       return String(item.pnlType||article?.type||'expense').toLowerCase()==='income';
-    }),expenseCosts=(data.costs||[]).filter(x=>!incomeCosts.includes(x));
+    }),expenseCosts=(data.costs||[]).filter(x=>x.managementTax!==true&&!incomeCosts.includes(x));
     let outputVat=0n,inputVat=0n,profitRevenue=0n,profitExpenses=0n;
     for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items){
       if(source.org!==ARBAT)continue;const d=readDate(source,collection,'profit');if(!d){issue('invalid-tax-date','vat',collection,source);continue}
@@ -579,7 +596,7 @@
     const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
     const result=pnl({revenue:[rubles(revenue)],direct:[...rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),...(bridge?[rubles(-bridge.deferredChange)]:[])],administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
-    return {...result,issues:[...ledger.issues.filter(x=>ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
+    return {...result,incomeTax:total(x=>x.kind==='management-tax'),issues:[...ledger.issues.filter(x=>ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
       productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
       assignedExpenses:total(x=>x.kind==='general-expense'&&x.category==='direct'),
@@ -632,7 +649,7 @@
     const cash=(data.cash||[]).filter(ok);
     const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
-    return {bounds,revenue,grossProfit,ebitda,result,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&(ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source))),...wipIssues],rows};
+    return {bounds,revenue,grossProfit,ebitda,result,incomeTax:byKind['management-tax']||0n,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&(ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source))),...wipIssues],rows};
   }
   function ownerDebtSnapshot(data,org=''){
     const projects=new Map(),issues=[];
@@ -985,5 +1002,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });

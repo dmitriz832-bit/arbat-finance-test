@@ -17,5 +17,6 @@
  document.addEventListener('change',event=>{if(!event.target.matches('[data-tax-org],[data-warehouse-org],[name=managementOrg]'))return;const select=document.getElementById('orgFilter');if(select&&select.value!==event.target.value){select.value=event.target.value;select.dispatchEvent(new Event('change',{bubbles:true}));}});
  window.addEventListener('arbat:cloud-update',refresh);
  window.addEventListener('storage',refresh);
+ window.addEventListener('arbat:tax-pnl-changed',refresh);
  refresh();
 })();

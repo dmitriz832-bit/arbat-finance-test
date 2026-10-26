@@ -1,0 +1,27 @@
+/* Management tax accruals are dated P&L costs, independent of tax liabilities and cash. */
+((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatTaxPnl=api})(globalThis,core=>{
+'use strict';
+const organizations=['АИР-КЛИМАТ','АРБАТ.ГК'],taxes={'АИР-КЛИМАТ':'usn','АРБАТ.ГК':'profit'},names={usn:'УСН',profit:'Налог на прибыль'},id=x=>String(x?._id||x?.id||''),text=x=>String(x??'').trim();
+const validMonth=p=>/^\d{4}-(0[1-9]|1[0-2])$/.test(p),end=p=>{if(!validMonth(p))throw Error('Проверьте месяц начисления');return new Date(Date.UTC(Number(p.slice(0,4)),Number(p.slice(5)),0)).toISOString().slice(0,10)};
+function scope(org,tax){if(!organizations.includes(org)||taxes[org]!==tax)throw Error('Проверьте организацию и вид налога');}
+function amount(value){if(text(value)==='')throw Error('Укажите сумму начисления');let n;try{n=core.cents(value)}catch{throw Error('Проверьте сумму начисления')}if(n<0n)throw Error('Сумма начисления не может быть отрицательной');return n;}
+function validate(row){return core.managementTaxAmount(row);}
+function snapshot(data={},options={}){
+ const bounds=core.ownerPeriodBounds('quarter',options.reference||new Date().toISOString().slice(0,10)),months=Array.from({length:3},(_,i)=>bounds.from.slice(0,5)+String(Number(bounds.from.slice(5,7))+i).padStart(2,'0')),selected=organizations.filter(o=>!options.org||o===options.org),costs=(data.costs||[]).filter(x=>x.managementTax===true),issues=[],rows=[];
+ const allIds=new Map();for(const c of data.costs||[])if(id(c))allIds.set(id(c),(allIds.get(id(c))||0)+1);
+ for(const org of selected)for(const period of months){const found=costs.filter(c=>c.org===org&&c.managementTaxType===taxes[org]&&c.managementTaxPeriod===period);let value=null,problem='';if(found.length>1)problem='Несколько начислений за один месяц: устраните дубли';else if(found.length){try{value=validate(found[0]);if(allIds.get(id(found[0]))!==1)throw Error('Повторяющийся идентификатор начисления')}catch(e){problem=e.message;value=null;}}
+ if(problem)issues.push({org,period,message:problem});rows.push({org,tax:taxes[org],period,amount:value,record:found.length===1?found[0]:null,problem,present:found.length>0});}
+ for(const c of costs){if(options.org&&c.org!==options.org)continue;if(!organizations.includes(c.org)||taxes[c.org]!==c.managementTaxType||!validMonth(c.managementTaxPeriod))issues.push({org:c.org,period:c.managementTaxPeriod,message:'Проверьте организацию, налог и месяц документа '+id(c)});}
+ return {bounds,months,rows,issues,total:rows.some(r=>r.amount===null)?null:rows.reduce((n,r)=>n+r.amount,0n),knownTotal:rows.reduce((n,r)=>n+(r.amount??0n),0n)};
+}
+function upsert(data={},input,uuid){
+ const {org,tax,period}=input;scope(org,tax);const date=end(period),n=amount(input.amount),document=text(input.document);if(!document)throw Error('Укажите документ-основание');const costs=data.costs||[],matches=costs.filter(x=>x.managementTax===true&&x.org===org&&x.managementTaxType===tax&&x.managementTaxPeriod===period);if(matches.length>1)throw Error('Несколько начислений за один месяц: устраните дубли');const old=matches[0];if(old&&costs.filter(x=>id(x)===id(old)).length!==1)throw Error('Дублирующийся идентификатор документа');
+ const row={...old,_id:old?id(old):uuid?uuid():'tax-pnl:'+(org==='АИР-КЛИМАТ'?'air':'arbat')+':'+tax+':'+period,managementTax:true,managementTaxType:tax,managementTaxPeriod:period,org,date,document,name:names[tax],note:document,amount:core.rubles(n),amountGross:core.rubles(n),amountNet:core.rubles(n),vatAmount:'0.00',vatRate:0,vatRateSource:'document-explicit',vatDeductible:false,usnDeductible:false,profitTaxDeductible:false,pnlType:'expense',pnlGroup:'Налоги на доход (прибыль)',pnlLevel:'below',pnlAllocationRule:'none',pnlAllocations:[],projectKey:'',dir:'',supplierId:'',paymentDueDate:''};if(!id(row)||costs.some(c=>c!==old&&id(c)===id(row)))throw Error('Дублирующийся идентификатор документа');return {costs:old?costs.map(c=>c===old?row:c):[...costs,row],affectedDates:[...new Set([old?.date,date].filter(Boolean))],row};
+}
+function correction(data,options){
+ scope(options.org,options.tax);const s=snapshot(data,options),rows=s.rows.filter(r=>r.org===options.org),target=amount(options.total);if(s.issues.length)throw Error(s.issues[0].message);if(rows.some(r=>r.amount===null))throw Error('Сначала внесите начисления всех месяцев квартала, включая нулевые');const base=rows.reduce((n,r)=>n+r.amount,0n);if(base===0n&&target!==0n)throw Error('Нет базы начислений для пропорциональной корректировки');if(!text(options.document))throw Error('Укажите документ-основание корректировки');
+ const preview=rows.map((r,index)=>({...r,index,after:base?target*r.amount/base:0n,remainder:base?target*r.amount%base:0n}));let left=target-preview.reduce((n,r)=>n+r.after,0n);for(const r of [...preview].sort((a,b)=>a.remainder===b.remainder?a.index-b.index:a.remainder>b.remainder?-1:1)){if(left<=0n)break;r.after++;left--;}
+ let costs=data.costs;const affectedDates=[];for(const r of preview){const change=upsert({...data,costs},{org:r.org,tax:r.tax,period:r.period,amount:core.rubles(r.after),document:options.document});costs=change.costs;affectedDates.push(...change.affectedDates);}return {costs,preview,affectedDates:[...new Set(affectedDates)],total:target};
+}
+return Object.freeze({organizations,taxes,names,validate,snapshot,upsert,correction});
+});
