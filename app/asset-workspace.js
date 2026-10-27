@@ -1,6 +1,6 @@
 /* Mounted fixed-asset register. All document writes pass through the shared mutation bridge. */
 (function(root){'use strict';const m=root.ArbatAssetWorkspaceModel,core=root.ArbatFinanceCore;if(!m||!core)return;const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const money=n=>n===null?'Не указано':core.rubles(n).replace('.',',')+' ₽',today=()=>new Date().toISOString().slice(0,10);
+ const money=n=>n===null?'Не указано':core.rubles(n).replace('.',',')+' ₽',today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
  function mount(host,options){
   const getData=options.getData,getOrg=options.getOrg||(()=>document.getElementById('orgFilter')?.value||'');let destroyed=false,current=null,currentVersion=null,initial='',busy=false,opener=null,paymentRows=[];
   let prefs={asOf:today(),search:''};try{prefs={...prefs,...JSON.parse(localStorage.getItem('arbat-assets-view')||'{}')}}catch(_){}try{m.date(prefs.asOf)}catch(_){prefs.asOf=today()}

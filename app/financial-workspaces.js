@@ -22,7 +22,7 @@
  const calendarForm=$('calendarForm');
  function plan(values={},trigger){window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'calendarForm',trigger:trigger||document.activeElement,values:{type:'out',frequency:'once',active:'yes',...values}}}));}
  window.arbatEditCalendar=editCalendar;window.arbatNewCalendarPlan=plan;
- const common={getData,getWarehouse,getOrg,getOrganization:getOrg,getActor:()=>window.abIdentity,mutate:bridge.mutate,openSource:source,openRecord:source};
+ const common={getData,getWarehouse,getOrg,today:isoToday(),organizations:['АИР-КЛИМАТ','АРБАТ.ГК'],getOrganization:getOrg,getActor:()=>window.abIdentity,mutate:bridge.mutate,openSource:source,openRecord:source};
  if(window.ArbatCalendarWorkspace)pages.set('calendar',window.ArbatCalendarWorkspace.mount(host,{...common,editPlan:editCalendar,newPlan:plan}));
  function mount(section,api,extra={}){if(api?.mount&&$(section+'WorkspaceHost'))pages.set(section,api.mount($(section+'WorkspaceHost'),{...common,...extra}))}
  mount('budgets',window.ArbatBudgetWorkspace,{view:'budgets'});mount('paymentRequests',window.ArbatBudgetWorkspace,{view:'requests'});

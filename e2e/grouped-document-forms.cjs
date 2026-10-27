@@ -17,7 +17,7 @@ const expectedGroups={
 };
 const ids=Object.keys(expectedGroups);
 test('grouped document forms fill the sheet in reading order without implicit columns',async()=>{
- for(const engine of [chromium,webkit]){
+ for(const engine of (process.env.ARBAT_BROWSER==='chromium'?[chromium]:[chromium,webkit])){
   const browser=await engine.launch();
   try{for(const width of [390,768,1440]){
    const page=await browser.newPage({viewport:{width,height:950}});
@@ -81,7 +81,7 @@ test('grouped document forms fill the sheet in reading order without implicit co
 const interfaceSource=fs.readFileSync(path.join(app,'interface.js'),'utf8');
 const warehouseRoutine=interfaceSource.slice(interfaceSource.indexOf(' function warehouseViews(){'),interfaceSource.indexOf(' const names={'));
 test('warehouse receipt actions share a compact toolbar and retain click handlers',async()=>{
- for(const engine of [chromium,webkit]){
+ for(const engine of (process.env.ARBAT_BROWSER==='chromium'?[chromium]:[chromium,webkit])){
   const browser=await engine.launch();
   try{for(const width of [390,768,1440]){
    const page=await browser.newPage({viewport:{width,height:950}});

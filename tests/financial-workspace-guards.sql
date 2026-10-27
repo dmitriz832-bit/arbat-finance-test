@@ -6,7 +6,7 @@ create function auth.uid() returns uuid language sql as $$select nullif(current_
 create table public.staff_access(user_id uuid,enabled boolean,role text);
 create table public.finance_periods(period text,status text);
 create table public.finance_state(payload jsonb);
-\ir ../supabase/migrations/20261027010000_financial_workspace_guards.sql
+\ir ../supabase/migrations/20261027050452_financial_workspace_guards.sql
 insert into public.finance_state values ('{"cash":[{"_id":"c","date":"2026-01-01"}]}');
 insert into public.finance_periods values ('2026-01','closed');
 do $$ declare section text; begin
