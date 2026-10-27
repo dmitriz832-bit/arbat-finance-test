@@ -7,7 +7,7 @@ create table public.staff_access(user_id uuid,enabled boolean,role text);
 create table public.finance_periods(period text,status text);
 create table public.finance_state(payload jsonb);
 \ir ../supabase/migrations/20261027050452_financial_workspace_guards.sql
-\ir ../supabase/migrations/20261027083119_asset_removal_integrity.sql
+\ir ../supabase/migrations/20261027085319_asset_removal_integrity.sql
 insert into public.staff_access values ('11111111-1111-1111-1111-111111111111',true,'accountant');
 select set_config('test.asset_uid','11111111-1111-1111-1111-111111111111',true);
 insert into public.finance_state values ('{}');
