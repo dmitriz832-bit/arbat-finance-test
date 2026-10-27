@@ -27,7 +27,7 @@ end $$;
 insert into public.staff_access values ('11111111-1111-1111-1111-111111111111',true,'accountant');
 select set_config('test.workspace_uid','11111111-1111-1111-1111-111111111111',true);
 do $$ begin
- update public.finance_state set payload=payload||'{"paymentRequests":[{"id":"req","status":"draft","date":"2026-10-27"}]}'::jsonb;
- begin update public.finance_state set payload=jsonb_set(payload,'{paymentRequests,0,status}','"approved"');raise exception 'Expected accountant approval rejection';exception when others then if sqlerrm<>'Admin approval required' then raise;end if;end;
+ update public.finance_state set payload=jsonb_set(payload,'{paymentRequests}',(payload->'paymentRequests')||'[{"id":"req","status":"draft","date":"2026-10-27"}]'::jsonb);
+ begin update public.finance_state set payload=jsonb_set(payload,'{paymentRequests,1,status}','"approved"');raise exception 'Expected accountant approval rejection';exception when others then if sqlerrm<>'Admin approval required' then raise;end if;end;
 end $$;
 rollback;
