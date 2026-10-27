@@ -7,6 +7,7 @@ create table public.staff_access(user_id uuid,enabled boolean,role text);
 create table public.finance_periods(period text,status text);
 create table public.finance_state(payload jsonb);
 \ir ../supabase/migrations/20261027061323_usn_vat_policy_guard.sql
+\ir ../supabase/migrations/20261027064419_wallet_opening_atomic_deletion.sql
 insert into public.finance_state values ('{}');
 insert into public.finance_periods values ('2028-03','closed');
 do $$ declare base jsonb='{"_id":"policy1","orgId":"air-climat","org":"АИР-КЛИМАТ","effectiveDate":"2026-10-01","threshold":"20000000.01","reason":"Проверка","createdBy":"tester","createdAt":"2026-10-27T00:00:00Z"}'; bad jsonb;begin
@@ -42,6 +43,8 @@ do $$ declare wallet jsonb='{"id":"w","org":"АИР-КЛИМАТ","verified":tru
  begin update public.finance_state set payload=jsonb_set(payload,'{wallets,0,org}','"АРБАТ.ГК"');raise exception 'Expected linked owner rejection';exception when others then if sqlerrm<>'Wallet with cash documents cannot be deleted or change organization' then raise;end if;end;
  begin update public.finance_state set payload=jsonb_set(payload,'{wallets}','[]');raise exception 'Expected linked deletion rejection';exception when others then if sqlerrm<>'Wallet with cash documents cannot be deleted or change organization' then raise;end if;end;
  begin update public.finance_state set payload=jsonb_set(payload,'{wallets,0,openingBalanceDate}','"2026-02-30"');raise exception 'Expected invalid opening rejection';exception when others then if sqlerrm<>'Invalid wallet opening date or amount' then raise;end if;end;
+ -- The existing confirmed bulk removal deletes wallet and all open-period cash together.
+ update public.finance_state set payload=jsonb_set(jsonb_set(payload,'{cash}','[]'),'{wallets}','[]');
  -- Legacy unverified imported account can be classified only with matching cash.
  update public.finance_state set payload=jsonb_set(payload,'{cash}','[]');
  update public.finance_state set payload=payload||'{"wallets":[{"id":"legacy","org":"","verified":false,"openingBalanceDate":""}],"cash":[{"_id":"old","walletId":"legacy","type":"in","date":"2026-01-05","org":"АИР-КЛИМАТ","amount":"1.00"}]}'::jsonb;

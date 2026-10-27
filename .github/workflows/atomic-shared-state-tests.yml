@@ -17,6 +17,7 @@ on:
       - 'tests/financial-workspace-guards.sql'
       - 'tests/usn-vat-policy-guards.sql'
       - 'supabase/migrations/*usn_vat_policy_guard.sql'
+      - 'supabase/migrations/*wallet_opening_atomic_deletion.sql'
       - 'supabase/migrations/*financial_workspace_guards.sql'
       - 'supabase/migrations/*tax_event_registers.sql'
       - 'supabase/migrations/*atomic_shared_state_batch.sql'
