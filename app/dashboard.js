@@ -66,8 +66,9 @@
   function calendarPlanFact(data,bounds,org){
     const result={income:null,outgoing:null,rows:[],issues:[]},core=window.ArbatFinanceCore;if(!bounds.from||!bounds.to)return result;
     const start=new Date(bounds.from+'T00:00:00Z'),end=new Date(bounds.to+'T00:00:00Z');
-    for(const rule of data.calendar||[]){
-      if(rule.active==='no'||!matchesOrg(rule,org)||rule.supplierDocumentKey)continue;
+    const retiredCalendarIds=new Set((data.paymentRequests||[]).map(r=>String(r.calendarId||'')).filter(Boolean));
+  for(const rule of data.calendar||[]){
+      if(rule.requestId||rule.sourcePaymentRequestId||retiredCalendarIds.has(String(rule.id||rule._id||''))||rule.active==='no'||!matchesOrg(rule,org)||rule.supplierDocumentKey)continue;
       let amount;try{if(rule.amount===null||rule.amount===undefined||rule.amount==='')throw Error();amount=core.cents(rule.amount);if(amount<0n)throw Error()}catch{result.issues.push(rule);continue}
       if(!validWalletDate(rule.dueDate)){result.issues.push(rule);continue}
       const dates=[];

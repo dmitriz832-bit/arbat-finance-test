@@ -6,8 +6,9 @@
  function shiftPeriod(reference,mode,step){const d=date(reference),day=d.getDate(),months=mode==='year'?12:mode==='quarter'?3:1;d.setDate(1);d.setMonth(d.getMonth()+months*step);d.setDate(Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));return iso(d)}
  function plans(data,org='',today=iso(new Date())){
   const end=date(today);end.setDate(end.getDate()+6);const to=iso(end),future=[],overdue=[];
+  const retiredCalendarIds=new Set((data.paymentRequests||[]).map(r=>String(r.calendarId||'')).filter(Boolean));
   for(const rule of data.calendar||[]){
-   if(rule.active==='no'||!/^\d{4}-\d{2}-\d{2}$/.test(rule.dueDate||'')||org&&rule.org!==org)continue;
+   if(rule.requestId||rule.sourcePaymentRequestId||retiredCalendarIds.has(String(rule.id||rule._id||''))||rule.active==='no'||!/^\d{4}-\d{2}-\d{2}$/.test(rule.dueDate||'')||org&&rule.org!==org)continue;
    const start=date(rule.dueDate);if(!Number.isFinite(+start))continue;
    const entry=occurrence=>({...rule,occurrence,days:Math.round((date(occurrence)-date(today))/86400000)});
    if(rule.dueDate<today)overdue.push(entry(rule.dueDate));

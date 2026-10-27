@@ -1,6 +1,6 @@
 /* Last layer: natural financial widths replace legacy fixed-colgroup clipping. */
 body.ab-ready.ui-modern .tp-viewport{max-width:100%!important;min-width:0!important;overflow:auto!important;overscroll-behavior:contain}
-body.ab-ready.ui-modern .tp-toolbar{display:flex;justify-content:flex-end;margin:8px 0;gap:8px}
+body.ab-ready.ui-modern .tp-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;margin:8px 0;gap:8px;max-width:100%;min-width:0}
 body.ab-ready.ui-modern .tp-settings{background:var(--ft-surface)!important;color:var(--ft-primary)!important;border:1px solid var(--ft-primary-soft)!important;font-size:12px!important;padding:7px 12px!important;min-height:36px!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table{display:block!important;width:100%!important;min-width:var(--tp-min-width)!important;max-width:none!important;table-layout:auto!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>colgroup{display:none!important}
@@ -11,8 +11,8 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>.tp-span{grid-column:1/-1!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>:is(thead,tbody,tfoot)>tr>.tp-hidden{display:none!important}
 .tp-table .arbat-col-resizer{display:none!important}
-.tp-dialog{border:1px solid var(--ft-primary-soft);border-radius:var(--ft-radius-control);padding:24px;width:min(510px,calc(100vw - 28px));max-height:85dvh;overflow:auto;color:var(--ft-heading);background:white;box-sizing:border-box}
-.tp-dialog::backdrop{background:rgb(17 37 55 / .35)}.tp-dialog h2{margin:0 0 8px;font-size:20px}.tp-dialog p{font-size:13px;line-height:1.5;color:var(--ft-muted)}.tp-columns{list-style:none;padding:0;margin:18px 0}.tp-columns li{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--ft-primary-soft);padding:7px 0}.tp-columns label{display:flex!important;flex:1;align-items:center;gap:10px;font-size:14px}.tp-columns input[type=checkbox]{appearance:auto!important;width:18px!important;height:18px!important;min-height:18px!important;flex:none;margin:0}.tp-columns button{width:38px;min-height:38px!important;padding:4px!important}.tp-columns button:disabled{opacity:.3}.tp-actions{display:flex;justify-content:space-between;gap:12px}
+:is(.tp-dialog,.tp-filter-dialog){border:1px solid var(--ft-primary-soft);border-radius:var(--ft-radius-control);padding:24px;width:min(510px,calc(100vw - 28px));max-height:85dvh;overflow:auto;color:var(--ft-heading);background:white;box-sizing:border-box}
+:is(.tp-dialog,.tp-filter-dialog)::backdrop{background:rgb(17 37 55 / .35)}:is(.tp-dialog,.tp-filter-dialog) h2{margin:0 0 8px;font-size:20px}:is(.tp-dialog,.tp-filter-dialog) p{font-size:13px;line-height:1.5;color:var(--ft-muted)}.tp-columns{list-style:none;padding:0;margin:18px 0}.tp-columns li{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--ft-primary-soft);padding:7px 0}.tp-columns label{display:flex!important;flex:1;align-items:center;gap:10px;font-size:14px}.tp-columns input[type=checkbox]{appearance:auto!important;width:18px!important;height:18px!important;min-height:18px!important;flex:none;margin:0}.tp-columns button{width:38px;min-height:38px!important;padding:4px!important}.tp-columns button:disabled{opacity:.3}.tp-actions{display:flex;justify-content:space-between;gap:12px}
 @media(max-width:700px){
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table{min-width:0!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>thead{display:none!important}
@@ -25,6 +25,18 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table .cell-text{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-height:none!important;-webkit-line-clamp:unset!important;overflow-wrap:anywhere!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)>table.tp-table>thead>tr>th{position:relative!important}
 .tp-resizer{position:absolute;right:0;top:0;height:100%;width:10px;cursor:col-resize;touch-action:none;border-right:1px solid var(--ft-primary-border)}
+/* Compact icon settings, visible filter state, and an entry point on card layouts. */
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-settings{display:inline-flex!important;align-items:center;justify-content:center;width:38px;min-width:38px;min-height:38px!important;padding:0!important;font-size:26px!important;line-height:1!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-filters{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:5px 10px!important}
+.tp-filters svg,.tp-col-filter svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter{display:inline-flex!important;align-items:center;justify-content:center;width:28px;min-width:28px;min-height:28px!important;margin:0 8px 0 5px;padding:4px!important;line-height:1!important;vertical-align:middle;background:transparent!important;border-color:transparent!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter[aria-pressed=true]{background:var(--ft-primary-soft)!important;color:var(--ft-primary-hover)!important;border-color:var(--ft-primary)!important}
+.tp-filter-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1 1 100%;padding:10px 12px;box-sizing:border-box;border:1px solid var(--ft-primary-border);border-radius:5px;background:var(--ft-primary-pale);overflow-wrap:anywhere;min-width:0}
+.tp-filter-status[hidden]{display:none!important}.tp-filter-status strong{flex:1 1 100%;font-size:13px}.tp-filter-status small{flex:1 1 100%;font-size:12px;color:var(--ft-muted)}
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-filter-status button{max-width:100%;white-space:normal;overflow-wrap:anywhere;padding:3px 9px!important;min-height:32px;font-size:13px!important}
+.tp-filter-dialog label{display:grid!important;gap:5px;margin:12px 0;min-width:0}.tp-filter-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tp-filter-fields label:only-child{grid-column:1/-1}.tp-filter-dialog .tp-actions{margin-top:18px}
+html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,#rt-layout-scope,.tp-viewport,.rt-viewport,#reportTable)>table:is(.tp-table,.rt-table)>tbody>tr.tp-filtered-out{display:none!important}
+@media(max-width:700px){html.ft-ui body.ft-app.ab-ready.ui-modern .tp-settings{min-width:44px;min-height:44px!important}.tp-filter-dialog{padding:18px}.tp-filter-dialog .tp-actions{flex-wrap:wrap}.tp-filter-fields{gap:8px}}
 @media(max-width:700px){
 /* Financial reports keep the existing single-month reader and its selector. */
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>thead{display:block!important}
@@ -32,4 +44,11 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th){display:none!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th).ux-report-selected:not(.tp-hidden){display:block!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th)::before{content:none!important}
+}
+/* A header label and its funnel share one centered line/row of content. */
+html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,#rt-layout-scope,.tp-viewport,.rt-viewport,#reportTable)>table.tp-table>thead>tr>th:not(.tp-hidden){display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter{flex:none;margin:0 5px 0 0!important}
+@media(min-width:1101px){
+ html.ft-ui body.ft-app.ab-ready.ui-modern #cash .tp-toolbar .tp-settings{width:34px;min-width:34px;min-height:34px!important}
+ html.ft-ui body.ft-app.ab-ready.ui-modern #cash .tp-toolbar .tp-filters{min-height:34px!important;padding:3px 9px!important;line-height:24px!important}
 }

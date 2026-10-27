@@ -4,6 +4,7 @@
  const getWarehouse=()=>{try{return JSON.parse(localStorage.getItem('arbat-warehouse-v1')||'{}')}catch{return {}}},getOrg=()=>$('orgFilter')?.value||'';
  const bridge=window.ArbatFinancialWorkspaceStore.create({getData,validate:(data,changed)=>window.ArbatFinancialPaymentLinks.assertValid(data,changed),getIdentity:()=>window.abIdentity,ensureOpenPeriods:dates=>{if(!window.arbatEnsureOpenPeriods)throw Error('Проверка периодов ещё загружается. Повторите сохранение.');return window.arbatEnsureOpenPeriods(dates)},backup:raw=>{if(!window.ArbatBackups?.checkpoint)throw Error('Резервное копирование недоступно');return window.ArbatBackups.checkpoint('arbat-financial-workspace-backup-'+Date.now(),raw)},commit:(next,changed)=>{const before=Object.fromEntries(changed.map(k=>[k,db[k]]));for(const key of changed)db[key]=next[key];try{save()}catch(error){for(const key of changed)db[key]=before[key];throw error}}});
  function source(collection,id){
+  if(collection==='paymentRequests'||collection==='budgetVersions'){window.ArbatPopup?.alert('Бюджеты и заявки на оплату отключены. Сохранённые документы не участвуют в расчётах.');return;}
   if(['taxObligationEvents','vatAdvanceEvents'].includes(collection)){window.arbatNavigate('taxes');return window.ArbatTaxRegisterUI?.openEvent?.(collection,id)}
   if(collection==='moves'||collection==='warehouse'){window.arbatNavigate('materials:movement');const row=[...document.querySelectorAll('#whMovements [data-wh-move]')].find(r=>r.dataset.whMove===String(id));row?.click();return}
   if(collection==='crewSettlements'){const row=(db.crewSettlements||[]).find(r=>String(r._id||r.id)===String(id));if(row?.cashId)return openRecord('cash',row.cashId);window.arbatNavigate('labor:summary');return}
@@ -25,7 +26,7 @@
  const common={getData,getWarehouse,getOrg,today:isoToday(),organizations:['АИР-КЛИМАТ','АРБАТ.ГК'],getOrganization:getOrg,getActor:()=>window.abIdentity,mutate:bridge.mutate,openSource:source,openRecord:source};
  if(window.ArbatCalendarWorkspace)pages.set('calendar',window.ArbatCalendarWorkspace.mount(host,{...common,editPlan:editCalendar,newPlan:plan}));
  function mount(section,api,extra={}){if(api?.mount&&$(section+'WorkspaceHost'))pages.set(section,api.mount($(section+'WorkspaceHost'),{...common,...extra}))}
- mount('budgets',window.ArbatBudgetWorkspace,{view:'budgets'});mount('paymentRequests',window.ArbatBudgetWorkspace,{view:'requests'});
+
  mount('loans',window.ArbatLoanWorkspace);mount('fixedAssets',window.ArbatAssetWorkspace);mount('balance',window.ArbatBalanceWorkspace);
  function refresh(){for(const [section,page] of pages)if($(section)?.classList.contains('active'))page.refresh?.();}
  const previous=window.render;if(typeof previous==='function')window.render=function(...args){const result=previous.apply(this,args);refresh();return result};

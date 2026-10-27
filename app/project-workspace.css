@@ -98,3 +98,15 @@ html.ft-ui body.ft-app.ab-ready.ui-modern #dealModal .ft-stage-table input,html.
  body.ft-app #dealModal .ft-stage-split-fields {grid-template-columns:minmax(0,1fr)}
  body.ft-app #dealModal .ft-stage-summary {gap:12px 16px}
 }
+
+/* Project forecast is read-only; source budgets and form drafts remain separate. */
+body.ft-app #dealModal .ft-project-forecast {display:block;border-bottom:1px solid var(--ft-border);padding-bottom:18px;margin-bottom:24px}
+body.ft-app #dealModal .ft-forecast-lines {list-style:none;padding:0;display:grid;gap:12px;margin:12px 0}
+body.ft-app #dealModal .ft-forecast-lines>li {border:1px solid var(--ft-border);padding:14px;border-radius:8px;overflow-wrap:anywhere}
+body.ft-app #dealModal .ft-forecast-lines small {display:block;margin-top:6px;color:var(--ft-muted)}
+body.ft-app #dealModal .ft-forecast-lines dl {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0 0}
+body.ft-app #dealModal .ft-forecast-lines dt {font-size:12px;color:var(--ft-muted)}
+body.ft-app #dealModal .ft-forecast-lines dd {margin:4px 0;font-weight:500}
+body.ft-app #dealModal .ft-forecast-lines .ft-unbudgeted {border-color:var(--ft-danger);border-left:4px solid var(--ft-danger)}
+body.ft-app #dealModal .ft-unbudgeted-label {display:block;color:var(--ft-danger);font-weight:600;margin-top:5px}
+@media(max-width:650px){body.ft-app #dealModal .ft-forecast-lines dl {grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -26,3 +26,5 @@ body.ab-ready.ui-modern.ux-app .rt-table tbody tr.ux-report-total{--rt-row-surfa
 body.ab-ready.ui-modern.ux-app .rt-table .ux-text-link{width:auto!important;max-width:none!important;min-height:0!important;padding:0!important;font:inherit!important;white-space:nowrap!important;overflow-wrap:normal!important}
 body.ab-ready.ui-modern.ux-app:not(.ab-profile-only) :is(#reportTable,#rt-layout-scope,.rt-viewport)>table.rt-table>:is(thead,tbody,tfoot)>tr>:is(th,td).rt-value{white-space:normal!important;overflow-wrap:anywhere!important}
 body.ab-ready.ui-modern.ux-app .rt-table .rt-value :is(.ux-text-link,[data-ux-report-cell]){max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important;box-sizing:border-box!important}
+/* Flexible expense-summary tracks fill the card; sticky labels fill their track. */
+html.ft-ui body.ft-app.ab-ready.ui-modern.ux-app:not(.ab-profile-only) #expenseSummary.rt-viewport>table.rt-table.tp-table>:is(thead,tbody,tfoot)>tr>.rt-label{width:auto!important;min-width:0!important;max-width:none!important}

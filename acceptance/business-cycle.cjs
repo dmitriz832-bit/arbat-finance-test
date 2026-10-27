@@ -3,7 +3,9 @@ const {acceptConfirmation,closeCard,dismissToast,rejectNativeDialogs}=require('.
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path');
 const {chromium,webkit}=require('playwright'),{fixture,specs}=require('../tests/helpers/business-cycle.cjs'),root=path.resolve(__dirname,'..');
 const choose=(p,selector,value)=>p.locator(selector).selectOption(value,{force:true});
-const navigate=(p,route)=>p.evaluate(route=>window.arbatNavigate(route),route);
+// Navigation restores the route's scroll on the next animation frame. Wait for
+// that restoration and its layout before a real pointer action targets the page.
+const navigate=(p,route)=>p.evaluate(route=>new Promise(resolve=>{window.arbatNavigate(route);requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))}),route);
 async function openForm(p,id){await p.evaluate(id=>window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:id}})),id);await p.locator('#'+id).waitFor({state:'visible'})}
 async function dashboardDebt(p,amount){await navigate(p,'overview');await p.waitForFunction(amount=>{const value=document.querySelector('#supplierObligations [data-pay-dashboard]')?.textContent||'';return Number(value.replace(/[^\d,.-]/g,'').replace(',','.'))===amount},amount);assert.equal(await p.locator('#supplierObligations').isVisible(),true)}
 async function closePay(p,expected=false){const d=p.locator('#payablesDialog');if(expected)await d.waitFor({state:'visible'});if(await d.isVisible()){await d.locator('[data-pay-close]').click();await d.waitFor({state:'hidden'})}}
@@ -16,6 +18,7 @@ async function controls(p,s,expected,period='2026-10'){
 async function move(p,s,kind,lines,note,reject=false){
  await navigate(p,'materials:receipt');await p.locator('#arbatWarehouseIntro').getByRole('button',{name:/Оформить приход/i}).click();await p.locator('#whDialog.open').waitFor();
  await choose(p,'#whDlgForm [name=kind]',kind);await choose(p,'#whDlgForm [name=org]',s.org);
+ await p.locator('#whDlgForm [name=date]').fill(await p.evaluate(()=>new Date().toISOString().slice(0,10)));
  if(kind==='receipt')await choose(p,'#whDlgForm [name=to]',s.id+'-store');
  else{await choose(p,'#whDlgForm [name=from]',s.id+'-store');await choose(p,'#whDlgForm [name=dealId]',s.id)}
  await p.locator('#whDlgForm [name=note]').fill(note);

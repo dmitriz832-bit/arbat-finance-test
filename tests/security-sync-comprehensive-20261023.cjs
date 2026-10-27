@@ -258,6 +258,15 @@ test('realization preflight rejects both old and new closed dates before any sav
  await assert.rejects(()=>h.window.arbatEnsureOpenPeriods(['2026-10-24','2026-09-12']),/2026-09.*закрыт/);
  await h.window.arbatEnsureOpenPeriods(['2026-10-24']);assert.equal(h.writes.length,0);
 });
+test('dated policy preflight checks the whole effective interval including later years and rejects invalid bounds',async()=>{
+ const h=harness({}, {}, {periods:[{period:'2026-09',status:'closed'},{period:'2028-03',status:'closed'}]});
+ assert.equal(typeof h.window.arbatEnsureOpenPeriodRange,'function');
+ await assert.rejects(()=>h.window.arbatEnsureOpenPeriodRange('2026-10-01'),/2028-03.*закрыт/);
+ await h.window.arbatEnsureOpenPeriodRange('2026-10-01','2028-03-01');
+ await assert.rejects(()=>h.window.arbatEnsureOpenPeriodRange('2026-10-01','2028-03-15'),/2028-03.*закрыт/);
+ for(const [from,to] of [['2026-02-30',''],['2026-10-01','2026-09-01'],['2026-10-01','invalid']])await assert.rejects(()=>h.window.arbatEnsureOpenPeriodRange(from,to),/дат|период/i);
+ assert.equal(h.writes.length,0);
+});
 test('closed-period recovery explains the rejection and lets an admin reopen with an audited reason without discarding the draft',async()=>{
  const h=harness({realizations:[{_id:'act',date:'2026-09-12',amount:10}]},{},{identity:{user_id:'a',email:'a@example.test',role:'admin'}});await h.window.arbatCloudBoot();
  h.post(async()=>({ok:false,status:400,json:async()=>({message:'Financial period 2026-09 is closed: realizations cannot be changed. Use a subsequent-period correction referencing the original document.'})}));

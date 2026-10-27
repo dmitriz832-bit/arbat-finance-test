@@ -1,0 +1,7 @@
+/* Direction is stated as text as well as color in the import preview. */
+#bankImportPreview .bank-amount{font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+#bankImportPreview .bank-amount-out{color:#b42318!important;background:#fff0ed}
+#bankImportPreview .bank-amount-in{color:#08765d!important;background:#ecfdf3}
+#bankImportPreview .bank-amount-transfer{color:#946200!important;background:#fff7d6}
+#bankCsvFile{align-self:center;vertical-align:middle;min-height:44px;line-height:1.4}
+#bankCsvFile::file-selector-button{font:inherit;line-height:1.4;margin-block:0;padding:8px 14px;border:1px solid var(--ft-border,#d9e1eb);border-radius:8px;background:var(--ft-surface,#fff);color:var(--ft-text,#172b4d);vertical-align:middle;cursor:pointer}

@@ -1,5 +1,6 @@
 /* One kopeck-exact allocation cap per actual payment, shared by all settlement registers.
- * Calendar occurrences are aliases/plans. Request authorizations share a separate cap from the liabilities they authorize.
+ * Calendar occurrences are aliases/plans. Retired payment requests are excluded by default.
+ * Explicit legacy review remains available for historical register validation only.
  */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatFinancialPaymentLinks=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
  'use strict';
@@ -7,7 +8,7 @@
  function amount(value){if(typeof value!=='string'&&typeof value!=='number'||typeof value==='number'&&(!Number.isFinite(value)||!Number.isSafeInteger(Math.round(value*100))))throw Error('Некорректная сумма связи или платежа');const raw=String(value).trim().replace(',','.');if(!/^\d+(?:\.\d{1,2})?$/.test(raw))throw Error('Некорректная сумма связи или платежа: нужны неотрицательные рубли с точностью до копейки');const [whole,fraction='']=raw.split('.');return BigInt(whole)*100n+BigInt((fraction+'00').slice(0,2));}
  function validDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||'')))return false;const timestamp=Date.parse(value+'T00:00:00Z');return Number.isFinite(timestamp)&&new Date(timestamp).toISOString().slice(0,10)===value;}
  function cashFingerprint(cash,collection='paymentRequests'){const key=identity(cash),value=String(cash?.amount??'');if(collection==='fixedAssets')return JSON.stringify([key,cash?.org,cash?.type,cash?.date,value]);const fields=[key,cash?.org,cash?.date,cash?.type,value];if(collection==='paymentRequests')fields.push(cash?.customerId||'',cash?.counterpartyId||'',cash?.personId||'',cash?.counterparty||cash?.payee||'');return JSON.stringify(fields);}
- function review(data={}){
+ function review(data={},options={}){
   const cash=list(data.cash),groups=new Map(),crew=list(data.crewSettlements),crewByCash=new Map();
   for(const row of crew){const key=String(row?.cashId||'');if(!crewByCash.has(key))crewByCash.set(key,[]);crewByCash.get(key).push(row);}
   function group(key){key=String(key||'');if(!groups.has(key))groups.set(key,{cashId:key,total:0n,requestTotal:0n,documents:new Map([['cash:'+key,{collection:'cash',id:key}]]),reasons:new Set(),available:null,checked:false});return groups.get(key);}
@@ -25,7 +26,7 @@
    else {if(payment?.payrollAllocations!=null)invalidArray('cash',payment,'распределений зарплаты');const settlements=crewByCash.get(cashId);if(settlements?.length)for(const part of settlements)claim(cashId,'cash',payment,part?.amount,part?.org||payment.org);else if(payment?.personId)claim(cashId,'cash',payment,payment.amount,payment.org);}
   }
   for(const [cashId,settlements] of crewByCash)if(!cash.some(p=>identity(p)===cashId))for(const row of settlements)claim(cashId,'cash',row,row?.amount,row?.org);
-  for(const collection of ['loanContracts','fixedAssets','paymentRequests'])for(const document of list(data[collection])){const field=collection==='loanContracts'?'repayments':'paymentLinks';if(document?.[field]!=null&&!Array.isArray(document[field])){invalidArray(collection,document,field);continue}for(const link of list(document?.[field])){
+  for(const collection of ['loanContracts','fixedAssets',...(options.includePaymentRequests?['paymentRequests']:[])])for(const document of list(data[collection])){const field=collection==='loanContracts'?'repayments':'paymentLinks';if(document?.[field]!=null&&!Array.isArray(document[field])){invalidArray(collection,document,field);continue}for(const link of list(document?.[field])){
    if(collection==='loanContracts'){let value;try{value=String((amount(link?.principal)+amount(link?.interest))/100n)+'.'+String((amount(link?.principal)+amount(link?.interest))%100n).padStart(2,'0')}catch(_){value=null}claim(link?.cashId,collection,document,value,document?.org,link);}
    else claim(link?.cashId,collection,document,link?.amount,document?.org,link);
   }}

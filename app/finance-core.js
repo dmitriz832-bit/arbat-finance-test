@@ -265,6 +265,33 @@
     scan(data.realizations,'realization');scan(data.expenses,'project-expense');scan(data.costs,'general-entry');
     return {count:issues.length,issues};
   }
+  // Explicit management policy: stable organization key, dated immutable versions.
+  // Default amounts retain the existing application convention; no legal policy is inferred.
+  function validateUsnVatPolicies(rows=[]){
+    if(!Array.isArray(rows))throw Error('Некорректный список настроек порога УСН');
+    const ids=new Set(),dates=new Set();
+    for(const p of rows){
+      if(!p||!String(p._id||'').trim()||ids.has(p._id)||p.orgId!=='air-climat'||p.org!=='АИР-КЛИМАТ')throw Error('Проверьте идентификатор и организацию настройки УСН');
+      const d=String(p.effectiveDate||''),stamp=String(p.createdAt||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||d<'1900-01-01'||d>'9998-12-31'||!Number.isFinite(Date.parse(d+'T00:00:00Z'))||new Date(d+'T00:00:00Z').toISOString().slice(0,10)!==d||dates.has(d))throw Error('Укажите корректную и неповторяющуюся дату действия настройки УСН');
+      if(!/^\d+(?:[.,]\d{1,2})?$/.test(String(p.threshold??''))||cents(p.threshold)<=0n)throw Error('Порог УСН должен быть положительной суммой с точностью до копейки');
+      if(!String(p.reason||'').trim()||!String(p.createdBy||'').trim()||!/^\d{4}-\d{2}-\d{2}T/.test(stamp)||!Number.isFinite(Date.parse(stamp)))throw Error('Укажите основание, автора и время настройки УСН');
+      ids.add(p._id);dates.add(d);
+    }
+    return [...rows].sort((a,b)=>a.effectiveDate.localeCompare(b.effectiveDate));
+  }
+  function usnVatThreshold(data={},reference='',incomeEvents=[]){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(reference)||!Number.isFinite(Date.parse(reference+'T00:00:00Z'))||new Date(reference+'T00:00:00Z').toISOString().slice(0,10)!==reference)throw Error('Проверьте дату расчёта порога УСН');
+    const policies=validateUsnVatPolicies(data.usnVatPolicies),year=Number(reference.slice(0,4)),start=year+'-01-01';
+    const defaultLimit=({2025:60000000,2026:20000000,2027:15000000,2028:10000000})[year],policyAt=d=>policies.filter(p=>p.effectiveDate<=d).at(-1)||null;
+    const limitAt=d=>policyAt(d)?cents(policyAt(d).threshold):defaultLimit===undefined?null:cents(defaultLimit);
+    const previousIncome=incomeEvents.filter(e=>String(e.date).startsWith(String(year-1)+'-')).reduce((n,e)=>n+e.amount,0n),daily=new Map();
+    for(const e of incomeEvents)if(e.date>=start&&e.date<=reference)daily.set(e.date,(daily.get(e.date)||0n)+e.amount);
+    for(const p of policies)if(p.effectiveDate>=start&&p.effectiveDate<=reference&&!daily.has(p.effectiveDate))daily.set(p.effectiveDate,0n);
+    let observedIncome=0n,exceededOn=null,effectiveFrom=limitAt(start)!==null&&previousIncome>limitAt(start)?start:null;
+    for(const [d,n] of [...daily].sort(([a],[b])=>a.localeCompare(b))){observedIncome+=n;const limit=limitAt(d);if(limit!==null&&!exceededOn&&observedIncome>limit){exceededOn=d;if(!effectiveFrom){const dt=new Date(d+'T00:00:00Z');dt.setUTCDate(1);dt.setUTCMonth(dt.getUTCMonth()+1);effectiveFrom=dt.toISOString().slice(0,10)}}}
+    return {orgId:'air-climat',limit:limitAt(reference),policy:policyAt(reference),januaryPolicy:policyAt(start),observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:reference,coverageConfirmed:false};
+  }
   // Tax recognition is independent of P&L and bank categories. Missing evidence is
   // a review item, never permission to invent a deduction or infer a VAT rate.
   function quarterTaxSnapshot(data={},reference=''){
@@ -288,6 +315,7 @@
       'unsupported-tax-year':'Правила этого года требуют отдельной проверки',
       'documentation-pending':'Документы по сделке не оформлены. Сверьте налоговую классификацию; операция сохранена в управленческом учёте',
       'intercompany-tax-review':'Межорганизационная передача материалов требует проверки основания и налогового отражения обеих сторон; складское движение не заменяет реализацию',
+      'usn-vat-policy-invalid':'Настройка порога УСН некорректна. Расчёт порога требует сверки',
       'air-vat-required':'По внесённым доходам возникает обязанность по НДС; подтвердите дату и выбранную ставку',
       'air-vat-document':'У АИР-КЛИМАТ есть документ с НДС: требуется сверка режима и отдельного расчёта НДС'
     };
@@ -452,12 +480,9 @@
     }
     for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items)if(source.org===AIR&&between(date(source.date),yearBounds)&&Number(source.vatRate)>0)issue('air-vat-document','usn',collection,source);
     for(const source of data.realizations||[])if(source.org===AIR&&between(date(source.date),bounds)&&Number(source.vatRate)>0){const v=vat(source,'realizations','usn');if(v){airOutputVat+=v.vatAmount;entry('airVat','realizations',source,date(source.date),v.vatAmount,'Исходящий НДС АИР-КЛИМАТ')}}
-    const cutoff=valid(date(reference))?date(reference):bounds.to,limitRub=year===2025?60000000:year===2026?20000000:year===2027?15000000:year===2028?10000000:null;
-    const previousIncome=incomeEvents.filter(x=>x.date.startsWith(String(year-1))).reduce((n,x)=>n+x.amount,0n),events=incomeEvents.filter(x=>x.date>=yearBounds.from&&x.date<=cutoff).sort((a,b)=>a.date.localeCompare(b.date));
-    let observedIncome=0n,exceededOn=null,effectiveFrom=null;
-    const limit=limitRub===null?null:cents(limitRub);
-    if(limit!==null&&previousIncome>limit)effectiveFrom=year+'-01-01';
-    for(const e of events){observedIncome+=e.amount;if(limit!==null&&!exceededOn&&observedIncome>limit){exceededOn=e.date;if(!effectiveFrom){const dt=new Date(e.date+'T00:00:00Z');dt.setUTCDate(1);dt.setUTCMonth(dt.getUTCMonth()+1);effectiveFrom=dt.toISOString().slice(0,10)}}}
+    const cutoff=valid(date(reference))?date(reference):bounds.to;
+    let vatThreshold;try{vatThreshold=usnVatThreshold(data,cutoff,incomeEvents)}catch(error){issue('usn-vat-policy-invalid','usn','organization',{org:AIR,name:error.message});vatThreshold={limit:null,observedIncome:null,previousIncome:null,exceededOn:null,effectiveFrom:null,asOf:cutoff,coverageConfirmed:false,error:error.message}}
+    const {effectiveFrom}=vatThreshold;
     const knownAirVatDates=[...(data.realizations||[]).filter(x=>x.org===AIR&&Number(x.vatRate)>0).map(x=>date(x.date)),...(annualAdvances?.rows||[]).filter(x=>x.kind==='received'&&x.vat>0n).map(x=>x.date),effectiveFrom].filter(valid).sort();
     for(const source of data.cash||[])if(source.org===AIR&&source.type==='in'&&between(date(source.date),yearBounds)&&!no(source.usnTaxable)&&knownAirVatDates.some(d=>d<=date(source.date))&&!annualAdvances?.coveredCash.includes(String(source._id||source.id))&&!text(source.usnVatAmount))issue('usn-income-vat-unconfirmed','usn','cash',source);
     if(effectiveFrom)issue('air-vat-required','usn','organization',{org:AIR,name:'Режим НДС с '+effectiveFrom});
@@ -466,7 +491,7 @@
     if(year<2026||year>2028)for(const scope of ['usn','profit','vat'])issue('unsupported-tax-year',scope,'organization',{});
     const profitBase=positive(profitRevenue-profitExpenses),profitTax=pct(profitBase,25),difference=outputVat-inputVat;
     return {bounds,yearBounds,rows,issues,advanceRegister,obligationRegister,
-      air:{outputVat:airOutputVat,inputVat:airInputVat,vatBalance:airOutputVat-airInputVat,income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold:{limit,observedIncome,previousIncome,exceededOn,effectiveFrom,asOf:cutoff,coverageConfirmed:false}},
+      air:{outputVat:airOutputVat,inputVat:airInputVat,vatBalance:airOutputVat-airInputVat,income:usnIncome,expenses:usnExpenses,base:usnBase,accrued:usnAccrued,regularTax,minimumTax,minimumApplicable,unclassified:issues.filter(x=>x.scope==='usn'&&x.code==='usn-expense-unconfirmed').length,ready:!issues.some(x=>x.scope==='usn'),vatThreshold},
       arbat:{outputVat,inputVat,payable:positive(difference),recoverable:positive(-difference),unconfirmed:issues.filter(x=>x.scope==='vat').length,profitRevenue,profitExpenses,profitBase,profitTax,profitTaxRate:25,vatReady:!issues.some(x=>x.scope==='vat'),profitReady:!issues.some(x=>x.scope==='profit')},
       limitations:['Расчёт по внесённым данным. Полнота года и начальные налоговые остатки не подтверждены.','Не учтены зачёт налоговых авансов, ЕНС, перенос убытков и специальные налоговые корректировки.','НДС с авансов, восстановление и корректировки требуют отдельного регистра.']};
   }
@@ -759,6 +784,21 @@
     }
     return {income,outgoing,transfers,net:income-outgoing,categories:[...categories.values()]};
   }
+  function validFinanceDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(String(value||''))&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value}
+  function walletOpeningValues(values,existing=null,entries=[]){
+    const name=String(values.name||'').trim(),org=String(values.org||'');
+    if(!name)throw Error('Укажите название кошелька');
+    if(!['АИР-КЛИМАТ','АРБАТ.ГК','Общий'].includes(org))throw Error('Укажите организацию кошелька');
+    if(!validFinanceDate(values.openingBalanceDate))throw Error('Укажите корректную дату начального остатка на конец дня');
+    const amount=value=>{if(!String(value??'').trim())throw Error('Укажите остаток явно, в том числе нулевой');return rubles(cents(value))};
+    const openingBalance=amount(values.openingBalance),statementRaw=String(values.bankStatementBalance??'').trim(),bankStatementDate=String(values.bankStatementDate||'');
+    if(bankStatementDate&&!validFinanceDate(bankStatementDate))throw Error('Проверьте дату выписки');
+    if(bankStatementDate&&!statementRaw)throw Error('Для сверки укажите остаток по выписке');
+    if(statementRaw&&!bankStatementDate)throw Error('Для сверки укажите дату выписки');
+    if(bankStatementDate&&bankStatementDate<values.openingBalanceDate)throw Error('Дата выписки не может быть раньше даты начального остатка');
+    if(existing&&org!==existing.org){const related=(entries||[]).filter(item=>item.walletId===existing.id||item.toWalletId===existing.id);if(related.length){const initial=!existing.org&&existing.verified!==true,consistent=related.every(item=>item.walletId===existing.id?item.org===org:item.type==='transfer'&&(item.destinationOrg||item.toOrg)===org);if(!initial||!consistent)throw Error('Нельзя менять организацию кошелька со связанными операциями. Для первичной классификации проверьте организацию всех операций.');}}
+    return {name,org,kind:values.kind,openingBalance,openingBalanceDate:values.openingBalanceDate,bankStatementDate,bankStatementBalance:statementRaw===''?'':amount(statementRaw),verified:true};
+  }
   function walletSnapshot(opening,entries,walletId,openingBalanceDate='',asOfDate=''){
     const initial=cents(opening||0);let received=0n,spent=0n;
     for(const item of entries||[]){
@@ -790,6 +830,7 @@
       let reconciliation;
       try{reconciliation=bankReconciliation(wallet,entries)}catch(error){reconciliation={status:'invalid-statement',difference:null};controlIssues.push({code:'invalid-bank-statement',walletId:id,reason:error.message})}
       if(!wallet.openingBalanceDate)controlIssues.push({code:'opening-balance-date-missing',walletId:id});
+      else if(!validFinanceDate(wallet.openingBalanceDate))controlIssues.push({code:'opening-balance-date-invalid',walletId:id});
       if(reconciliation.status==='not-configured')controlIssues.push({code:'bank-reconciliation-not-configured',walletId:id});
       else if(reconciliation.status==='mismatch')controlIssues.push({code:'bank-reconciliation-mismatch',walletId:id,difference:reconciliation.difference});
       else if(reconciliation.status==='invalid-statement-date')controlIssues.push({code:'invalid-bank-statement-date',walletId:id});
@@ -810,7 +851,7 @@
     const date=String(wallet.bankStatementDate||'').slice(0,10);
     if(!date||wallet.bankStatementBalance==null||String(wallet.bankStatementBalance).trim()==='')return {status:'not-configured',difference:null};
     const openingDate=String(wallet.openingBalanceDate||'').slice(0,10);
-    if(openingDate&&date<openingDate)return {status:'invalid-statement-date',difference:null};
+    if(!validFinanceDate(date)||openingDate&&(!validFinanceDate(openingDate)||date<openingDate))return {status:'invalid-statement-date',difference:null};
     const calculated=walletSnapshot(wallet.openingBalance||0,entries,String(wallet.id),openingDate,date).balance;
     const statement=cents(wallet.bankStatementBalance);
     const difference=calculated-statement;
@@ -1002,5 +1043,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletOpeningValues,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,validateUsnVatPolicies,usnVatThreshold,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });

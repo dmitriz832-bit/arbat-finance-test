@@ -15,6 +15,9 @@ on:
       - 'tests/tax-recognition-periods.sql'
       - 'tests/tax-event-registers.sql'
       - 'tests/financial-workspace-guards.sql'
+      - 'tests/usn-vat-policy-guards.sql'
+      - 'supabase/migrations/*usn_vat_policy_guard.sql'
+      - 'supabase/migrations/*wallet_opening_atomic_deletion.sql'
       - 'supabase/migrations/*financial_workspace_guards.sql'
       - 'supabase/migrations/*tax_event_registers.sql'
       - 'supabase/migrations/*atomic_shared_state_batch.sql'
@@ -60,3 +63,8 @@ jobs:
         env:
           PGPASSWORD: isolated-ci-only
         run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/financial-workspace-guards.sql
+
+      - name: Verify dated USN VAT policy immutability and closed-year influence
+        env:
+          PGPASSWORD: isolated-ci-only
+        run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/usn-vat-policy-guards.sql
