@@ -49,6 +49,62 @@
   return {rate:null,label:'Ставка не задана'};
  }
  function initialEstimate(plan,items=plan?.items||[]){return Array.isArray(plan?.initialEstimateItems)?plan.initialEstimateItems.map(x=>({...x})):items.map(x=>({...x}));}
+ // Full-scope analytical plan. No actual acts, cash, consumption quantities or ledger
+ // amounts enter this calculation. Automatic values are never written to source data.
+ function plannedBudget(data,deal,warehouse={},fifo){
+  const result=budget(deal),composition=data.dealPlans?.[deal._id],lines=[],covered=new Set();
+  const add=(row)=>{lines.push(row);covered.add(row.category)};
+  for(const item of composition?.items||[]){
+   const plannedQty=quantity(item.planned??item.qty),price=workRate(data,item,deal.org);
+   let amount=null;try{amount=plannedQty===0?0n:plannedQty===null||price.rate===null?null:core.workAmount({qty:plannedQty,rate:price.rate})}catch{}
+   add({id:item.id,kind:'work',category:'labor',name:item.name||item.priceLabel||'Работа без названия',unit:item.unit||'',plannedQty,rate:price.rate,amount,priceSource:price.label,sourceLabel:composition.docNo||'Состав работ сделки',estimated:false});
+  }
+  const materials=new Map(),plans=(warehouse.plans||[]).filter(p=>String(p.dealId)===String(deal._id)&&(!p.org||p.org===deal.org));
+  const addMaterial=(line,label)=>{const id=line.itemId||'unresolved:'+norm(line.name)+'::'+norm(line.unit),qty=quantity(line.qty),entry=materials.get(id);if(entry){entry.plannedQty=entry.plannedQty===null||qty===null?null:Number((entry.plannedQty+qty).toFixed(9))}else materials.set(id,{line,plannedQty:qty,label})};
+  for(const plan of plans)for(const line of plan.lines||[])addMaterial(line,plan.docNo||plan.filename||'Потребность проекта');
+  if(!plans.length)for(const line of composition?.materials||[]){const matches=line.itemId?(warehouse.items||[]).filter(i=>String(i.id)===String(line.itemId)):(warehouse.items||[]).filter(i=>norm(i.name)===norm(line.name)&&norm(i.unit)===norm(line.unit));addMaterial({...line,itemId:matches.length===1?matches[0].id:null},composition.docNo||'Материалы сделки')}
+  const moveOrder=new Map((warehouse.moves||[]).map((m,i)=>[String(m.id),i]));
+  // Use source VAT policy only. Invoice-level net totals are NOT unit prices.
+  const pricedPart=(qty,rate,source)=>{
+   if(!Number.isFinite(Number(rate))||Number(rate)<=0)throw Error('Цена приобретения не задана');
+   const gross=core.workAmount({qty:Number(qty.toFixed(9)),rate});
+   if(!source||source.vatRate==null||source.vatRate===''){
+    if(source&&['vatDeductible','amountNet','vatAmount'].some(k=>source[k]!=null&&source[k]!==''))throw Error('Не указана ставка НДС источника');
+    return {amount:gross,legacy:true};
+   }
+   const rateValue=String(source.vatRate),deductible=source.vatDeductible;
+   if(rateValue!=='0'&&![true,false,'true','false',1,0,'1','0'].includes(deductible))throw Error('Не указано право на вычет НДС');
+   const yes=deductible===true||deductible==='true'||deductible===1||deductible==='1';
+   // Validate whole source metadata before using its policy on a planned portion.
+   if(['amountGross','amountNet','vatAmount'].some(k=>source[k]!=null&&source[k]!=='')){
+    const sourceQty=quantity(source.qty),sourceGross=sourceQty===null?source.amountGross==null?null:core.cents(source.amountGross):core.workAmount({qty:sourceQty,rate:source.price});
+    if(sourceGross===null||source.amountGross!=null&&core.cents(source.amountGross)!==sourceGross)throw Error('Сумма источника не совпадает с количеством и ценой');
+    try{core.documentPnlAmount({...source,amountGross:core.rubles(sourceGross),vatDeductible:yes},true)}catch{throw Error('Суммы НДС источника требуют сверки')}
+   }
+   const tax=core.documentVat(core.rubles(gross),source.vatRate,yes);return {amount:yes?tax.amountNet:tax.amountGross,legacy:false};
+  };
+  for(const [id,entry] of materials){
+   const item=(warehouse.items||[]).find(i=>String(i.id)===String(id)),category=/оборудован/i.test(item?.category||entry.line.category||'')?'equipment':'materials',lots=[];
+   if(fifo?.bins)for(const [bin,values] of fifo.bins){const at=bin.lastIndexOf('::'),place=(warehouse.places||[]).find(p=>String(p.id)===bin.slice(0,at));if(bin.slice(at+2)!==String(id)||place?.org!==deal.org)continue;for(const lot of values)if(lot.qty>0)lots.push(lot)}
+   lots.sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||(moveOrder.get(String(a.source))??Number.MAX_SAFE_INTEGER)-(moveOrder.get(String(b.source))??Number.MAX_SAFE_INTEGER));
+   let amount=entry.plannedQty===0?0n:null,knownAmount=0n,estimated=false,legacy=false,priceSource='Цена приобретения не определена';
+   if(item&&entry.plannedQty>0){
+    let left=entry.plannedQty,total=0n;const priceIssues=[];
+    const take=(qty,rate,source)=>{try{if(source?.org&&source.org!==deal.org)throw Error('Партия другой организации');if(source&&quantity(source.price)===0)throw Error('Цена приобретения исходной партии не задана');const value=pricedPart(qty,rate,source);total+=value.amount;knownAmount=total;legacy ||= value.legacy}catch(error){priceIssues.push(error.message)}};
+    for(const lot of lots){if(left<=1e-8)break;const qty=Math.min(left,lot.qty),source=(warehouse.moves||[]).find(m=>String(m.id)===String(lot.source));take(qty,lot.cost,source);estimated ||= Boolean(lot.estimated);left=Number((left-qty).toFixed(9))}
+    if(left>1e-8){const receipts=(warehouse.moves||[]).filter(m=>String(m.itemId)===String(id)&&m.org===deal.org&&['receipt','opening'].includes(m.kind)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||(moveOrder.get(String(b.id))??0)-(moveOrder.get(String(a.id))??0)),source=receipts[0];if(source)take(left,source.price,source);else priceIssues.push('Нет цены приобретения');estimated=true}
+    if(!priceIssues.length){amount=total;priceSource=estimated?'FIFO + последняя цена приобретения · оценка':'Складские партии FIFO';if(legacy)priceSource+=' · цена источника, НДС не классифицирован'}else priceSource=[...new Set(priceIssues)].join(' · ');
+
+   }
+   add({id,kind:'material',category,name:item?.name||entry.line.name||'Номенклатура не найдена',unit:item?.unit||entry.line.unit||'',plannedQty:entry.plannedQty,rate:entry.plannedQty>0&&amount!==null?Number(core.rubles(amount))/entry.plannedQty:null,amount,knownAmount,priceSource,sourceLabel:entry.label,estimated});
+  }
+  for(const row of result.rows){row.automatic=covered.has(row.id);const own=lines.filter(x=>x.category===row.id);row.unknownCount=own.filter(x=>x.amount===null).length;if(row.automatic)row.plan=row.unknownCount?null:own.reduce((n,x)=>n+x.amount,0n)}
+  result.automatic=lines.length>0;result.lines=lines;result.unknownCount=lines.filter(x=>x.amount===null).length;
+  result.knownTotal=result.rows.reduce((n,r)=>n+(r.automatic?lines.filter(x=>x.category===r.id).reduce((sum,x)=>sum+(x.amount??x.knownAmount??0n),0n):r.plan??0n),0n);
+  if(result.automatic){result.detailed=true;result.total=result.unknownCount?null:result.knownTotal}
+  else result.knownTotal=result.total;
+  return result;
+ }
  function forecast(data,deal,warehouse={},fifo,actualCost=0n,baseline=budget(deal),actualIssues=[]){
   const key=core.dealKey(deal),plan=data.dealPlans?.[deal._id],items=plan?.items||[],original=initialEstimate(plan),acts=(data.workActs||[]).filter(a=>a.projectKey===key&&a.org===deal.org&&a.status==='approved'),rows=[],covered=new Set(),issues=[];
   for(const item of items){
@@ -84,7 +140,7 @@
  }
 
  function snapshot(data,deal,warehouse={},fifo){
-  const key=core.dealKey(deal),input={...data,warehouse,fifo},project=core.projectSnapshot(input,deal,key),wip=core.projectWipSnapshot(input,deal,key),issues=[...project.issues,...wip.issues],plan=budget(deal);
+  const key=core.dealKey(deal),input={...data,warehouse,fifo},project=core.projectSnapshot(input,deal,key),wip=core.projectWipSnapshot(input,deal,key),issues=[...project.issues,...wip.issues],plan=plannedBudget(data,deal,warehouse,fifo),baseline=budget(deal);
   const cashRows=[];
   for(const source of data.cash||[]){
    if(source.type!=='in'&&source.type!=='out')continue;
@@ -111,7 +167,7 @@
   const valid=supplierDocuments.filter(d=>d.status!=='review');
   if(supplierDocuments.some(d=>d.status==='review'))issues.push('supplier-document-review');
   const supplierReviewCount=supplierDocuments.filter(d=>d.status==='review').length,supplierKnownRemaining=valid.reduce((n,d)=>n+(d.remaining||0n),0n),supplierRemaining=supplierReviewCount?null:supplierKnownRemaining,contractGross=core.cents(deal.contractTotal??deal.revenue??0),contractNet=wip.contractNet;
-  return {key,deal,contractGross,contractNet,revenue:project.revenue,cost:project.cost,recognizedCost:wip.recognizedCost==null?null:wip.recognizedCost+(wip.nonDirectCost||0n),wip:wip.wip??null,profit:project.issues.length||wip.status!=='calculated'?null:wip.operatingProfit,remainingPayment:contractGross-income,remainingRevenue:contractNet===null?null:contractNet-project.revenue,cash:{income,outcome,balance:income-outcome,rows:cashRows},budget:plan,forecast:forecast(data,deal,warehouse,fifo,project.cost,plan,project.issues),realizations:(data.realizations||[]).filter(x=>x.projectKey===key),ledger,supplierDocuments,supplierRemaining,supplierKnownRemaining,supplierReviewCount,issues:[...new Set(issues)]};
+  return {key,deal,contractGross,contractNet,revenue:project.revenue,cost:project.cost,recognizedCost:wip.recognizedCost==null?null:wip.recognizedCost+(wip.nonDirectCost||0n),wip:wip.wip??null,profit:project.issues.length||wip.status!=='calculated'?null:wip.operatingProfit,remainingPayment:contractGross-income,remainingRevenue:contractNet===null?null:contractNet-project.revenue,cash:{income,outcome,balance:income-outcome,rows:cashRows},budget:plan,forecast:forecast(data,deal,warehouse,fifo,project.cost,{...baseline,rows:baseline.rows.map(row=>({...row,actual:plan.rows.find(x=>x.id===row.id)?.actual??0n}))},project.issues),realizations:(data.realizations||[]).filter(x=>x.projectKey===key),ledger,supplierDocuments,supplierRemaining,supplierKnownRemaining,supplierReviewCount,issues:[...new Set(issues)]};
  }
- return Object.freeze({categories,budget,snapshot,forecast,projectTitle,initialEstimate,stageStatuses,normalizeStages,stages,splitStages});
+ return Object.freeze({categories,budget,plannedBudget,snapshot,forecast,projectTitle,initialEstimate,stageStatuses,normalizeStages,stages,splitStages});
 });

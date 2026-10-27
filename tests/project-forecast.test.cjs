@@ -13,7 +13,7 @@ test('realization project title resolves stable identity, same names and organiz
 test('forecast uses approved completed quantity and current rate while preserving explicit baseline and actual ledger',()=>{
  const state=base();state.workActs=[{id:'a',projectKey:key,org:deal.org,planItemId:'w',name:'Монтаж',qty:4,rate:80,status:'approved',date:'2026-10-01'},{id:'draft',projectKey:key,org:deal.org,planItemId:'w',qty:2,rate:90,status:'draft'}];
  const before=JSON.stringify(state),view=model.snapshot(state,deal),f=view.forecast;
- assert.equal(f.rows.find(r=>r.kind==='work').remainingQty,6);assert.equal(f.remaining,60000n);assert.equal(f.cost,92000n);assert.equal(f.income,1000000n);assert.equal(f.profit,908000n);assert.equal(view.budget.total,90000n);assert.equal(view.cost,32000n);assert.equal(JSON.stringify(state),before);
+ assert.equal(f.rows.find(r=>r.kind==='work').remainingQty,6);assert.equal(f.remaining,60000n);assert.equal(f.cost,92000n);assert.equal(f.income,1000000n);assert.equal(f.profit,908000n);assert.equal(view.budget.total,100000n);assert.equal(model.budget(deal).total,90000n);assert.equal(view.cost,32000n);assert.equal(JSON.stringify(state),before);
  state.priceCatalog[0].rate=120;assert.equal(model.snapshot(state,deal).forecast.cost,104000n);
  state.workActs[0].qty=7;assert.equal(model.snapshot(state,deal).forecast.remaining,36000n);
 });
@@ -49,10 +49,10 @@ test('forecast uses accrued cost plus remaining without counting recognized expe
 test('partly priced materials stay unknown and explicit other budgets add only the unspent portion',()=>{
  const state=base();state.dealPlans={};const d={...deal,planMaterials:1000,planTransport:500};state.deals=[d];state.expenses=[{_id:'transport',projectKey:key,org:deal.org,category:'Транспорт',amount:200,vatRate:0,date:'2026-10-01'}];
  const wh=warehouse(),f=fifo(wh);f.bins.get('s::m').splice(0,1,{qty:2,cost:50,date:'2026-10-01'},{qty:14,cost:0,date:'2026-10-02'});
- const v=model.snapshot(state,d,wh,f);assert.equal(v.forecast.remaining,null);assert.equal(v.forecast.knownRemaining,30000n);assert.equal(v.forecast.cost,null);assert.equal(v.budget.total,150000n);
+ const v=model.snapshot(state,d,wh,f);assert.equal(v.forecast.remaining,null);assert.equal(v.forecast.knownRemaining,30000n);assert.equal(v.forecast.cost,null);assert.equal(v.budget.total,null);
 });
 test('equipment acquisition is separate and forecast does not double its explicit original budget',()=>{
- const state=base();state.dealPlans={};const d={...deal,planEquipment:2000};state.deals=[d];const wh=warehouse();wh.items[0].category='Оборудование';const v=model.snapshot(state,d,wh,fifo(wh));assert.equal(v.forecast.rows.length,1);assert.equal(v.forecast.rows[0].category,'equipment');assert.equal(v.forecast.remaining,30000n);assert.equal(v.budget.total,200000n);
+ const state=base();state.dealPlans={};const d={...deal,planEquipment:2000};state.deals=[d];const wh=warehouse();wh.items[0].category='Оборудование';const v=model.snapshot(state,d,wh,fifo(wh));assert.equal(v.forecast.rows.length,1);assert.equal(v.forecast.rows[0].category,'equipment');assert.equal(v.forecast.remaining,30000n);assert.equal(v.budget.total,50000n);
 });
 test('initial estimate snapshot copies rows and remains immutable when the current plan changes',()=>{
  const plan=base().dealPlans.p;const baseline=model.initialEstimate(plan);plan.initialEstimateItems=baseline;plan.items[0].planned=15;plan.items.push({id:'extra',name:'Дополнение',unit:'шт',planned:1,rate:20});assert.equal(model.initialEstimate(plan)[0].planned,10);const state=base();state.dealPlans.p=plan;const f=model.snapshot(state,deal).forecast;assert.equal(f.rows.find(r=>r.id==='extra').unbudgeted,true);
