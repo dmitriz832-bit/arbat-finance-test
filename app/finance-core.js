@@ -49,7 +49,11 @@
        item.batchId&&String(item.batchId)===String(a.batchId||'')));
   }
   function payrollParts(item,acts=[]){
-    const gross=cents(item.amount??item.salary??0),contributions=cents(item.employerContributions||0);
+    let parsed;
+    try{
+      parsed=payroll({gross:item.gross??item.amount??item.salary??0,ndfl:item.ndfl??0,other:item.otherDeductions??item.other??0,contributions:item.employerContributions??item.contributions??0});
+    }catch(_){return {parts:[],issues:['payroll-invalid-deductions']}}
+    const gross=parsed.gross,contributions=parsed.contributions;
     const referenced=linkedWork(item,acts),linked=referenced.filter(a=>!item.projectKey||!a.projectKey||a.projectKey===item.projectKey),issues=[];
     if(referenced.length!==linked.length)issues.push('work-link-project-mismatch');
     if(linked.length)issues.push('linked-work-overlap');
@@ -76,7 +80,7 @@
       const result=payrollParts(item,approvedActs);
       const parts=result.parts.filter(p=>p.projectKey===projectKey);
       total+=parts.reduce((a,p)=>a+p.amount,0n);
-      if(parts.length){issues.push(...result.issues);if(result.issues.includes('linked-work-overlap'))conflicts.push(item)}
+      if(parts.length||item.projectKey===projectKey||(Array.isArray(item.shares)&&item.shares.some(share=>share?.projectKey===projectKey))){issues.push(...result.issues);if(result.issues.includes('linked-work-overlap'))conflicts.push(item)}
       if(item.deal&&!item.projectKey&&!(item.shares||[]).length)unresolved.push(item);
       if(item.projectKey!==projectKey||item.workActId||item.actId||item.batchId)continue;
       const date=String(item.date||item.dt||'').slice(0,10);
@@ -102,7 +106,13 @@
       rows.push({source,kind,amount,projectKey,dir:deal?.dir||source.dir||'',org:source.org||deal?.org||'',date:source.date||source.dt||'',category});
     };
     for(const item of data.expenses||[])push(item,'project-expense',documentPnlAmount(item,true));
-    for(const item of acts.filter(a=>a.status==='approved'))push(item,'work-act',workAmount(item));
+    for(const item of acts.filter(a=>a.status==='approved')){
+      try{
+        if(item.qty==null||String(item.qty).trim()===''||item.rate==null||String(item.rate).trim()==='')throw new TypeError('Unknown work quantity or rate');
+        const amount=workAmount(item);if(amount<0n)throw new RangeError('Negative work amount');
+        push(item,'work-act',amount);
+      }catch(error){issues.push({code:'crew-payroll-invalid-work-act',source:item,message:error.message})}
+    }
     for(const item of data.costs||[]){
       if(item.managementTax===true){
         try{const value=managementTaxAmount(item),identity=String(item._id||item.id||'');
@@ -147,6 +157,12 @@
       }
     }
     for(const item of data.labor||[]){
+      try{
+        payroll({gross:item.gross??item.amount??item.salary??0,ndfl:item.ndfl??0,other:item.otherDeductions??item.other??0,contributions:item.employerContributions??item.contributions??0});
+      }catch(error){
+        issues.push({code:'payroll-invalid-deductions',source:item,message:error.message});
+        continue;
+      }
       const result=payrollParts(item,acts),type=laborType(item,data.people||[]);
       for(const code of result.issues)issues.push({code,source:item});
       const group=String(item.pnlGroup||'').toLowerCase(),level=String(item.pnlLevel||'').toLowerCase();const category=level==='below'?'belowExpenses':group.includes('общепроизвод')?'production':group.includes('коммерч')?'commercial':group.includes('администр')?'administrative':group.includes('прям')?'direct':type==='administrative'?'administrative':type==='commercial'?'commercial':'direct';for(const part of result.parts)push(item,'payroll',part.amount,part.projectKey,category);
@@ -214,7 +230,63 @@
     const difference=total.result-directionResult-unallocatedResult;
     return {directions,directionResult,unallocatedRevenue,unallocatedIncome,unallocatedExpense,unallocatedResult,totalResult:total.result,difference,balanced:difference===0n,issues:ledger.issues};
   }
-  function warehouseCostAudit(expenses,moves,fifo){
+  function warehouseReceiptGross(source={}){
+    if(source.amountGross!==undefined&&source.amountGross!==null&&String(source.amountGross).trim()!=='')return cents(source.amountGross);
+    const decimal=value=>{
+      const match=String(value??'').trim().replace(',','.').match(/^([+-]?\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i);
+      if(!match)throw Error('Количество или цена партии требуют сверки');
+      const fraction=match[2]||'',power=fraction.length-Number(match[3]||0),n=BigInt(match[1]+fraction);
+      return power<0?{n:n*10n**BigInt(-power),scale:1n}:{n,scale:10n**BigInt(power)};
+    };
+    const q=decimal(source.qty),p=decimal(source.price),denominator=q.scale*p.scale,n=q.n*p.n*100n;
+    if(q.n<0n||p.n<0n)throw Error('Количество или цена партии требуют сверки');
+    return (n+denominator/2n)/denominator;
+  }
+  function warehouseReceiptValuation(source={},grossCents){
+    try{
+      const present=x=>x!==null&&x!==undefined&&String(x).trim()!=='';
+      const gross=grossCents===undefined?warehouseReceiptGross(source):BigInt(grossCents);
+      if(gross<0n||present(source.amountGross)&&cents(source.amountGross)!==gross)throw Error('Стоимость партии требует сверки');
+      if(!present(source.vatRate)){
+        if(['vatDeductible','amountNet','vatAmount'].some(k=>present(source[k])))throw Error('Не указана ставка НДС партии');
+        return {expenseValueCents:String(gross),expenseValuationStatus:'legacy-gross'};
+      }
+      const yes=source.vatDeductible===true||source.vatDeductible==='true',no=source.vatDeductible===false||source.vatDeductible==='false';
+      const tax=documentVat(rubles(gross),source.vatRate,yes);
+      if(tax.vatRate!==0&&!yes&&!no)throw Error('Право на вычет НДС партии не подтверждено');
+      if(present(source.amountNet)&&cents(source.amountNet)!==tax.amountNet||present(source.vatAmount)&&cents(source.vatAmount)!==tax.vatAmount)throw Error('Суммы НДС партии требуют сверки');
+      return {expenseValueCents:String(yes?tax.amountNet:gross),expenseValuationStatus:'verified'};
+    }catch(error){return {expenseValueCents:null,expenseValuationStatus:'requires-review',reason:error.message};}
+  }
+  function warehouseMovementValuation(warehouse={},move={},fifo){
+    try{
+      const calculation=fifo?.byMove?.[move.id];
+      if(!calculation||calculation.invalid||calculation.amount===null||!Array.isArray(calculation.parts)||!calculation.parts.length)throw Error('Партионная стоимость не подтверждена');
+      let gross=0n,expense=0n,legacy=false;const parts=[];
+      for(const part of calculation.parts){
+        const sources=(warehouse.moves||[]).filter(x=>String(x.id)===String(part.source));
+        if(sources.length!==1||!['receipt','opening'].includes(sources[0].kind))throw Error('Источник партии отсутствует или неоднозначен');
+        const source=sources[0],sourceGross=warehouseReceiptGross(source),policy=warehouseReceiptValuation(source,sourceGross);
+        if(source.itemId!==undefined&&move.itemId!==undefined&&String(source.itemId)!==String(move.itemId))throw Error('Номенклатура источника партии не совпадает со списанием');
+        if(policy.expenseValueCents===null)throw Error(policy.reason||'Налоговая стоимость партии не подтверждена');
+        const partGross=part.valueCents===undefined?warehouseReceiptGross({qty:part.qty,price:part.cost}):BigInt(part.valueCents);
+        if(partGross<0n)throw Error('Стоимость части партии требует сверки');
+        let partExpense;
+        if(part.expenseValueCents===undefined&&policy.expenseValuationStatus==='legacy-gross')partExpense=partGross;
+        else{
+          if(part.expenseValueCents===null||part.expenseValueCents===undefined||part.expenseValuationStatus==='requires-review')throw Error('Стоимость списания требует сверки');
+          partExpense=BigInt(part.expenseValueCents);
+          if(part.sourceGrossValueCents===undefined||BigInt(part.sourceGrossValueCents)!==sourceGross||part.sourceExpenseValueCents===null||part.sourceExpenseValueCents===undefined||BigInt(part.sourceExpenseValueCents)!==BigInt(policy.expenseValueCents))throw Error('Изменена стоимость или политика исходной партии');
+        }
+        if(partExpense<0n)throw Error('Стоимость списания требует сверки');
+        legacy=legacy||policy.expenseValuationStatus==='legacy-gross';gross+=partGross;expense+=partExpense;
+        parts.push({source:String(part.source),qty:part.qty,grossValueCents:String(partGross),expenseValueCents:String(partExpense),sourceGrossValueCents:String(sourceGross),sourceExpenseValueCents:policy.expenseValueCents,expenseValuationStatus:policy.expenseValuationStatus});
+      }
+      if(gross!==cents(calculation.amount))throw Error('Сумма частей не совпадает со стоимостью FIFO');
+      return {status:'calculated',grossAmount:gross,expenseAmount:expense,expenseValuationStatus:legacy?'legacy-gross':'verified',parts};
+    }catch(error){return {status:'requires-review',grossAmount:null,expenseAmount:null,expenseValuationStatus:'requires-review',parts:[],reason:error.message};}
+  }
+  function warehouseCostAudit(expenses,moves,fifo,warehouse){
     const issues=[];
     const linked=(expenses||[]).filter(x=>x.warehouseMoveId);
     const byMove=new Map();
@@ -224,7 +296,11 @@
       const valued=fifo?.byMove?.[move.id];
       if(rows.length!==1){issues.push({moveId:move.id,reason:rows.length?'duplicate-expense':'missing-expense'});continue}
       if(!valued||valued.invalid||valued.amount==null){issues.push({moveId:move.id,reason:'unverified-fifo'});continue}
-      if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
+      if(rows[0].warehouseGrossAmount!==undefined){
+        const valuation=warehouseMovementValuation(warehouse||{moves},move,fifo);
+        try{const row=rows[0],missing=x=>x===null||x===undefined||String(x).trim()==='';if(valuation.status!=='calculated'||missing(row.amount)||missing(row.warehouseGrossAmount)||cents(row.warehouseGrossAmount)!==valuation.grossAmount||cents(row.amount)!==valuation.expenseAmount||documentPnlAmount(row,true)!==valuation.expenseAmount||Number(row.vatRate)!==0||cents(row.vatAmount)!==0n||row.vatDeductible!==false||cents(row.amountGross)!==valuation.expenseAmount||cents(row.amountNet)!==valuation.expenseAmount||JSON.stringify(row.warehouseValuationParts)!==JSON.stringify(valuation.parts))throw Error('mismatch')}
+        catch{issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
+      }else if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
     }
     const eligible=new Set((moves||[]).filter(x=>x.kind==='consume'&&(x.projectIssueId||x.dealId)).map(x=>String(x.id)));
     for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
@@ -283,7 +359,9 @@
   function usnVatThreshold(data={},reference='',incomeEvents=[]){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(reference)||!Number.isFinite(Date.parse(reference+'T00:00:00Z'))||new Date(reference+'T00:00:00Z').toISOString().slice(0,10)!==reference)throw Error('Проверьте дату расчёта порога УСН');
     const policies=validateUsnVatPolicies(data.usnVatPolicies),year=Number(reference.slice(0,4)),start=year+'-01-01';
-    const defaultLimit=({2025:60000000,2026:20000000,2027:15000000,2028:10000000})[year],policyAt=d=>policies.filter(p=>p.effectiveDate<=d).at(-1)||null;
+    // Active VAT year: the preceding-income year is a different comparison.
+    // FNS /new2026/ (04.07.2026 amendments):20m through2029,15m in2030,10m from2031.
+    const defaultLimit=year===2025?60000000:year>=2026&&year<=2029?20000000:year===2030?15000000:year>=2031?10000000:undefined,policyAt=d=>policies.filter(p=>p.effectiveDate<=d).at(-1)||null;
     const limitAt=d=>policyAt(d)?cents(policyAt(d).threshold):defaultLimit===undefined?null:cents(defaultLimit);
     const previousIncome=incomeEvents.filter(e=>String(e.date).startsWith(String(year-1)+'-')).reduce((n,e)=>n+e.amount,0n),daily=new Map();
     for(const e of incomeEvents)if(e.date>=start&&e.date<=reference)daily.set(e.date,(daily.get(e.date)||0n)+e.amount);
@@ -302,6 +380,7 @@
     const between=(d,b)=>valid(d)&&d>=b.from&&d<=b.to,positive=x=>x>0n?x:0n,pct=(x,n)=>(positive(x)*BigInt(n)+50n)/100n;
     const messages={
       'invalid-tax-date':'Проверьте дату операции', 'invalid-tax-amount':'Проверьте сумму операции',
+      'tax-organization-unassigned':'Организация налогового источника не указана. Распределите документ перед подтверждением расчёта',
       'tax-exclusion-without-reason':'Исключение из налоговой базы не имеет основания',
       'usn-income-vat-unconfirmed':'Подтвердите сумму НДС в поступлении и документ-основание; без них доход УСН требует сверки',
       'usn-income-unconfirmed':'Уточните налоговую классификацию поступления: продажа, аванс, заём или другое основание',
@@ -333,6 +412,23 @@
       issue('tax-exclusion-without-reason',scope,collection,source);return false;
     }
     function entry(scope,collection,source,d,value,label){rows.push({scope,collection,source,id:source._id||source.id,date:d,amount:value,label})}
+    // An unattributed source cannot be assigned a zero contribution to either
+    // organization. Keep its value outside known totals and expose the gap.
+    // Explicit foreign organizations remain legitimately outside this model.
+    for(const [collection,items,scopes] of [
+      ['cash',(data.cash||[]).filter(x=>x.type!=='transfer'),['usn','vat']],
+      ['realizations',data.realizations||[],['usn','vat','profit']],
+      ['expenses',data.expenses||[],['usn','vat','profit']],
+      ['costs',data.costs||[],['usn','vat','profit']],
+      ['labor',data.labor||[],['usn','profit']],
+      ['workActs',(data.workActs||[]).filter(x=>x.status==='approved'),['profit']],
+      ['warehouse',(data.warehouse?.moves||[]).filter(x=>x.kind==='receipt'),['vat','profit']],
+      ['vatAdvanceEvents',data.vatAdvanceEvents||[],['usn','vat']]
+    ])for(const source of items){
+      if(text(source.org))continue;
+      const d=date(source.date||source.dt),recognitions=[date(source.usnRecognitionDate),date(source.profitTaxRecognitionDate),...(Array.isArray(source.usnRecognitionEvents)?source.usnRecognitionEvents:[]).map(e=>date(e?.date)),...(Array.isArray(source.profitTaxRecognitionEvents)?source.profitTaxRecognitionEvents:[]).map(e=>date(e?.date))];
+      if(!valid(d)||between(d,yearBounds)||recognitions.some(x=>between(x,yearBounds))||collection==='cash'&&source.type==='in'&&d>=(year-1)+'-01-01'&&d<yearBounds.from)for(const scope of scopes)issue('tax-organization-unassigned',scope,collection,source);
+    }
     // Event-level tax recognition supports several independently documented portions
     // of one payment, without counting a legacy single recognition twice.
     function recognitionEvents(source,collection,scope,field,legacyDate,legacyAmount,legacyDocument,cap,earliest){
@@ -458,10 +554,7 @@
     for(const source of data.warehouse?.moves||[]){
       if(source.org!==ARBAT||source.kind!=='receipt')continue;
       const d=date(source.date);if(valid(d)&&d>bounds.to)continue;
-      let gross;try{
-        const decimal=x=>{const s=String(x??'').trim().replace(',','.');if(!/^\d+(?:\.\d+)?$/.test(s))throw Error('decimal');const [a,b='']=s.split('.');return {n:BigInt(a+b),s:10n**BigInt(b.length)}};
-        const q=decimal(source.qty),p=decimal(source.price),scale=q.s*p.s;gross=rubles((q.n*p.n*100n+scale/2n)/scale);
-      }catch{issue('invalid-tax-amount','vat','warehouse',source);continue}
+      let gross;try{gross=rubles(warehouseReceiptGross(source));}catch{issue('invalid-tax-amount','vat','warehouse',source);continue}
       inputDocument(source,'warehouse',gross);
       if(between(d,yearBounds))issue('warehouse-tax-basis','profit','warehouse',source);
     }
@@ -479,7 +572,7 @@
       const d=readDate(source,'workActs','profit');if(d&&between(d,yearBounds))issue('profit-expense-unconfirmed','profit','workActs',source);
     }
     for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items)if(source.org===AIR&&between(date(source.date),yearBounds)&&Number(source.vatRate)>0)issue('air-vat-document','usn',collection,source);
-    for(const source of data.realizations||[])if(source.org===AIR&&between(date(source.date),bounds)&&Number(source.vatRate)>0){const v=vat(source,'realizations','usn');if(v){airOutputVat+=v.vatAmount;entry('airVat','realizations',source,date(source.date),v.vatAmount,'Исходящий НДС АИР-КЛИМАТ')}}
+    for(const [collection,items] of [['realizations',data.realizations||[]],['costs',incomeCosts]])for(const source of items)if(source.org===AIR&&between(date(source.date),bounds)&&Number(source.vatRate)>0){const v=vat(source,collection,'usn');if(v){airOutputVat+=v.vatAmount;entry('airVat',collection,source,date(source.date),v.vatAmount,'Исходящий НДС АИР-КЛИМАТ')}}
     const cutoff=valid(date(reference))?date(reference):bounds.to;
     let vatThreshold;try{vatThreshold=usnVatThreshold(data,cutoff,incomeEvents)}catch(error){issue('usn-vat-policy-invalid','usn','organization',{org:AIR,name:error.message});vatThreshold={limit:null,observedIncome:null,previousIncome:null,exceededOn:null,effectiveFrom:null,asOf:cutoff,coverageConfirmed:false,error:error.message}}
     const {effectiveFrom}=vatThreshold;
@@ -534,10 +627,10 @@
     const warehouseMoves=data.warehouse?.moves||[];
     const consumed=warehouseMoves.filter(x=>x.dealId===deal._id&&x.kind==='consume'&&(x.projectIssueId||x.dealId)&&until(x,period));
     if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');
-    if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch');
+    if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo,data.warehouse).length)issues.push('warehouse-fifo-mismatch');
     if(data.warehouse&&expenses.some(e=>e.warehouseMoveId&&!warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');
     if(expenses.some(e=>e.warehouseMoveId&&warehouseMoves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');
-    if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');
+    if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&until(other,period)&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');
     const labor=projectPayroll((data.labor||[]).filter(x=>until(x,period)),projectKey,(data.workActs||[]).filter(x=>x.projectKey===projectKey&&until(x,period)));
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
@@ -558,7 +651,7 @@
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
     if(labor.unresolved.some(x=>x.org===deal.org&&x.deal===deal.name))issues.push('legacy-unattributed-payroll');
-    if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&(m.projectIssueId||m.dealId));const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(expenses.some(e=>e.warehouseMoveId&&moves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo).length)issues.push('warehouse-fifo-mismatch')}
+    if(data.warehouse){const moves=data.warehouse.moves||[],consumed=moves.filter(m=>m.dealId===deal._id&&m.kind==='consume'&&(m.projectIssueId||m.dealId));const known=new Set(moves.map(m=>String(m.id)));if(expenses.some(e=>e.warehouseMoveId&&!known.has(String(e.warehouseMoveId))))issues.push('warehouse-missing-movement');if(expenses.some(e=>e.warehouseMoveId&&moves.some(m=>String(m.id)===String(e.warehouseMoveId)&&m.dealId&&m.dealId!==deal._id)))issues.push('warehouse-cross-project-reference');if(expenses.some(e=>e.warehouseMoveId&&(data.expenses||[]).some(other=>other!==e&&other.warehouseMoveId&&String(other.warehouseMoveId)===String(e.warehouseMoveId))))issues.push('warehouse-duplicate-global-expense');if(consumed.length&&!data.fifo)issues.push('warehouse-fifo-unavailable');else if(data.fifo&&warehouseCostAudit(expenses,consumed,data.fifo,data.warehouse).length)issues.push('warehouse-fifo-mismatch')}
     return {revenue,cost,otherIncome,result:revenue+otherIncome-cost,issues:[...new Set(issues)],payroll:labor};
   }
   function projectExpenseTotal(expenses,acts){
@@ -689,12 +782,14 @@
       if(doc.org&&project.org&&doc.org!==project.org){issues.push({code:'realization-organization-mismatch',source:doc});continue}
       project.revenue+=cents(doc.amountGross??doc.amount??0);
     }
-    let unallocated=0n;
+    let unallocated=0n;const receiptShares=new Map(),refundRows=[];
     for(const movement of data.cash||[]){
       if(movement.type!=='in'||org&&movement.org!==org)continue;
       let amount;
       try{amount=cents(movement.amount||0)}catch(_){issues.push({code:'invalid-receipt',source:movement});continue}
-      const allocations=Array.isArray(movement.projectAllocations)?movement.projectAllocations:null;
+      // The native receipt editor writes `allocations`; it takes precedence
+      // over legacy shares. Clearing it restores the direct project header.
+      const allocations=Array.isArray(movement.allocations)?(movement.allocations.length?movement.allocations:null):Array.isArray(movement.projectAllocations)?movement.projectAllocations:null;
       if(amount<0n){issues.push({code:'negative-receipt',source:movement});continue}
       if(allocations){
         let assigned=0n,invalid=false;
@@ -711,25 +806,51 @@
           issues.push({code:assigned>amount?'overallocated-receipt':'invalid-receipt-allocation',source:movement});
           // Never credit a partially invalid or overallocated receipt to projects.
           unallocated+=amount;
+          receiptShares.set(movement,{amount,shares:[{project:null,portion:amount}]});
           continue;
         }
         for(const {project,portion} of pending)project.received+=portion;
         unallocated+=amount-assigned;
+        receiptShares.set(movement,{amount,shares:[...pending,{project:null,portion:amount-assigned}]});
       }else if(movement.projectKey&&projects.has(String(movement.projectKey))){
         const project=projects.get(String(movement.projectKey));
-        if(movement.org&&project.org&&movement.org!==project.org){unallocated+=amount;issues.push({code:'receipt-organization-mismatch',source:movement});continue}
+        if(movement.org&&project.org&&movement.org!==project.org){unallocated+=amount;receiptShares.set(movement,{amount,shares:[{project:null,portion:amount}]});issues.push({code:'receipt-organization-mismatch',source:movement});continue}
         project.received+=amount;
+        receiptShares.set(movement,{amount,shares:[{project,portion:amount}]});
       }else{
         unallocated+=amount;
+        receiptShares.set(movement,{amount,shares:[{project:null,portion:amount}]});
         issues.push({code:'unallocated-receipt',source:movement});
       }
+    }
+    // Only accepted advance-refund evidence identifies a customer return. Trace
+    // it to the original receipt, never infer a return from an ordinary expense.
+    if((data.vatAdvanceEvents||[]).some(e=>e.kind==='refund')){
+      const registerModel=typeof module==='object'&&module.exports?require('./tax-register-model.js'):globalThis.ArbatTaxRegisters;
+      if(registerModel){
+        const register=registerModel.advances(data,{org}),balances=new Map(register.balances.map(b=>[b.id,b])),refunds=new Map();
+        for(const row of register.rows)if(row.kind==='refund'){
+          const receipt=balances.get(String(row.event.advanceId||''))?.cash;
+          if(!receiptShares.has(receipt))continue;
+          if(!refunds.has(receipt)){const original=receiptShares.get(receipt);refunds.set(receipt,{amount:original.amount,shares:original.shares.map(s=>({...s}))})}
+          const state=refunds.get(receipt),{amount,shares}=state,refund=row.amount;if(amount<=0n)continue;
+          const portions=shares.map(s=>refund*s.portion/amount);let remainder=refund-portions.reduce((s,n)=>s+n,0n);
+          // Process accepted events chronologically against remaining receipt
+          // shares. Each source gets positive traceable rows without reusing a
+          // project's last kopeck after an earlier partial return exhausted it.
+          for(let i=shares.length-1;i>=0&&remainder>0n;i--){const capacity=shares[i].portion-portions[i],extra=capacity<remainder?capacity:remainder;portions[i]+=extra;remainder-=extra}
+          shares.forEach((s,i)=>{const portion=portions[i];if(portion<=0n)return;if(s.project)s.project.received-=portion;else unallocated-=portion;s.portion-=portion;refundRows.push({source:row.source,projectKey:s.project?.key||'',amount:portion,originalCashId:String(receipt._id||receipt.id||''),eventId:String(row.event._id||row.event.id||'')})});
+          state.amount-=refund;
+        }
+        for(const problem of register.issues)if(problem.event.kind==='refund')issues.push({code:'advance-refund-review',source:problem.event,message:problem.message});
+      }else issues.push({code:'advance-refund-review',message:'Регистр возвратов авансов недоступен'});
     }
     const rows=[...projects.values()].map(p=>({...p,receivable:p.revenue>p.received?p.revenue-p.received:0n,advance:p.received>p.revenue?p.received-p.revenue:0n}));
     const total=name=>rows.reduce((v,p)=>v+p[name],0n);
     // One employee can work for both companies. A payment by one company must
     // never discharge another company's liability in the consolidated view.
     const payrollState=payrollByOrganization({accruals:data.labor||[],payments:data.cash||[],settlements:data.crewSettlements||[],workActs:data.workActs||[]},org);
-    return {rows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.payableTotal,issues:[...issues,...payrollState.issues]};
+    return {rows,refundRows,receivable:total('receivable'),advances:total('advance'),unallocated,payrollPayable:payrollState.payableTotal,issues:[...issues,...payrollState.issues]};
   }
   function ownerWarehouseSnapshot(warehouse,fifo,org=''){
     const rows=[],issues=[...(fifo?.warnings||[])],places=new Map((warehouse?.places||[]).map(x=>[String(x.id),x]));
@@ -755,7 +876,7 @@
       const deficit=Math.max(0,reserved-qty);
       const invalid=lots.some(l=>Number(l.qty)>0&&(!Number.isFinite(Number(l.cost))||Number(l.cost)<=0));
       let value=null;
-      if(!invalid){value=lots.reduce((v,l)=>v+cents((Number(l.qty||0)*Number(l.cost||0)).toFixed(2)),0n);totalValue+=value}
+      if(!invalid){value=lots.reduce((v,l)=>v+(l.valueCents!==undefined?BigInt(l.valueCents):cents((Number(l.qty||0)*Number(l.cost||0)).toFixed(2))),0n);totalValue+=value}
       else unpriced=true;
       if(qty||reserved){rows.push({placeId,itemId,name:item?.name||itemId,place:place?.name||placeId,qty,reserved,free:Math.max(0,qty-reserved),deficit,value,unpriced:invalid});reservedQty+=reserved;deficitQty+=deficit}
     }
@@ -873,7 +994,10 @@
       const personIds=[...new Set((act.memberIds||[]).filter(Boolean).map(String))].sort();
       if(!personIds.length){issues.push({code:'crew-payroll-missing-members',source:act});continue}
       let amount;
-      try{amount=workAmount(act)}catch(e){issues.push({code:'crew-payroll-invalid-work-act',source:act,reason:e.message});continue}
+      try{
+        if(act.qty==null||String(act.qty).trim()===''||act.rate==null||String(act.rate).trim()==='')throw new TypeError('Unknown work quantity or rate');
+        amount=workAmount(act);
+      }catch(e){issues.push({code:'crew-payroll-invalid-work-act',source:act,reason:e.message});continue}
       if(amount<0n){issues.push({code:'crew-payroll-invalid-work-act',source:act,reason:'Negative work amount'});continue}
       const shares=allocate(rubles(amount),personIds.map(()=>1));
       personIds.forEach((personId,index)=>{
@@ -907,10 +1031,18 @@
         const t=get(String(entry.personId));t.gross+=p.gross;t.ndfl+=p.tax;t.contributions+=p.contributions;t.expense+=p.expense;t.other+=p.deductions;t.payable+=p.payable;
       }catch(e){issues.push({code:'payroll-invalid-deductions',source:entry,reason:e.message})}
     }
-    for(const payment of payments.filter(x=>x.type==='out'&&(x.personId||Array.isArray(x.payrollAllocations)||settledByCash.has(String(x._id||x.id||'')))&&x.payrollPayment!==false)){
+    for(const payment of payments.filter(x=>x.type==='out'&&(x.payrollPayment===true||x.personId||Array.isArray(x.payrollAllocations)||settledByCash.has(String(x._id||x.id||'')))&&x.payrollPayment!==false)){
       let amount;
-      try{amount=cents(payment.amount||0)}catch(_){issues.push({code:'payroll-invalid-payment',source:payment});continue}
+      try{
+        if(payment.amount==null||String(payment.amount).trim()==='')throw new TypeError('Unknown salary payment amount');
+        amount=cents(payment.amount);
+      }catch(_){issues.push({code:'payroll-invalid-payment',source:payment});continue}
       if(amount<0n){issues.push({code:'payroll-invalid-payment',source:payment});continue}
+      if(payment.payrollAllocations!=null&&!Array.isArray(payment.payrollAllocations)){
+        issues.push({code:'payroll-invalid-allocation',source:payment});
+        unallocatedPayments.push({source:payment,amount});
+        continue;
+      }
       const allocations=Array.isArray(payment.payrollAllocations)?payment.payrollAllocations:(settledByCash.get(String(payment._id||payment.id||''))||null);
       // Project-based cash allocations have a different meaning and must never settle salary.
       // Explicit payroll allocation takes precedence over legacy single-beneficiary payout.
@@ -1043,5 +1175,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletOpeningValues,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,validateUsnVatPolicies,usnVatThreshold,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletOpeningValues,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,validateUsnVatPolicies,usnVatThreshold,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseReceiptValuation,warehouseMovementValuation,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });

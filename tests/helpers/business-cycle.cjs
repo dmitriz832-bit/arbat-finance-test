@@ -10,8 +10,11 @@ function fixture(){
 }
 const receiptKey=s=>pay.receiptKey({org:s.org,documentId:'UPD-'+s.id});
 function payment(s,id,amount,date='2026-10-03',incoming=false){return {_id:s.id+'-'+id,org:s.org,date,type:incoming?'in':'out',walletId:s.id,amount,articleId:incoming?'in':'out',customerId:incoming?'customer':'supplier',...(incoming?{projectKey:core.dealKey({_id:s.id,org:s.org,order1c:'CYCLE-'+s.id})}:{})}}
-function inspect(finance,warehouse,fifo,s,period='2026-10'){
- const deal=finance.deals.find(d=>d._id===s.id),key=core.dealKey(deal),data={...finance,warehouse,fifo},wip=core.projectWipSnapshot(data,deal,key,period),pnl=core.preliminaryPeriod(data,period,s.org),owner=core.ownerPeriodSnapshot(data,{from:period+'-01',to:period==='2026-10'?'2026-10-31':'2026-11-30'},s.org),debt=core.ownerDebtSnapshot(data,s.org),stock=core.ownerWarehouseSnapshot(warehouse,fifo,s.org),supplier=pay.summary(finance,warehouse,s.org,'2026-10-01'),flow=core.cashFlow(finance.cash,'',s.org),wallet=core.walletSnapshot(100000,finance.cash,s.id,'2026-09-30'),plan=liquidity.snapshot(finance,warehouse,s.org,'2026-10-01');
+function inspect(finance,warehouse,fifo,s,period='2026-10',asOf=''){
+ // This helper inspects a completed stage, whose latest posted cash is executed.
+ // Explicit historical-cutoff behavior has separate future-payment regressions.
+ const forecastDate=asOf||(finance.cash||[]).filter(c=>c.org===s.org).map(c=>c.date).sort().at(-1)||'2026-10-01';
+ const deal=finance.deals.find(d=>d._id===s.id),key=core.dealKey(deal),data={...finance,warehouse,fifo},wip=core.projectWipSnapshot(data,deal,key,period),pnl=core.preliminaryPeriod(data,period,s.org),owner=core.ownerPeriodSnapshot(data,{from:period+'-01',to:period==='2026-10'?'2026-10-31':'2026-11-30'},s.org),debt=core.ownerDebtSnapshot(data,s.org),stock=core.ownerWarehouseSnapshot(warehouse,fifo,s.org),supplier=pay.summary(finance,warehouse,s.org,'2026-10-01'),flow=core.cashFlow(finance.cash,'',s.org),wallet=core.walletSnapshot(100000,finance.cash,s.id,'2026-09-30'),plan=liquidity.snapshot(finance,warehouse,s.org,forecastDate);
  return {wip:wip.wip,accrued:wip.accruedCost,recognized:wip.recognizedCost,wipStatus:wip.status,wipIssues:wip.issues,result:pnl.result,ownerResult:owner.result,revenue:pnl.revenue,supplier:supplier.remaining,supplierReview:supplier.review,receivable:debt.receivable,advance:debt.advances,debtIssues:debt.issues,stock:stock.totalValue,cash:wallet.balance,flow:flow.net,due7:plan.obligations7,directionDifference:core.directionReconciliation(data,period,s.org).difference};
 }
 module.exports={specs,fixture,receiptKey,payment,inspect};

@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');
 const fs=require('node:fs');
 const {cents}=require('../app/finance-core.js');
-const SECTIONS=['deals','realizations','expenses','cash','labor','costs','workActs','crewSettlements','wallets','people'];
+const SECTIONS=['deals','realizations','expenses','cash','labor','costs','workActs','crewSettlements','wallets','people','loanContracts','fixedAssets','vatAdvanceEvents','taxObligationEvents','usnVatPolicies'];
 const WH_SECTIONS=['items','places','moves','projectIssues'];
 const isRecord=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 const rows=(data,key)=>Array.isArray(data?.[key])?data[key].filter(isRecord):[];
@@ -31,7 +31,7 @@ function inspect(finance,warehouse){
  }
  const wallets=new Set(rows(finance,'wallets').map(id).filter(Boolean));
  const crew=new Set(rows(warehouse,'places').map(id).filter(Boolean));
- const people=new Set(rows(finance,'people').map(id).filter(Boolean));
+ const people=new Set(rows(finance,'people').map(person=>String(person.id||id(person))).filter(Boolean));
  for(const x of rows(finance,'cash')){
   if(x.walletId&&!wallets.has(String(x.walletId)))caution('missing-wallet','finance.cash',id(x));
   if(x.type==='transfer'&&!x.toWalletId)failure('transfer-missing-destination','finance.cash',id(x));
@@ -62,6 +62,9 @@ function inspect(finance,warehouse){
  }
  const valuation=rows(finance,'expenses').filter(x=>x.valuationStatus==='requires-review').length;
  if(valuation)caution('unresolved-warehouse-cost','finance.expenses',String(valuation));
+ for(const issue of require('../app/balance-workspace-model.js').generatedExpenseSourceIssues({costs:rows(finance,'costs'),fixedAssets:rows(finance,'fixedAssets'),loanContracts:rows(finance,'loanContracts')},{today:'9999-12-31'})){
+  warnings.push({code:'generated-expense-source-review',source:'finance.costs',id:issue.id,sourceId:issue.sourceId,sourceCollection:issue.sourceCollection,message:issue.message});
+ }
  return {ok:errors.length===0,errors,warnings,counts};
 }
 function packageBackup(finance,warehouse,metadata={}){

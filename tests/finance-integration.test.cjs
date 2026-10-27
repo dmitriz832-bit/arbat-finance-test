@@ -34,6 +34,11 @@ test('project warehouse valuation must distinguish unresolved FIFO',()=>{
 
 test('direction financial rollups delegate to shared expense ledger',()=>{assert.match(dashboard,/selected\.rows\.filter\(/);assert.match(core,/function expenseLedger\(/)});
 
-test('P&L adapter never mutates source payroll to add contributions',()=>{const business=fs.readFileSync(path.join(root,'app/business-system.js'),'utf8');assert.ok(!business.includes('item.amount=Number(item.amount'));assert.match(core,/cents\(item.employerContributions/)});
+test('P&L ledger preserves source payroll and recognizes employer contributions once',()=>{
+ const finance=require('../app/finance-core.js'),entry=Object.freeze({personId:'p',org:'A',date:'2026-10-04',amount:'100.01',employerContributions:'30.02'}),data={labor:[entry]},before=JSON.stringify(data);
+ assert.equal(finance.expenseLedger(data).rows.reduce((n,row)=>n+row.amount,0n),13003n);
+ assert.equal(finance.preliminaryPeriod(data,'2026-10','A').direct,13003n);
+ assert.equal(JSON.stringify(data),before);
+});
 
 test('finance core loads before every inline bootstrap and payroll adapter',()=>{const coreTag=html.indexOf('<script src="./finance-core.js');assert.ok(coreTag>=0&&coreTag<html.indexOf('<script>'));assert.ok(coreTag<html.indexOf('<script src="./business-system.js'));});

@@ -1,5 +1,5 @@
 /* Supplier settlements are links to existing cash, never new cash or P&L entries. */
-((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatPayables=api})(typeof window==='object'?window:globalThis,core=>{
+((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore,typeof module==='object'&&module.exports?require('./financial-payment-links.js'):root.ArbatFinancialPaymentLinks);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatPayables=api})(typeof window==='object'?window:globalThis,(core,paymentLinks)=>{
  'use strict';
  const validDate=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
  const id=x=>String(x._id||x.id||''),money=x=>core.cents(x),amount=x=>{try{return money(x)}catch{return null}};
@@ -18,7 +18,7 @@
   const groups=new Map();
   for(const source of warehouse.moves||[]){if(source.kind!=='receipt'||!id(source))continue;const key=receiptKey(source);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(source)}
   for(const [key,sources] of groups){const source=sources[0];let total=0n,valid=true;
-   for(const line of sources){if(Number(line.qty)<=0||Number(line.price)<=0)valid=false;else try{total+=lineCents(line.qty,line.price)}catch{valid=false}}
+   for(const line of sources){if(Number(line.qty)<=0||Number(line.price)<=0)valid=false;else try{total+=line.amountGross!==undefined&&line.amountGross!==null&&line.amountGross!==''?money(line.amountGross):lineCents(line.qty,line.price)}catch{valid=false}}
    rows.push({key,collection:'receipt',id:id(source),sources,org:source.org||'',date:(source.date||'').slice(0,10),label:source.note||source.documentId||'Приход на склад',supplierId:source.supplierId||'',dueDate:source.paymentDueDate||'',total:valid?total:null,issues:[],paid:0n,links:[]});
   }
   return rows;
@@ -26,15 +26,20 @@
  function eligible(payment,data){return payment.type==='out'&&!payment.personId&&!Array.isArray(payment.payrollAllocations)&&!(data.crewSettlements||[]).some(s=>String(s.cashId)===id(payment))&&amount(payment.amount)>0n}
  function snapshot(data={},warehouse={},today=new Date().toISOString().slice(0,10)){
   const rows=documents(data,warehouse),byKey=new Map(rows.map(d=>[d.key,d])),payments=[],issues=[];
+  // The same actual payment cannot settle both a supplier document and another
+  // register beyond its one shared cash cap. Keep the supplier card on review.
+  const sharedIssues=new Map(((paymentLinks||globalThis.ArbatFinancialPaymentLinks)?.review(data)||[]).filter(i=>i.documents.some(d=>['loanContracts','fixedAssets'].includes(d.collection))).map(i=>[i.cashId,i.message]));
+  const paymentCounts=new Map();for(const payment of data.cash||[])paymentCounts.set(id(payment),(paymentCounts.get(id(payment))||0)+1);
+  for(const [key,count] of paymentCounts)if(!key||count!==1)sharedIssues.set(key,'Идентификатор платежа отсутствует или повторяется: проверьте источник');
   const issue=(message,doc,payment)=>{issues.push({message,documentKey:doc?.key,paymentId:payment&&id(payment)});if(doc)doc.issues.push(message)};
   for(const doc of rows){if(doc.total===null||doc.total<=0n)issue('Уточните сумму документа',doc);if(doc.sources.some(s=>(s.supplierId||'')!==doc.supplierId||(s.paymentDueDate||'')!==doc.dueDate))issue('У строк накладной различаются условия оплаты',doc)}
   for(const payment of data.cash||[]){
-   const links=Array.isArray(payment.supplierAllocations)?payment.supplierAllocations:[],total=amount(payment.amount),used=links.reduce((s,l)=>s+(amount(l.amount)||0n),0n),valid=eligible(payment,data)&&total!==null&&used<=total&&links.every(l=>amount(l.amount)>0n);
+   const links=Array.isArray(payment.supplierAllocations)?payment.supplierAllocations:[],total=amount(payment.amount),used=links.reduce((s,l)=>s+(amount(l.amount)||0n),0n),valid=eligible(payment,data)&&total!==null&&used<=total&&links.every(l=>amount(l.amount)>0n)&&!sharedIssues.has(id(payment));
    const entry={source:payment,id:id(payment),available:valid?total-used:0n,eligible:eligible(payment,data),valid};payments.push(entry);
    const seen=new Set();
    for(const link of links){const doc=byKey.get(link.documentKey),n=amount(link.amount);let reason='';
     if(!doc)reason='Платёж связан с удалённым или недоступным документом';
-    else if(!valid)reason='Платёж изменён или распределён сверх суммы: проверьте связи';
+    else if(!valid)reason=sharedIssues.get(id(payment))||'Платёж изменён или распределён сверх суммы: проверьте связи';
     else if(!doc.org||doc.org!==payment.org)reason='Организация документа и платежа не совпадает';
     else if(doc.supplierId&&doc.supplierId!==payment.customerId)reason='Поставщик документа и получатель платежа не совпадают';
     else if(seen.has(doc.key))reason='Повторная связь с одним документом';
@@ -71,7 +76,7 @@
    const qty=Number(String(line.qty).replace(',','.')),price=Number(String(line.price).replace(',','.'));
    if(!(warehouse.items||[]).some(x=>x.id===line.itemId)||!Number.isFinite(qty)||qty<=0||!Number.isFinite(price)||price<0)throw Error('Проверьте товар, количество и цену каждой строки');
    const tax={};for(const field of ['vatRate','vatDeductible','vatInvoice','vatDeductionDate'])tax[field]=line.tax?String(line.tax[field]??''):(previous?.[field]??'');
-   return {...(previous||first),...tax,amountGross:undefined,amountNet:undefined,vatAmount:undefined,vatRateSource:tax.vatRate!==''?'document-explicit':undefined,id:previous?.id||uuid(),n:previous?.n||Math.max(0,...warehouse.moves.map(m=>Number(m.n)||0))+i+1,documentId:first.documentId||(!first.importId?id(first):undefined),itemId:line.itemId,qty,price,note,documentLine:i+1,documentLines:lines.length,correctedAt:now,correctionHistory:[...(previous?.correctionHistory||[]),{at:now,previous:previous?{itemId:previous.itemId,qty:previous.qty,price:previous.price,note:previous.note}:null}]};
+   return {...(previous||first),...tax,amountGross:previous&&qty===Number(previous.qty)&&price===Number(previous.price)?previous.amountGross:undefined,amountNet:undefined,vatAmount:undefined,vatRateSource:tax.vatRate!==''?'document-explicit':undefined,id:previous?.id||uuid(),n:previous?.n||Math.max(0,...warehouse.moves.map(m=>Number(m.n)||0))+i+1,documentId:first.documentId||(!first.importId?id(first):undefined),itemId:line.itemId,qty,price,note,documentLine:i+1,documentLines:lines.length,correctedAt:now,correctionHistory:[...(previous?.correctionHistory||[]),{at:now,previous:previous?{itemId:previous.itemId,qty:previous.qty,price:previous.price,note:previous.note}:null}]};
   });
   const byId=new Map(result.filter(m=>original.some(o=>id(o)===id(m))).map(m=>[id(m),m])),last=id(original.at(-1)),moves=[];
   for(const m of warehouse.moves){if(m.kind==='receipt'&&receiptKey(m)===key){if(byId.has(id(m)))moves.push(byId.get(id(m)));if(id(m)===last)moves.push(...result.filter(r=>!byId.has(id(r))))}else moves.push({...m})}
