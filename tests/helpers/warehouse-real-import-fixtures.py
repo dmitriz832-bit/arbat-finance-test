@@ -4,15 +4,20 @@ The PDF embeds an installed TrueType font and its Unicode mapping; it is a
 normal vector-text invoice, not a pdf.js/XLSX mock. Nothing is written to git.
 """
 import json
+import os
 import pathlib
+import shutil
 import struct
 import sys
+import tempfile
 import zipfile
 import zlib
 from xml.sax.saxutils import escape
 
-destination = pathlib.Path(sys.argv[1])
-destination.mkdir(parents=True, exist_ok=True)
+TEXTS = [(86, 700, '1'), (100, 700, 'Audit pipe'), (300, 700, 'м'),
+         (340, 700, '2'), (380, 700, '100'), (610, 700, '244'),
+         (35, 660, 'Всего к оплате'), (610, 660, '244')]
+CHARACTERS = sorted(set(''.join(text for _, _, text in TEXTS)))
 
 
 def xlsx(path):
@@ -56,34 +61,35 @@ def stream(data, attributes=b''):
     return b'<< /Length ' + str(len(data)).encode() + b' ' + attributes + b' >>\nstream\n' + data + b'\nendstream'
 
 
-def vector_pdf(path):
-    font_paths = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-                  '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf']
-    font_path = next((pathlib.Path(p) for p in font_paths if pathlib.Path(p).exists()), None)
-    if font_path is None:
-        raise RuntimeError('Real PDF fixture requires the installed DejaVuSans or LiberationSans TrueType font')
-    font = font_path.read_bytes()
+def unicode_font(path, characters):
+    """Read embeddable TrueType glyphs; reject symbol/CFF/incomplete fonts."""
+    font = path.read_bytes()
+    if font[:4] not in (b'\x00\x01\x00\x00', b'true'):
+        raise ValueError('not a TrueType outline font')
     count = struct.unpack_from('>H', font, 4)[0]
     tables = {font[12 + i * 16:16 + i * 16]: struct.unpack_from('>I', font, 20 + i * 16)[0]
               for i in range(count)}
+    if not {b'cmap', b'glyf', b'loca', b'maxp'}.issubset(tables):
+        raise ValueError('missing TrueType outline/Unicode tables')
+    glyph_count = struct.unpack_from('>H', font, tables[b'maxp'] + 4)[0]
     cmap_offset = tables[b'cmap']
     cmap_count = struct.unpack_from('>H', font, cmap_offset + 2)[0]
     cmaps = []
     for i in range(cmap_count):
+        platform, encoding = struct.unpack_from('>HH', font, cmap_offset + 4 + i * 8)
         relative = struct.unpack_from('>I', font, cmap_offset + 8 + i * 8)[0]
         offset = cmap_offset + relative
-        if struct.unpack_from('>H', font, offset)[0] == 4:
+        if (platform == 0 or platform == 3 and encoding in (1, 10)) and struct.unpack_from('>H', font, offset)[0] == 4:
             cmaps.append(offset)
     if not cmaps:
-        raise RuntimeError('Installed TrueType font has no Unicode format-4 cmap')
-    cmap = cmaps[0]
-    segments = struct.unpack_from('>H', font, cmap + 6)[0] // 2
-    end_start = cmap + 14
-    start_start = end_start + segments * 2 + 2
-    delta_start = start_start + segments * 2
-    range_start = delta_start + segments * 2
+        raise ValueError('no Unicode format-4 cmap')
 
-    def glyph(code):
+    def glyph(cmap, code):
+        segments = struct.unpack_from('>H', font, cmap + 6)[0] // 2
+        end_start = cmap + 14
+        start_start = end_start + segments * 2 + 2
+        delta_start = start_start + segments * 2
+        range_start = delta_start + segments * 2
         for i in range(segments):
             end = struct.unpack_from('>H', font, end_start + i * 2)[0]
             start = struct.unpack_from('>H', font, start_start + i * 2)[0]
@@ -96,14 +102,57 @@ def vector_pdf(path):
                 return (value + delta) & 65535 if value else 0
         return 0
 
+    for cmap in cmaps:
+        glyphs = {ord(char): glyph(cmap, ord(char)) for char in characters}
+        if all(0 < value < glyph_count for value in glyphs.values()):
+            return font, glyphs
+    raise ValueError('Unicode cmap does not cover every Latin/Cyrillic invoice character')
+
+
+def discover_font(characters, directories=None, override=None):
+    """Overrides make CI selection and missing-primary-path regressions reproducible."""
+    explicit = os.environ.get('ARBAT_PDF_FIXTURE_FONT', '') if override is None else override
+    configured = os.environ.get('ARBAT_PDF_FIXTURE_FONT_DIRS') if directories is None else None
+    if explicit:
+        candidates = [pathlib.Path(explicit).expanduser()]
+    else:
+        roots = directories if directories is not None else (
+            configured.split(os.pathsep) if configured is not None else
+            ['/usr/share/fonts', '/usr/local/share/fonts', '~/.fonts', '~/.local/share/fonts'])
+        candidates = []
+        for directory in roots:
+            directory = pathlib.Path(directory).expanduser()
+            if directory.is_dir():
+                candidates.extend(p for p in directory.rglob('*') if p.suffix.lower() == '.ttf')
+
+        def preference(path):
+            name = path.name.lower()
+            preferred = ['dejavusans.ttf', 'liberationsans-regular.ttf']
+            return (preferred.index(name) if name in preferred else 2 if 'dejavu' in name or 'liberation' in name else 3, str(path))
+
+        candidates.sort(key=preference)
+    errors, seen = [], set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            font, glyphs = unicode_font(candidate, characters)
+            return candidate, font, glyphs
+        except (OSError, KeyError, ValueError, struct.error) as error:
+            errors.append(f'{candidate}: {error}')
+    detail = '; '.join(errors[:3]) or 'no .ttf candidates found in configured/installed font directories'
+    raise RuntimeError('Real PDF fixture requires a TrueType font with Unicode format-4 coverage for every invoice character. '
+                       'Set ARBAT_PDF_FIXTURE_FONT to a compatible .ttf path. ' + detail)
+
+
+def vector_pdf(path):
+    font_path, font, glyphs = discover_font(CHARACTERS)
     # These are the production parser's documented invoice column positions.
-    texts = [(86, 700, '1'), (100, 700, 'Audit pipe'), (300, 700, 'м'),
-             (340, 700, '2'), (380, 700, '100'), (610, 700, '244'),
-             (35, 660, 'Всего к оплате'), (610, 660, '244')]
-    characters = sorted(set(''.join(text for _, _, text in texts)))
+    texts, characters = TEXTS, CHARACTERS
     cid_map = bytearray((ord(characters[-1]) + 1) * 2)
     for char in characters:
-        struct.pack_into('>H', cid_map, ord(char) * 2, glyph(ord(char)))
+        struct.pack_into('>H', cid_map, ord(char) * 2, glyphs[ord(char)])
     unicode_map = ('/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n'
                    '/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n'
                    '/CMapName /AuditUnicode def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n'
@@ -123,6 +172,7 @@ def vector_pdf(path):
         stream(unicode_map), stream(zlib.compress(font), b'/Filter /FlateDecode'),
         stream(bytes(cid_map)),
     ])
+    return font_path
 
 
 def scanned_pdf(path):
@@ -134,7 +184,40 @@ def scanned_pdf(path):
                            b'/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode')])
 
 
-xlsx(destination / 'invoice.xlsx')
-vector_pdf(destination / 'invoice.pdf')
-scanned_pdf(destination / 'scanned.pdf')
-print(json.dumps({name: str(destination / name) for name in ['invoice.xlsx', 'invoice.pdf', 'scanned.pdf']}))
+def font_self_test():
+    original, _, _ = discover_font(CHARACTERS)
+    with tempfile.TemporaryDirectory(prefix='arbat-font-fallback-') as temporary:
+        root = pathlib.Path(temporary)
+        alternate = root / 'unlisted-layout' / 'invoice-compatible.ttf'
+        alternate.parent.mkdir()
+        shutil.copyfile(original, alternate)
+        (root / 'DejaVuSans.ttf').write_bytes(b'invalid preferred font must be skipped')
+        selected, _, _ = discover_font(CHARACTERS, directories=[root], override='')
+        assert selected == alternate, (selected, alternate)
+        assert discover_font(CHARACTERS, directories=[], override=str(alternate))[0] == alternate
+        try:
+            discover_font(CHARACTERS, directories=[], override=str(root / 'DejaVuSans.ttf'))
+        except RuntimeError as error:
+            assert 'Unicode format-4' in str(error)
+        else:
+            raise AssertionError('Explicit incompatible font must fail clearly')
+        try:
+            discover_font(CHARACTERS + ['\uffff'], directories=[], override=str(alternate))
+        except RuntimeError as error:
+            assert 'does not cover every' in str(error)
+        else:
+            raise AssertionError('A font missing a required Unicode glyph must be rejected')
+        print('PASS: recursive fallback without primary known paths, invalid-font skip, explicit override, incompatible override and missing-glyph rejection')
+
+
+if __name__ == '__main__':
+    if sys.argv[1:] == ['--font-self-test']:
+        font_self_test()
+    else:
+        destination = pathlib.Path(sys.argv[1])
+        destination.mkdir(parents=True, exist_ok=True)
+        xlsx(destination / 'invoice.xlsx')
+        selected_font = vector_pdf(destination / 'invoice.pdf')
+        scanned_pdf(destination / 'scanned.pdf')
+        print(json.dumps({**{name: str(destination / name) for name in ['invoice.xlsx', 'invoice.pdf', 'scanned.pdf']},
+                          'font': str(selected_font)}))
