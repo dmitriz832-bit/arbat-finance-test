@@ -11,6 +11,7 @@ on:
       - 'tests/vat*.cjs'
       - 'tests/finance*.cjs'
       - 'e2e/**'
+      - 'scripts/run-browser-validation.cjs'
       - 'package.json'
       - 'package-lock.json'
       - 'app/index.html'
@@ -31,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, cash]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
@@ -45,7 +46,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify vendored diagnostics SDK
         run: cmp node_modules/posthog-js/dist/array.no-external.js app/vendor/posthog.js
-      - run: timeout --kill-after=15s 300s node --test --test-concurrency=2 --test-shard=${{ matrix.shard }}/3 e2e/*.cjs
+      - run: timeout --kill-after=15s 300s node scripts/run-browser-validation.cjs ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
