@@ -82,7 +82,8 @@ test('AIR threshold counts cash income and advances and starts VAT next month af
 });
 test('previous-year income and changing 2027 threshold are checked independently of the current quarter',()=>{
  const a=f.quarterTaxSnapshot({cash:[income('2025-01-01','20000000.01')]},'2026-03-01');assert.equal(a.air.vatThreshold.effectiveFrom,'2026-01-01');
- const b=f.quarterTaxSnapshot({cash:[income('2026-01-01','16000000')]},'2027-03-01');assert.equal(b.air.vatThreshold.effectiveFrom,'2027-01-01');assert.equal(b.air.vatThreshold.limit,1500000000n);
+ const b=f.quarterTaxSnapshot({cash:[income('2026-01-01','16000000')]},'2027-03-01');assert.equal(b.air.vatThreshold.effectiveFrom,null);assert.equal(b.air.vatThreshold.limit,2000000000n);
+ const c=f.quarterTaxSnapshot({cash:[income('2029-01-01','16000000')]},'2030-03-01');assert.equal(c.air.vatThreshold.effectiveFrom,'2030-01-01');assert.equal(c.air.vatThreshold.limit,1500000000n);
 });
 test('future income is not used to declare that the AIR VAT threshold has already been crossed',()=>{
  const x=f.quarterTaxSnapshot({cash:[income('2026-12-01','21000000')]},'2026-10-24');assert.equal(x.air.vatThreshold.exceededOn,null);assert.equal(x.air.vatThreshold.observedIncome,0n);

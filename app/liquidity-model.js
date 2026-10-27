@@ -10,7 +10,10 @@
  function buckets(rows){return {total:sum(rows),due7:sum(rows.filter(r=>r.days!==null&&r.days>=0&&r.days<7)),due30:sum(rows.filter(r=>r.days!==null&&r.days>=0&&r.days<30)),overdue:sum(rows.filter(r=>r.days!==null&&r.days<0)),undated:sum(rows.filter(r=>r.days===null)),undatedCount:rows.filter(r=>r.days===null).length}}
  function snapshot(data={},warehouse={},org='',today=new Date().toISOString().slice(0,10)){
   const now=date(today);if(now===null)throw Error('Invalid forecast date');
-  const state=payables.snapshot(data,warehouse,today),documents=state.documents.filter(d=>!org||d.org===org),byKey=new Map(state.documents.map(d=>[d.key,d])),supplierRows=[],manualRows=[],incomeRows=[],review=[],linkedCalendar=[];
+  // A dated forecast may use only payments executed by its cutoff. Future
+  // documents still represent commitments, but future cash cannot settle them.
+  const payableData={...data,cash:(data.cash||[]).filter(payment=>date(payment.date)===null||payment.date<=today)};
+  const state=payables.snapshot(payableData,warehouse,today),documents=state.documents.filter(d=>!org||d.org===org),byKey=new Map(state.documents.map(d=>[d.key,d])),supplierRows=[],manualRows=[],incomeRows=[],review=[],linkedCalendar=[];
   const days=value=>{const n=date(value);return n===null?null:(n-now)/DAY};
   for(const d of documents){
    if(d.status==='review'){review.push({source:'supplier',documentKey:d.key,org:d.org,amount:d.remaining,issues:d.issues});continue}

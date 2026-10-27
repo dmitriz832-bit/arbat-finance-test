@@ -1,0 +1,74 @@
+/* Isolated local fixture; external requests and live auth/sync are blocked. */
+const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path');
+const {chromium,webkit}=require('playwright'),root=path.resolve(__dirname,'..');
+test('project plan, EAC and dashboard retain deductible VAT basis on mobile and desktop',async()=>{
+ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(url.pathname.endsWith('/')?url.pathname+'index.html':url.pathname));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
+ try{for(const engine of (process.env.ARBAT_BROWSER==='chromium'?[chromium]:[chromium,webkit])){const browser=await engine.launch();try{for(const width of [375,1440]){
+  const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(url.pathname==='/app/auth.js')return route.fulfill({body:'document.body.classList.add("ab-ready")'});if(['/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({body:''});return route.continue()});
+  await context.addInitScript(()=>{
+   if(localStorage.getItem('arbat-finance-demo-live'))return;
+   const org='АРБАТ.ГК',projectKey=org+'::1C#AUDIT-VAT',state=Object.fromEntries(['cash','costs','crews','deals','labor','people','wallets','articles','calendar','expenses','workActs','materials','workBatches','costArticles','priceCatalog','priceHistory','priceImports','realizations','counterparties','employeeEvents','crewSettlements','pnlArticles'].map(key=>[key,[]]));
+   Object.assign(state,{wipAccounting:true,dealPlans:{},deals:[{_id:'audit',org,order1c:'AUDIT-VAT',name:'Контроль НДС проекта',dir:'Сервис и ТО',contractTotal:12200,vatRate:22,customerId:'buyer',customer:'Заказчик'}],counterparties:[{id:'buyer',name:'Заказчик',entityType:'person',isBuyer:true}],expenses:[],realizations:[{_id:'sale',org,projectKey,date:'2026-10-03',amount:6100,amountGross:6100,amountNet:5000,vatAmount:1100,vatRate:22,document:'Акт 50%'}]});
+   const warehouse={items:[{id:'pipe',name:'Труба',unit:'м',category:'Материалы'}],places:[{id:'main',name:'Склад',org,type:'warehouse'}],plans:[{dealId:'audit',org,lines:[{itemId:'pipe',qty:10}]}],moves:[{id:'purchase',org,kind:'receipt',itemId:'pipe',to:'main',qty:10,price:122,amountGross:1220,amountNet:1000,vatAmount:220,vatRate:22,vatDeductible:true,date:'2026-10-01'},{id:'consume',org,kind:'consume',itemId:'pipe',from:'main',dealId:'audit',qty:4,date:'2026-10-02'}],projectIssues:[],folders:[]};
+   localStorage.setItem('arbat-finance-demo-live',JSON.stringify(state));localStorage.setItem('arbat-warehouse-v1',JSON.stringify(warehouse));
+  });
+  await page.goto(origin+'/app/');await page.locator('body.ft-app').waitFor();
+  await page.evaluate(()=>showDealModal('audit'));await page.getByRole('tab',{name:'План/Факт ДиР',exact:true}).click();
+  const planCost=page.locator('[data-ft-plan-summary] tbody tr').nth(1).locator('td').nth(1);
+  assert.match(await planCost.innerText(),/1\s*000/,await page.evaluate(()=>{const wh=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));return JSON.stringify({budget:ArbatProjectWorkspace.plannedBudget(db,db.deals[0],wh,arbatFifo(wh)),fifo:[...arbatFifo(wh).bins],warehouse:wh},(key,value)=>typeof value==='bigint'?String(value):value)}));
+  assert.equal(await page.locator('[name=planMaterials]').inputValue(),'1000.00');
+  await page.locator('.ft-secondary-forecast > summary').click();
+  const forecastCost=page.locator('.ft-project-forecast tbody tr').nth(1).locator('td').nth(1);
+  assert.match(await forecastCost.innerText(),/1\s*000/,await page.evaluate(()=>{const wh=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));return JSON.stringify(ArbatProjectWorkspace.snapshot(db,db.deals[0],wh,arbatFifo(wh)),(key,value)=>typeof value==='bigint'?String(value):value)}));
+  assert.match(await page.locator('.ft-project-forecast').innerText(),/Осталось затрат: 600/);
+  const snapshot=await page.evaluate(()=>{const item=arbatDashboardSnapshot().projects.find(row=>row.key.endsWith('AUDIT-VAT'));return {plannedCost:item.plannedCost,cost:item.cost,recognizedCost:item.recognizedCost,wipCost:item.wipCost}});
+  assert.deepEqual(snapshot,{plannedCost:1000,cost:400,recognizedCost:200,wipCost:200});
+  // Changing current purchase policy to unknown must refresh the forecast to
+  // review; the autogenerated cost must disclose the now unknown policy.
+  await page.evaluate(()=>{const warehouse=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));delete warehouse.moves[0].vatDeductible;localStorage.setItem('arbat-warehouse-v1',JSON.stringify(warehouse));window.dispatchEvent(new Event('arbat-warehouse-changed'))});
+  await page.locator('.ft-project-forecast .ft-negative').waitFor({state:'attached'});
+  if(!await page.locator('.ft-project-forecast').isVisible())await page.locator('.ft-secondary-forecast > summary').click();
+  assert.match(await page.locator('.ft-project-forecast .ft-negative').innerText(),/Итог требует сверки/);
+  assert.equal(await page.evaluate(()=>db.expenses.find(row=>row._id==='warehouse-consume-consume').valuationStatus),'requires-review');
+  assert.equal(await page.evaluate(()=>db.expenses.find(row=>row._id==='warehouse-consume-consume').amountNet),null);
+  assert.equal(await page.evaluate(()=>arbatDashboardSnapshot().projects.find(row=>row.key.endsWith('AUDIT-VAT')).plannedCost),null);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
+  assert.deepEqual(errors,[]);await context.close();
+ }}finally{await browser.close()}}}finally{await new Promise(resolve=>server.close(resolve))}
+});
+
+test('project overview traces registered customer refunds and preserves malformed approved act sources for review',async()=>{
+ const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost'),file=path.resolve(root,'.'+(url.pathname.endsWith('/')?url.pathname+'index.html':url.pathname));if(!file.startsWith(root+path.sep))throw Error();res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await fs.readFile(file))}catch{res.writeHead(404);res.end()}});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
+ try{for(const engine of (process.env.ARBAT_BROWSER==='chromium'?[chromium]:[chromium,webkit])){const browser=await engine.launch();try{for(const width of [375,1440]){
+  const context=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin!==origin)return route.abort();if(url.pathname==='/app/auth.js')return route.fulfill({body:'document.body.classList.add("ab-ready")'});if(['/app/sync.js','/app/profile.js'].includes(url.pathname))return route.fulfill({body:''});return route.continue()});
+  await context.addInitScript(()=>{
+   if(localStorage.getItem('arbat-finance-demo-live'))return;
+   const org='АИР-КЛИМАТ',projectKey=org+'::1C#REFUND-CARD',state=Object.fromEntries(['cash','costs','crews','deals','labor','people','wallets','articles','calendar','expenses','workActs','materials','workBatches','costArticles','priceCatalog','priceHistory','priceImports','realizations','counterparties','employeeEvents','crewSettlements','pnlArticles'].map(key=>[key,[]]));
+   Object.assign(state,{dealPlans:{},deals:[{_id:'refund-project',org,order1c:'REFUND-CARD',name:'Возврат аванса',dir:'Сервис и ТО',contractTotal:30,vatRate:0,planMaterials:0,customerId:'buyer',customer:'Заказчик'}],counterparties:[{id:'buyer',name:'Заказчик',entityType:'person',isBuyer:true}],cash:[{_id:'receipt',org,type:'in',date:'2026-10-01',amount:30,allocations:[{projectKey,amount:30}],customerId:'buyer'},{_id:'refund',org,type:'out',date:'2026-11-01',amount:20,customerId:'buyer'}],vatAdvanceEvents:[{_id:'advance',org,kind:'received',date:'2026-10-01',amount:30,cashId:'receipt',vatRate:0,document:'Аванс'},{_id:'return',org,kind:'refund',date:'2026-11-01',amount:20,cashId:'refund',advanceId:'advance',document:'Возврат заказчику'}]});
+   localStorage.setItem('arbat-finance-demo-live',JSON.stringify(state));localStorage.setItem('arbat-warehouse-v1',JSON.stringify({items:[],places:[],moves:[],plans:[],projectIssues:[],folders:[]}));
+  });
+  await page.goto(origin+'/app/');await page.locator('body.ft-app').waitFor();await page.evaluate(()=>showDealModal('refund-project'));
+  const advance=page.locator('.ft-project-position-item').filter({has:page.getByText('Аванс заказчика',{exact:true})}).locator('dd');
+  assert.match(await advance.innerText(),/^10,00/,'the card advance must agree with the validated original receipt less registered refund');
+  await page.getByRole('tab',{name:'План/Факт ДДС',exact:true}).click();
+  assert.equal(await page.evaluate(()=>{const wh=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));return String(ArbatProjectWorkspace.snapshot(db,db.deals[0],wh,arbatFifo(wh)).remainingPayment)}),'2000');
+  await page.getByRole('tab',{name:'Обзор',exact:true}).click();
+  await page.evaluate(()=>{db.dealPlans['refund-project']={items:[{id:'w',name:'Монтаж',planned:10,rate:100,unit:'шт'}]};db.workActs.push({id:'invalid-act',org:'АИР-КЛИМАТ',projectKey:'АИР-КЛИМАТ::1C#REFUND-CARD',date:'2026-10-01',status:'approved',planItemId:'w',name:'Акт требует сверки',unit:'шт',qty:'oops',rate:80});window.dispatchEvent(new Event('arbat-warehouse-changed'))});
+  await page.getByRole('tab',{name:'План/Факт ДиР',exact:true}).click();await page.locator('.ft-secondary-forecast > summary').click();
+  assert.match(await page.locator('.ft-project-forecast .ft-negative').innerText(),/Итог требует сверки/);
+  await page.getByRole('tab',{name:'Обзор',exact:true}).click();assert.match(await page.locator('#ftProjectOverview').innerText(),/Акт требует сверки/);
+  assert.equal(await page.evaluate(()=>db.workActs.find(row=>row.id==='invalid-act').qty),'oops','original invalid document remains available');
+  // An invalid other receipt leg is quarantined atomically by the debt core;
+  // the overview must show unknown settlement rather than the raw assigned50.
+  await page.evaluate(()=>{db.cash[0].amount=100;db.cash[0].allocations=[{projectKey:'АИР-КЛИМАТ::1C#REFUND-CARD',amount:50},{projectKey:'missing-project',amount:50}];window.dispatchEvent(new Event('arbat-warehouse-changed'))});
+  assert.match(await advance.innerText(),/Требует сверки/);
+  assert.equal(await page.evaluate(()=>{const wh=JSON.parse(localStorage.getItem('arbat-warehouse-v1'));return ArbatProjectWorkspace.snapshot(db,db.deals[0],wh,arbatFifo(wh)).remainingPayment}),null);
+
+  assert.deepEqual(errors,[]);await context.close();
+ }}finally{await browser.close()}}}finally{await new Promise(resolve=>server.close(resolve))}
+});

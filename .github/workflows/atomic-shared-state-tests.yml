@@ -16,6 +16,9 @@ on:
       - 'tests/tax-event-registers.sql'
       - 'tests/financial-workspace-guards.sql'
       - 'tests/asset-removal-integrity.sql'
+      - 'tests/all-operations-payroll-rpc.sql'
+      - 'tests/all-operations-payroll-rpc-access.sql'
+      - 'supabase/migrations/*align_employee_payroll_snapshot.sql'
       - 'supabase/migrations/*asset_removal_integrity.sql'
       - 'tests/usn-vat-policy-guards.sql'
       - 'supabase/migrations/*usn_vat_policy_guard.sql'
@@ -75,3 +78,8 @@ jobs:
         env:
           PGPASSWORD: isolated-ci-only
         run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/asset-removal-integrity.sql
+
+      - name: Verify payroll arithmetic, own identity, session revocation and RPC permissions
+        env:
+          PGPASSWORD: isolated-ci-only
+        run: psql -h postgres -U postgres -d atomic_batch_test -v ON_ERROR_STOP=1 -f tests/all-operations-payroll-rpc-access.sql

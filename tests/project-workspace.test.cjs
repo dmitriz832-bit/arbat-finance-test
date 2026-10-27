@@ -6,7 +6,7 @@ const deal={_id:'p1',org:'АРБАТ.ГК',order1c:'1',name:'Вентиляци�
 const key=core.dealKey(deal);
 function data(){return {deals:[deal],realizations:[{_id:'r',projectKey:key,org:deal.org,amount:61000,vatRate:22,date:'2026-10-02'}],expenses:[{_id:'e',org:deal.org,projectKey:key,amount:24400,vatRate:22,vatDeductible:true,category:'Материалы',date:'2026-10-01'}],cash:[],labor:[],workActs:[],costs:[],pnlArticles:[]}}
 test('project workspace distinguishes cash, accrued costs, recognized costs and WIP',()=>{
- const state=data();state.cash=[{_id:'c',type:'in',org:deal.org,amount:100000,allocations:[{projectKey:key,amount:50000},{projectKey:'other',amount:50000}]},{_id:'o',type:'out',org:deal.org,projectKey:key,amount:12000},{_id:'t',type:'transfer',org:deal.org,projectKey:key,amount:5000}];
+ const state=data(),other={...deal,_id:'p2',order1c:'2',name:'Другой проект'};state.deals.push(other);state.cash=[{_id:'c',type:'in',org:deal.org,amount:100000,allocations:[{projectKey:key,amount:50000},{projectKey:core.dealKey(other),amount:50000}]},{_id:'o',type:'out',org:deal.org,projectKey:key,amount:12000},{_id:'t',type:'transfer',org:deal.org,projectKey:key,amount:5000}];
  const result=model().snapshot(state,deal,{});
  assert.equal(result.cash.income,5000000n);assert.equal(result.cash.outcome,1200000n);assert.equal(result.cash.balance,3800000n);assert.equal(result.cash.rows.length,2);
  assert.equal(result.contractNet,10000000n);assert.equal(result.revenue,5000000n);assert.equal(result.cost,2000000n);assert.equal(result.recognizedCost,1000000n);assert.equal(result.wip,1000000n);assert.equal(result.profit,4000000n);assert.equal(result.remainingPayment,7200000n);
