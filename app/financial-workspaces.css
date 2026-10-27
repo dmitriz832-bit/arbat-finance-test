@@ -1,0 +1,9 @@
+body.ft-app #calendar .financial-legacy-calendar{display:none!important}
+body.ft-app :is(#budgets,#paymentRequests,#loans,#fixedAssets,#balance){min-width:0;max-width:100%}
+body.ft-app :is(.asset-workspace,.loan-workspace,.budget-workspace,.balance-workspace,.calendar-workspace) header{background:transparent;color:var(--ft-heading);padding:0}
+body.ft-app :is(.asset-workspace,.loan-workspace,.budget-workspace,.balance-workspace,.calendar-workspace) :is(h2,h3){font-weight:500}
+body.ft-app :is(.asset-workspace,.loan-workspace,.budget-workspace,.balance-workspace,.calendar-workspace) table{font-variant-numeric:tabular-nums}
+body.ft-app :is(#budgets,#paymentRequests,#loans,#fixedAssets,#balance) [role=alert]:empty{display:none}
+@media(prefers-reduced-motion:reduce){body.ft-app :is(#budgets,#paymentRequests,#loans,#fixedAssets,#balance) *{scroll-behavior:auto;transition:none;animation:none}}
+
+body.ft-app #calendar > .ui-page-toolbar{display:none!important}

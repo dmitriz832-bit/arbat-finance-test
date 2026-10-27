@@ -39,7 +39,7 @@
     expenseForm:[['Документ расхода',['projectKey','date','category','note']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],
     costForm:[['Классификация',['date','name','org','dir','allocationPercentages']],['Сумма и налоги',['amount','vatRate','vatDeductible']]],
     laborForm:[['Кому и за что',['date','personId','org','projectKey','pnlArticleId']],['Расчёт начисления',['ndfl','otherDeductions','employerContributions','amount']]],
-    calendarForm:[['Обязательство',['org','articleId','payee','name']],['Сумма и график',['amount','dueDate','frequency','active']]],
+    calendarForm:[['Обязательство',['org','type','walletId','articleId','payee','name']],['Сумма и график',['amount','dueDate','frequency','active']]],
     editDealForm:[['Проект и заказчик',['name','order1c','customerSearch','org','dir']],['Финансы и состояние',['contractTotal','vatRate','cost','dealStage','projectStatus','taxMode']]]
   };
   function organizeForm(form){

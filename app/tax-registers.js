@@ -68,7 +68,12 @@ async function commit(remove=false){if(busy||!allowed())return;busy=true;const f
 dialog.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-close'))dialog.close();if(b.hasAttribute('data-new'))edit();if(b.hasAttribute('data-event'))edit(rows().find(x=>id(x)===b.dataset.event));if(b.hasAttribute('data-cancel'))dialog.querySelector('form').hidden=true;if(b.hasAttribute('data-remove'))commit(true);if(b.hasAttribute('data-use-source'))applyProposal(true)});
 dialog.addEventListener('submit',e=>{e.preventDefault();commit()});dialog.addEventListener('change',e=>{if(e.target.hasAttribute('data-asof')||e.target.hasAttribute('data-org'))report();if(['taxAmount','date','vatRate'].includes(e.target.name))touched.add(e.target.name==='taxAmount'?'amount':e.target.name);if(['kind','org'].includes(e.target.name)){references();applyProposal();}else if(['cashId','advanceId','realizationId'].includes(e.target.name))applyProposal()});dialog.addEventListener('input',e=>{if(['taxAmount','date','vatRate'].includes(e.target.name))touched.add(e.target.name==='taxAmount'?'amount':e.target.name);const name=e.target.dataset.searchRef;if(!name)return;const select=dialog.querySelector('[name="'+name+'"]'),q=e.target.value.toLocaleLowerCase('ru-RU');for(const option of select.options)option.hidden=!!option.value&&!option.textContent.toLocaleLowerCase('ru-RU').includes(q)});
 function open(nextMode,context={}){mode=nextMode;collection=mode==='advances'?'vatAdvanceEvents':'taxObligationEvents';dialog.querySelector('[data-title]').textContent=mode==='advances'?'НДС с авансов покупателей':'Сверка налоговых обязательств';dialog.querySelector('[data-asof]').value=context.asof||document.querySelector('#uxTaxReference')?.value||new Date().toISOString().slice(0,10);dialog.querySelector('[data-org]').value=model.organizations.includes(context.org)?context.org:'';dialog.querySelector('form').hidden=true;report();if(!dialog.open)dialog.showModal();}
-window.ArbatTaxRegisterUI={openFromDocument(key,row,nextMode){
+window.ArbatTaxRegisterUI={openEvent(key,eventId){
+ if(!['taxObligationEvents','vatAdvanceEvents'].includes(key))return;
+ if(dialog.open&&!dialog.querySelector('form').hidden)return;
+ const row=(db[key]||[]).find(x=>id(x)===String(eventId));if(!row)return;
+ open(key==='vatAdvanceEvents'?'advances':'obligations',{org:row.org,asof:row.date});edit(row);
+},openFromDocument(key,row,nextMode){
  const source=(db[key]||[]).find(x=>id(x)===id(row));if(!source||!model.organizations.includes(source.org))return;
  open(nextMode);const draft={org:source.org};
  if(key==='cash'){draft.cashId=id(source);draft.kind=mode==='advances'?(source.type==='in'?'received':'refund'):(source.type==='out'?'payment':'refund');}

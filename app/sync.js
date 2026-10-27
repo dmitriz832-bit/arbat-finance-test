@@ -7,7 +7,7 @@
   const RECOVERY='arbat-unsynced-recovery-v1:';
   let rev={},active=false,busy=false,halt=false,pending={},conflictRetries=0,lastCloudCheck=0,writeVersion=0;
   const previous=[null,null];
-  const financialDocuments=['vatAdvanceEvents','taxObligationEvents','deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
+  const financialDocuments=['loanContracts','fixedAssets','budgetVersions','paymentRequests','vatAdvanceEvents','taxObligationEvents','deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
   function attributeDocuments(payload,prior){
     const actor=window.abIdentity;if(!actor?.email||!payload||typeof payload!=='object')return payload;
     const author={id:actor.user_id||actor.id||'',name:actor.full_name||actor.email,email:actor.email};
