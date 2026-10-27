@@ -12,7 +12,7 @@
   const rows=[];
   for(const collection of ['expenses','costs'])for(const source of data[collection]||[]){
    const article=(data.pnlArticles||[]).find(a=>a.id===source.pnlArticleId||a.name===source.name);
-   if(source.managementTax===true||!id(source)||source.warehouseMoveId||(source.pnlType||article?.type)==='income')continue;
+   if(source.managementTax===true||source.managementAccrual===true||!id(source)||source.warehouseMoveId||(source.pnlType||article?.type)==='income')continue;
    rows.push({key:collection+':'+id(source),collection,id:id(source),sources:[source],org:source.org||'',date:source.date||'',label:source.note||source.name||source.category||'Расход',supplierId:source.supplierId||'',dueDate:source.paymentDueDate||'',total:amount(source.amountGross??source.amount),issues:[],paid:0n,links:[]});
   }
   const groups=new Map();
