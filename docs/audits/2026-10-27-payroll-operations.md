@@ -56,7 +56,7 @@ The native accountant payout browser suite exercises partial230/full500 against 
 
 ## SQL / employee-profile status
 
-Proposed migration: `supabase/migrations/20261027093002_align_employee_payroll_snapshot.sql`. It adds a pure `payroll_employee_snapshot(payload, employee)` calculator with execution revoked from PUBLIC/anon/authenticated, and retains the `my_payroll()` active-session guard plus enabled staff mapping from `auth.uid()`. The own-profile wrapper accepts no employee parameter. The pure helper permits fixture verification without reading `finance_state`.
+Proposed migration: `supabase/migrations/20261027095005_align_employee_payroll_snapshot.sql`. It adds a pure `payroll_employee_snapshot(payload, employee)` calculator with execution revoked from PUBLIC/anon/authenticated, and retains the `my_payroll()` active-session guard plus enabled staff mapping from `auth.uid()`. The own-profile wrapper accepts no employee parameter. The pure helper permits fixture verification without reading `finance_state`.
 
 Disposable controls: `tests/all-operations-payroll-rpc.sql`; literal payload only, wrapped in `BEGIN … ROLLBACK`. Expected own-person results mirror the JS control. Added B admin100/paid150 verifies signedbalance300 while payable350 and overpaid50 stay separate. Tests include linked work deduplication, allocation precedence, hidden/other-person isolation, malformed amounts, non-salary purpose, contributions excluded from employee net, final-cent split, organization detail and helper ACL.
 

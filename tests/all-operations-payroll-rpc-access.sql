@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION public.require_active_finance_session() RETURNS void 
 BEGIN IF current_setting('arbat.payroll_fixture_session',true) IS DISTINCT FROM 'active' THEN RAISE EXCEPTION 'Finance session revoked';END IF;END $session$;
 -- The integration runner may replace this psql include with the exact migration
 -- bytes; it must not replace the empty-database guard or fixture-only stubs.
-\ir ../supabase/migrations/20261027093002_align_employee_payroll_snapshot.sql
+\ir ../supabase/migrations/20261027095005_align_employee_payroll_snapshot.sql
 -- Pure monetary controls share this transaction; nested rollback would erase
 -- the migration and skip the own-identity/ACL checks below.
 \ir all-operations-payroll-rpc.sql
