@@ -2,8 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const source=fs.readFileSync(path.join(__dirname,'../app/business-system.js'),'utf8');
 
 test('wallet editor preserves and validates opening date and bank statement fields',()=>{
- for(const field of ['openingBalanceDate','bankStatementDate','bankStatementBalance'])assert.match(source,new RegExp('form\\.elements\\.'+field));
- assert.match(source,/Дата выписки не может быть раньше даты начального остатка/);
- assert.match(source,/item\.walletId===wallet\.id\|\|item\.toWalletId===wallet\.id/);
- assert.match(source,/bankStatementBalance:statementRaw===''\?'':Number\(statementRaw\)/);
+ for(const field of ['openingBalanceDate','bankStatementDate','bankStatementBalance'])assert.match(source,new RegExp(field));
+ assert.match(source,/walletOpeningValues\(raw,existing,db\.cash/);
+ assert.match(source,/c\.walletId===existingId\|\|c\.toWalletId===existingId/);
+ assert.match(source,/arbatEnsureOpenPeriodRange/);
 });

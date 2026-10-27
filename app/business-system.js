@@ -138,7 +138,7 @@
   }
   function enhancePriceBook(){
     const area=document.getElementById('workPriceList');if(!area||area.dataset.enhancedPrice)return;area.dataset.enhancedPrice='1';const card=area.closest('.card'),tools=document.createElement('div');tools.className='arbat-tools';tools.innerHTML='<button type="button" class="primary" data-price-add>+ Новая позиция</button><button type="button" data-price-import>Загрузить прайс Excel</button><input type="file" accept=".xlsx,.xls" hidden><span class="arbat-price-note">Цены версионируются по дате. Ведомости хранят собственную ставку.</span>';area.before(tools);tools.querySelector('[data-price-add]').onclick=()=>editPrice(null);const input=tools.querySelector('input');tools.querySelector('[data-price-import]').onclick=()=>input.click();input.onchange=()=>{const file=input.files?.[0];if(!file)return;const form=modal('Загрузка прайса','<label>Файл<input value="'+esc(file.name)+'" readonly></label><label>Новые цены действуют с<input name="effectiveFrom" type="date" required></label><div class="arbat-price-note">Нужны колонки «Работа / Наименование», «Цена / Расценка», желательно «Ед.» и «Раздел».</div>',async form=>{try{const result=await importPrices(file,form.elements.effectiveFrom.value);alert('Прайс загружен. Новых: '+result.added+', обновлено: '+result.changed+', без изменений: '+result.unchanged)}catch(error){alert(error.message)}});form.onsubmit=async e=>{e.preventDefault();const submit=form.querySelector('[type=submit]');submit.disabled=true;try{const result=await importPrices(file,form.elements.effectiveFrom.value);form.closest('.arbat-modal-backdrop').remove();alert('Прайс загружен. Новых: '+result.added+', обновлено: '+result.changed+', без изменений: '+result.unchanged)}catch(error){alert(error.message);submit.disabled=false}}};
-    area.addEventListener('click',event=>{const row=event.target.closest('tbody tr');if(!row)return;const cells=[...row.cells].map(cell=>cell.textContent.trim()),price=db.priceCatalog.find(item=>item.section===cells[0]&&item.name===cells[1]&&item.unit===cells[2]);if(price)editPrice(price)});
+    area.addEventListener('click',event=>{const row=event.target.closest('tbody tr');if(!row)return;const price=db.priceCatalog.find(item=>String(item.id)===row.dataset.priceId);if(price)editPrice(price)});
   }
   enhancePriceBook();
 
@@ -183,11 +183,31 @@
   }
   enhanceLabor();
 
+  // Opening positions are dated balances, never synthetic cash documents.
+  window.arbatCommitWalletOpening=async(form,existingId,done=()=>{})=>{
+    if(form.dataset.openingSaving)return;form.dataset.openingSaving='1';
+    try{
+      const actor=window.abIdentity;if(!actor||!['admin','accountant'].includes(actor.role))throw Error('Недостаточно прав для изменения начального остатка');
+      const baseline=JSON.stringify(db),identity=JSON.stringify(actor),editor=JSON.stringify([...new FormData(form)]),raw=Object.fromEntries(new FormData(form)),existing=(db.wallets||[]).find(w=>w.id===existingId);
+      if(existingId&&!existing)throw Error('Кошелёк уже удалён. Откройте актуальную запись');
+      const core=window.ArbatFinanceCore,values=core.walletOpeningValues(raw,existing,db.cash||[]);let openingChanged=!existing||existing.org!==values.org||existing.openingBalanceDate!==values.openingBalanceDate;try{openingChanged=openingChanged||core.cents(existing?.openingBalance??'0')!==core.cents(values.openingBalance)}catch{openingChanged=true}
+      if(openingChanged){
+        if(typeof window.arbatEnsureOpenPeriodRange!=='function')throw Error('Проверка закрытых периодов недоступна. Обновите страницу.');
+        const dates=[values.openingBalanceDate,existing?.openingBalanceDate,...(!existing?.openingBalanceDate?(db.cash||[]).filter(c=>c.walletId===existingId||c.toWalletId===existingId).map(c=>c.date):[])].filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')).sort();
+        await window.arbatEnsureOpenPeriodRange(dates[0],'');
+      }
+      if(typeof window.arbatEnsureOpenPeriods!=='function')throw Error('Проверка закрытых периодов недоступна. Обновите страницу.');
+      await window.arbatEnsureOpenPeriods([existing?.bankStatementDate,values.bankStatementDate].filter(Boolean));
+      if(JSON.stringify(window.abIdentity)!==identity||JSON.stringify(db)!==baseline||editor!==JSON.stringify([...new FormData(form)])||!form.isConnected)throw Error('Данные, права или форма изменились во время проверки. Проверьте ввод и сохраните снова.');
+      if(existing)Object.assign(existing,values);else db.wallets.push({id:'custom-'+crypto.randomUUID(),...values});done();save();
+    }catch(error){alert(error.message)}finally{delete form.dataset.openingSaving}
+  };
+  for(const formId of ['walletForm','walletEditForm']){const f=document.getElementById(formId),field=f?.elements.openingBalanceDate;if(field){field.required=true;const label=field.closest('label');if(label){const text=[...label.childNodes].find(n=>n.nodeType===3);if(text)text.textContent='Начальный остаток на конец дня ';}}}
   function enhanceWalletEditor(){
     const table=document.getElementById('walletsTable'),form=document.getElementById('walletEditForm');if(!table||!form||form.dataset.reconciliationEnhanced)return;form.dataset.reconciliationEnhanced='1';let walletId='';
     const selectFromRow=event=>{const row=event.target.closest?.('#walletsTable tbody tr');if(!row)return;const rows=[...table.querySelectorAll('tbody tr')],wallet=(db.wallets||[])[rows.indexOf(row)];if(!wallet)return;walletId=wallet.id;queueMicrotask(()=>{form.elements.openingBalanceDate.value=wallet.openingBalanceDate||'';form.elements.bankStatementDate.value=wallet.bankStatementDate||'';form.elements.bankStatementBalance.value=wallet.bankStatementBalance??''})};
     document.addEventListener('click',selectFromRow);document.addEventListener('keydown',event=>{if(event.key==='Enter')selectFromRow(event)});
-    form.onsubmit=event=>{event.preventDefault();const wallet=(db.wallets||[]).find(item=>item.id===walletId);if(!wallet)return alert('Не выбран кошелёк');const values=Object.fromEntries(new FormData(form)),opening=Number(String(values.openingBalance||'').replace(',','.')),statementRaw=String(values.bankStatementBalance||'').trim().replace(',','.');if(!values.name.trim())return alert('Укажите название');if(!Number.isFinite(opening))return alert('Некорректный остаток');if(values.openingBalanceDate&&!/^\d{4}-\d{2}-\d{2}$/.test(values.openingBalanceDate))return alert('Некорректная дата начального остатка');if(values.bankStatementDate&&!statementRaw)return alert('Для сверки укажите остаток по выписке');if(statementRaw&&!values.bankStatementDate)return alert('Для сверки укажите дату выписки');if(statementRaw&&!Number.isFinite(Number(statementRaw)))return alert('Некорректный остаток по выписке');if(values.bankStatementDate&&values.openingBalanceDate&&values.bankStatementDate<values.openingBalanceDate)return alert('Дата выписки не может быть раньше даты начального остатка');if(values.org!==wallet.org&&(db.cash||[]).some(item=>item.walletId===wallet.id||item.toWalletId===wallet.id))return alert('Нельзя менять организацию кошелька со связанными операциями');Object.assign(wallet,{name:values.name.trim(),org:values.org,kind:values.kind,openingBalance:opening,openingBalanceDate:values.openingBalanceDate||'',bankStatementDate:values.bankStatementDate||'',bankStatementBalance:statementRaw===''?'':Number(statementRaw),verified:!!values.org});document.getElementById('walletModal').classList.remove('open');walletId='';save()};
+    form.onsubmit=event=>{event.preventDefault();if(!walletId)return alert('Не выбран кошелёк');window.arbatCommitWalletOpening(form,walletId,()=>{document.getElementById('walletModal').classList.remove('open');walletId='';})};
   }
   enhanceWalletEditor();
 

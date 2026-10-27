@@ -7,7 +7,7 @@
   const RECOVERY='arbat-unsynced-recovery-v1:';
   let rev={},active=false,busy=false,halt=false,pending={},conflictRetries=0,lastCloudCheck=0,writeVersion=0;
   const previous=[null,null];
-  const financialDocuments=['loanContracts','fixedAssets','budgetVersions','paymentRequests','vatAdvanceEvents','taxObligationEvents','deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
+  const financialDocuments=['loanContracts','fixedAssets','usnVatPolicies','budgetVersions','paymentRequests','vatAdvanceEvents','taxObligationEvents','deals','realizations','expenses','cash','calendar','costs','labor','workActs','workBatches','crewSettlements'];
   function attributeDocuments(payload,prior){
     const actor=window.abIdentity;if(!actor?.email||!payload||typeof payload!=='object')return payload;
     const author={id:actor.user_id||actor.id||'',name:actor.full_name||actor.email,email:actor.email};
@@ -54,6 +54,14 @@
     const rows=await api('finance_periods?select=period,status&status=eq.closed');
     if(!Array.isArray(rows))throw Error('Не удалось проверить статус финансового периода. Документ не сохранён.');
     const locked=rows.find(row=>row.status==='closed'&&periods.has(row.period));
+    if(locked)throw Error(periodMessage(locked.period));
+  };
+  window.arbatEnsureOpenPeriodRange=async(fromDate,untilExclusive='')=>{
+    const valid=value=>typeof value==='string'&&/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
+    if(!valid(fromDate)||untilExclusive&&(!valid(untilExclusive)||untilExclusive<=fromDate))throw Error('Укажите корректные даты периода действия настройки.');
+    const rows=await api('finance_periods?select=period,status&status=eq.closed');
+    if(!Array.isArray(rows))throw Error('Не удалось проверить статус финансового периода. Настройка не сохранена.');
+    const locked=rows.find(row=>row.status==='closed'&&row.period>=fromDate.slice(0,7)&&(!untilExclusive||row.period+'-01'<untilExclusive));
     if(locked)throw Error(periodMessage(locked.period));
   };
 

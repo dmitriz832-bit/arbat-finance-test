@@ -51,10 +51,13 @@
    const article=column.index===info.article;
    let width=layout?.sized?layout.width:selection(column.cell)?42:article?280:Math.max(150,layout?.width||0,minimums.get(column.index)||0);
    if(article&&mobile.matches)width=Math.min(width,Math.max(138,Math.min(180,viewport.clientWidth*.48)));
-   visible.push({index:column.index,order:layout?.order??(Number(column.cell.style.order)||column.index),width});
+   visible.push({index:column.index,order:layout?.order??(Number(column.cell.style.order)||column.index),width,sized:!!layout?.sized});
   }
   visible.sort((a,b)=>a.order-b.order);
-  table.style.setProperty('--rt-columns',visible.map(column=>`${column.width}px`).join(' '));
+  // The project-expense summary is a full-width register. Share spare room among
+  // automatic tracks while keeping any width explicitly saved by the user exact.
+  const stretch=!!table.closest('#expenseSummary');
+  table.style.setProperty('--rt-columns',visible.map(column=>stretch&&!column.sized?`minmax(${column.width}px,1fr)`:`${column.width}px`).join(' '));
   table.style.setProperty('--rt-min-width',visible.reduce((sum,column)=>sum+column.width,0)+'px');
   const articleVisible=visible.some(column=>column.index===info.article);
   for(const row of table.rows){let index=0;for(const cell of row.cells){

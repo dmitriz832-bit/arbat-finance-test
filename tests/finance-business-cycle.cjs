@@ -2,9 +2,10 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const core=require('../app/finance-core'),pay=require('../app/payables-model'),{specs,fixture,receiptKey,payment,inspect}=require('./helpers/business-cycle.cjs');
 const html=fs.readFileSync(require.resolve('../app/index.html'),'utf8');
 function documentAction(lines){
- const start=html.indexOf('function moveDocumentForm('),callback=html.indexOf('],v=>{',start)+6,end=html.indexOf('\n });',callback),w={moves:[]};
+ const start=html.indexOf('function moveDocumentForm('),callback=html.indexOf('],v=>{',start)+6,end=html.indexOf('\n });',callback),w={items:[{id:'pipe',name:'Труба'}],moves:[]};
  const context=vm.createContext({wh:w,db:{deals:[{_id:'p',org:'A'}]},parse:Number,place:id=>id?{id,org:'A'}:null,qty:()=>3,item:()=>({name:'Труба'}),num:String,avg:()=>100,id:()=>String(w.moves.length+1),crypto:{randomUUID:()=> 'test'},$:()=>({querySelectorAll:()=>lines.map(q=>({querySelector:selector=>({value:selector==='[data-line-item]'?'pipe':selector==='[data-line-qty]'?String(q):'0'})}))})});
- vm.runInContext('function action(v){'+html.slice(callback,end)+'}',context);return {w,run:()=>context.action({kind:'consume',org:'A',from:'store',dealId:'p'})};
+ const dateStart=html.indexOf('function warehouseDocumentDate('),dateEnd=html.indexOf('\nfunction ',dateStart+1);vm.runInContext(html.slice(dateStart,dateEnd),context);
+ vm.runInContext('function action(v){'+html.slice(callback,end)+'}',context);return {w,run:()=>context.action({date:'2026-10-27',kind:'consume',org:'A',from:'store',dealId:'p'})};
 }
 test('multiitem warehouse document validates total quantity of repeated material before any write',()=>{
  const {w,run}=documentAction([2,2]);assert.throws(run,/Недостаточно остатка/);assert.equal(w.moves.length,0,'a rejected document cannot partially write movements');

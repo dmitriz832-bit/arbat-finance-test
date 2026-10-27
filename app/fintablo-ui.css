@@ -70,7 +70,7 @@ html.ft-ui body.ft-app.ab-ready.ui-modern :is(.ft-context-tabs,.ft-project-tabs,
 html.ft-ui body.ft-app.ab-ready.ui-modern :is(.ft-context-tabs,.ft-project-tabs,.ui-segments,.arbat-section-tabs,.tax-workspace-tabs,.warehouse-workspace-tabs,.management-tabs,.settings-tabs) button{background:transparent!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;color:var(--ft-muted)!important;white-space:nowrap;min-height:42px;padding:8px 14px!important}
 html.ft-ui body.ft-app.ab-ready.ui-modern :is(.ft-context-tabs,.ft-project-tabs,.ui-segments,.arbat-section-tabs,.tax-workspace-tabs,.warehouse-workspace-tabs,.management-tabs,.settings-tabs) :is(button.active,button[aria-pressed=true],button[aria-selected=true],button[aria-current=page]){color:var(--ft-primary)!important;border-bottom-color:var(--ft-primary)!important;background:transparent!important;font-weight:500!important}
 html.ft-ui body.ft-app.ab-ready.ui-modern :is(table,table.ui-data-cards){font-size:14px;color:var(--ft-text);font-variant-numeric:tabular-nums}
-html.ft-ui body.ft-app.ab-ready.ui-modern :is(th,thead td){color:var(--ft-muted)!important;background:var(--ft-surface-soft)!important;border-color:var(--ft-table-border)!important;font-size:13px!important;font-weight:400!important;text-transform:none!important;letter-spacing:normal!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern :is(th,thead td){color:var(--ft-muted)!important;background:var(--ft-surface-soft)!important;border-color:var(--ft-table-border)!important;font-size:13px!important;font-weight:400!important;text-transform:none!important;letter-spacing:normal!important;text-align:center!important;vertical-align:middle!important}
 html.ft-ui body.ft-app.ab-ready.ui-modern td{border-color:var(--ft-border)!important}
 html.ft-ui body.ft-app.ab-ready.ui-modern tbody tr:hover{background-color:var(--ft-primary-pale)}
 html.ft-ui body.ft-app.ab-ready.ui-modern :is(.editbtn,.table-action,.tp-open){font-size:13px!important;padding:3px 10px!important;min-height:31px}
@@ -95,3 +95,12 @@ html.ft-ui body.ft-app.ab-ready.ui-modern [data-ft-invalid=true]:focus{box-shado
  .ft-tooltip{max-width:calc(100vw - 24px);padding:12px 16px}
 }
 @media(prefers-reduced-motion:reduce){html.ft-ui{scroll-behavior:auto}html.ft-ui *,html.ft-ui *::before,html.ft-ui *::after{scroll-behavior:auto!important;transition-duration:0.01ms!important;animation-duration:0.01ms!important;animation-iteration-count:1!important}}
+/* Center headings without touching native editable-grid display or report stickiness. */
+html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) :is(.tp-viewport,.rt-viewport,#reportTable)>table:is(.tp-table,.rt-table)>thead>tr>:is(th,td){text-align:center!important;vertical-align:middle!important;align-content:center!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) #expenses{width:100%!important;min-width:0!important;align-items:stretch!important}
+html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) #expenses>.card{width:100%!important;max-width:100%!important;min-width:0!important;align-self:stretch!important;box-sizing:border-box!important}
+.ft-brand-home{display:inline-flex;align-items:center;border-radius:4px;color:inherit!important}.ft-brand-home:hover{text-decoration:none!important}
+.ft-page-filter-status{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:10px 12px;border:1px solid var(--ft-primary-border);border-radius:5px;background:var(--ft-primary-pale);min-width:0;box-sizing:border-box}
+.ft-page-filter-status[hidden]{display:none!important}.ft-page-filter-status span{font-size:13px;overflow-wrap:anywhere;max-width:100%;padding:3px 7px;background:var(--ft-surface);border:1px solid var(--ft-border);border-radius:4px}
+html.ft-ui body.ft-app.ab-ready.ui-modern .ft-page-filter-status button{font-size:13px!important;min-height:32px;padding:3px 10px!important}
+@media(max-width:700px){.ft-page-filter-status strong{flex-basis:100%}.ft-page-filter-status{gap:6px;padding:9px}}

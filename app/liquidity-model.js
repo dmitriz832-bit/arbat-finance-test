@@ -2,7 +2,7 @@
  * calendar.supplierDocumentKey is an explicit alias of a payable, not another obligation.
  * A linked document owns its amount and deadline. Legacy rows are never matched by name/amount.
  */
-((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore,typeof module==='object'&&module.exports?require('./payables-model.js'):root.ArbatPayables,typeof module==='object'&&module.exports?require('./loan-workspace-model.js'):root.ArbatLoanWorkspaceModel,typeof module==='object'&&module.exports?require('./asset-workspace-model.js'):root.ArbatAssetWorkspaceModel,typeof module==='object'&&module.exports?require('./financial-payment-links.js'):root.ArbatFinancialPaymentLinks,typeof module==='object'&&module.exports?require('./budget-workspace-model.js'):root.ArbatBudgetModel);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatLiquidity=api})(typeof window==='object'?window:globalThis,(core,payables,loans,assets,paymentLinks,budgets)=>{
+((root,factory)=>{const api=factory(typeof module==='object'&&module.exports?require('./finance-core.js'):root.ArbatFinanceCore,typeof module==='object'&&module.exports?require('./payables-model.js'):root.ArbatPayables,typeof module==='object'&&module.exports?require('./loan-workspace-model.js'):root.ArbatLoanWorkspaceModel,typeof module==='object'&&module.exports?require('./asset-workspace-model.js'):root.ArbatAssetWorkspaceModel,typeof module==='object'&&module.exports?require('./financial-payment-links.js'):root.ArbatFinancialPaymentLinks);if(typeof module==='object'&&module.exports)module.exports=api;else root.ArbatLiquidity=api})(typeof window==='object'?window:globalThis,(core,payables,loans,assets,paymentLinks)=>{
  'use strict';
  const DAY=86400000;
  function date(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return null;const n=Date.parse(value+'T00:00:00Z');return Number.isFinite(n)&&new Date(n).toISOString().slice(0,10)===value?n:null}
@@ -17,14 +17,9 @@
    if(d.remaining<=0n)continue;
    supplierRows.push({source:'supplier',documentKey:d.key,org:d.org,name:d.label,amount:d.remaining,dueDate:d.dueDate,occurrence:date(d.dueDate)===null?null:d.dueDate,days:days(d.dueDate),document:d});
   }
-  const requestStates=new Map();
-  for(const request of data.paymentRequests||[]){
-   if(org&&request.org!==org||!budgets?.requestPaymentState)continue;
-   try{const state=budgets.requestPaymentState(data,request,core),issues=[...new Set([...(state.status==='review'?state.issues:[]),...(budgets.requestPlanIssues?.(data,request,core)||[])])];requestStates.set(String(request.id||request._id),issues.length?{...state,status:'review'}:state);if(issues.length)review.push({source:'request',documentKey:String(request.id||request._id),org:request.org,amount:null,issues})}
-   catch(error){requestStates.set(String(request.id||request._id),{status:'review'});review.push({source:'request',documentKey:String(request.id||request._id),org:request.org,amount:null,issues:[error.message]})}
-  }
+  const retiredCalendarIds=new Set((data.paymentRequests||[]).map(r=>String(r.calendarId||'')).filter(Boolean));
   for(const rule of data.calendar||[]){
-   if(rule.requestId&&requestStates.get(String(rule.requestId))?.status==='review')continue;
+   if(rule.requestId||rule.sourcePaymentRequestId||retiredCalendarIds.has(String(rule.id||rule._id||'')))continue;
    if(rule.active==='no'||org&&rule.org!==org)continue;
    const calendarId=String(rule.id||rule._id||''),problem=message=>review.push({source:'calendar',calendarId,org:rule.org||'',amount:null,issues:[message]});
    if(rule.supplierDocumentKey){
@@ -51,7 +46,7 @@
   else if((data.loanContracts||[]).some(r=>!org||r.org===org))review.push({source:'loan',amount:null,issues:['Модуль кредитов недоступен']});
   for(const asset of data.fixedAssets||[]){if(org&&asset.org!==org)continue;try{if(!assets)throw Error('Модуль имущества недоступен');const postingIssues=assets.postingIssues?.(data,asset)||[];if(postingIssues.length)throw Error(postingIssues.join('; '));const p=assets.purchasePosition(data,asset,today);if(!p.known)throw Error(p.issues.join('; ')||'Уточните стоимость покупки');if(p.outstanding>0n)registerRows.push({source:'asset',documentKey:String(asset._id||asset.id),org:asset.org,name:asset.name,amount:p.outstanding,dueDate:asset.purchaseDueDate||'',occurrence:date(asset.purchaseDueDate)===null?null:asset.purchaseDueDate,days:days(asset.purchaseDueDate),document:asset})}catch(error){review.push({source:'asset',documentKey:String(asset._id||asset.id),org:asset.org,amount:null,issues:[error.message]})}}
   if(paymentLinks?.review)for(const issue of paymentLinks.review(data)){
-   if(!issue.documents.some(d=>['loanContracts','fixedAssets','paymentRequests'].includes(d.collection)))continue;
+   if(!issue.documents.some(d=>['loanContracts','fixedAssets'].includes(d.collection)))continue;
    const linked=issue.documents.filter(d=>['loanContracts','fixedAssets'].includes(d.collection));
    for(const doc of linked){const source=doc.collection==='loanContracts'?'loan':'asset',record=(data[doc.collection]||[]).find(r=>String(r._id||r.id)===doc.id);if(org&&record?.org!==org)continue;for(let i=registerRows.length-1;i>=0;i--)if(registerRows[i].source===source&&registerRows[i].documentKey===doc.id)registerRows.splice(i,1);review.push({source,documentKey:doc.id,org:record?.org||'',amount:null,issues:[issue.message]})}
    for(let i=supplierRows.length-1;i>=0;i--)if(supplierRows[i].document.links?.some(l=>String(l.paymentId)===issue.cashId)){const row=supplierRows.splice(i,1)[0];review.push({source:'supplier',documentKey:row.documentKey,org:row.org,amount:null,issues:[issue.message]})}
