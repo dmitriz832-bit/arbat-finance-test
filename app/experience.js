@@ -25,7 +25,7 @@
  document.body.classList.add('ux-app');
  // Protect edits in legacy cards as well as the shared creation sheet.
  const dirtyModals=new Map(),modalSelector='.modal-backdrop,.whdialog';
- const formValues=node=>JSON.stringify([...node.querySelectorAll('input,select,textarea')].filter(x=>x.name&&x.type!=='file').map(x=>[x.name,x.value,x.checked]));
+ const formValues=node=>JSON.stringify([...node.querySelectorAll('input,select,textarea')].filter(x=>x.name&&x.type!=='file').map(x=>[x.name,x.dataset.automatic==='1'?x.dataset.manualValue??'':x.value,x.checked]));
  const trackModal=node=>{if(!node.matches(modalSelector))return;const active=node.classList.contains('open');if(active){dirtyModals.set(node,{initial:formValues(node),focus:document.activeElement})}else dirtyModals.delete(node)};
  const modalChanges=new MutationObserver(records=>{for(const record of records)trackModal(record.target)});
  for(const node of document.querySelectorAll(modalSelector)){modalChanges.observe(node,{attributes:true,attributeFilter:['class']});trackModal(node)}

@@ -9,7 +9,7 @@ function fixture(){
 function runtime(db){
  const inputs={orgFilter:{value:'',addEventListener(){}},reportYear:{value:'2026'},reportType:{value:'pnl'}};
  const ctx={db,dirs:['Service'],document:{getElementById:id=>inputs[id]||null},localStorage:{getItem:()=>null},Date:class extends Date{constructor(...args){super(...(args.length?args:['2026-10-17T12:00:00Z']))}static now(){return new Date('2026-10-17T12:00:00Z').getTime()}},console};
- ctx.window={addEventListener(){},ArbatFinanceCore:core,ArbatLiquidity:require('../app/liquidity-model'),arbatDealKey:core.dealKey,ArbatExperience:require('../app/experience-model')};vm.createContext(ctx);
+ ctx.window={addEventListener(){},ArbatFinanceCore:core,ArbatProjectWorkspace:require('../app/project-workspace-model'),ArbatLiquidity:require('../app/liquidity-model'),arbatDealKey:core.dealKey,ArbatExperience:require('../app/experience-model')};vm.createContext(ctx);
  vm.runInContext(`const f=x=>Number(x||0).toFixed(2);`+['monthNumbers','percentText','reportPercentRow','reportRow','reportData','dealMargin','projectCost','settlementShares'].map(declaration).join('\n'),ctx);
  vm.runInContext(fs.readFileSync(path.join(root,'app/dashboard.js'),'utf8'),ctx);
  return ctx;
