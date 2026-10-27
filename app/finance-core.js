@@ -99,13 +99,17 @@
     const value=cents(item.amount);if(value<0n)throw Error('Сумма начисления не может быть отрицательной');
     return value;
   }
-  function expenseLedger(data,taxSourceCosts=data.costs||[]){
-    const rows=[],issues=[],deals=data.deals||[],acts=data.workActs||[];
+  function expenseLedger(data,taxSourceCosts=data.costs||[],saleSource=data){
+    const sales=warehouseSaleAudit(saleSource),rows=[],issues=[...sales.issues],deals=data.deals||[],acts=data.workActs||[];
     const push=(source,kind,amount,projectKey=source.projectKey||'',category='direct')=>{
       const deal=deals.find(d=>dealKey(d)===projectKey);
       rows.push({source,kind,amount,projectKey,dir:deal?.dir||source.dir||'',org:source.org||deal?.org||'',date:source.date||source.dt||'',category});
     };
-    for(const item of data.expenses||[])push(item,'project-expense',documentPnlAmount(item,true));
+    for(const item of data.expenses||[]){
+      if(sales.invalidExpenses.includes(item))continue;
+      push(item,'project-expense',documentPnlAmount(item,true));
+      if(sales.validExpenses.includes(item))Object.assign(rows[rows.length-1],{stockPurpose:'sale',saleRealizationId:item.saleRealizationId});
+    }
     for(const item of acts.filter(a=>a.status==='approved')){
       try{
         if(item.qty==null||String(item.qty).trim()===''||item.rate==null||String(item.rate).trim()==='')throw new TypeError('Unknown work quantity or rate');
@@ -178,7 +182,7 @@
       return inclusive?date<=cutoff:date<cutoff;
     };
     for(const field of ['expenses','costs','labor','workActs'])scoped[field]=(data[field]||[]).filter(inScope);
-    return expenseLedger(scoped,data.costs||[]);
+    return expenseLedger(scoped,data.costs||[],data);
   }
   function expenseLedgerRange(data,from='',to=''){
     const end=expenseLedgerAt(data,to);
@@ -204,7 +208,7 @@
   function directionSnapshot(data,name,period='',org=''){
     const ok=x=>(!period||String(x.date||x.dt||'').slice(0,7)===period)&&(!org||x.org===org);
     const keys=new Set((data.deals||[]).filter(d=>d.dir===name).map(dealKey));
-    const revenue=(data.realizations||[]).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
+    const revenue=managementRealizations(data).filter(x=>keys.has(x.projectKey)&&ok(x)).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const ledger=monthlyExpenseLedger(data,period),assigned=ledger.rows.filter(x=>x.dir===name&&ok(x));
     const accruedCost=assigned.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
     const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
@@ -220,7 +224,7 @@
     const directions=[...names].sort().map(name=>({name,...directionSnapshot(data,name,period,org)}));
     const total=preliminaryPeriod(data,period,org);
     const directionResult=directions.reduce((v,x)=>v+x.result,0n);
-    const unallocatedRevenue=(data.realizations||[]).filter(ok).filter(x=>!deals.find(d=>dealKey(d)===x.projectKey)?.dir).reduce((v,x)=>v+documentPnlAmount(x),0n);
+    const unallocatedRevenue=managementRealizations(data).filter(ok).filter(x=>!deals.find(d=>dealKey(d)===x.projectKey)?.dir).reduce((v,x)=>v+documentPnlAmount(x),0n);
     const unallocatedRows=ledger.rows.filter(x=>ok(x)&&!x.dir);
     const unallocatedIncome=unallocatedRows.filter(x=>x.category==='belowIncome').reduce((v,x)=>v+x.amount,0n);
     const unallocatedAccrued=unallocatedRows.filter(x=>x.category!=='belowIncome').reduce((v,x)=>v+x.amount,0n);
@@ -228,7 +232,7 @@
     const unallocatedExpense=unallocatedAccrued-(bridge?.projects||[]).filter(x=>!x.dir).reduce((v,x)=>v+x.deferredChange,0n);
     const unallocatedResult=unallocatedRevenue+unallocatedIncome-unallocatedExpense;
     const difference=total.result-directionResult-unallocatedResult;
-    return {directions,directionResult,unallocatedRevenue,unallocatedIncome,unallocatedExpense,unallocatedResult,totalResult:total.result,difference,balanced:difference===0n,issues:ledger.issues};
+    return {directions,directionResult,unallocatedRevenue,unallocatedIncome,unallocatedExpense,unallocatedResult,totalResult:total.result,difference,balanced:difference===0n,issues:total.issues};
   }
   function warehouseReceiptGross(source={}){
     if(source.amountGross!==undefined&&source.amountGross!==null&&String(source.amountGross).trim()!=='')return cents(source.amountGross);
@@ -306,6 +310,79 @@
     for(const e of linked){if(!eligible.has(String(e.warehouseMoveId)))issues.push({moveId:String(e.warehouseMoveId),reason:'expense-without-project-consumption'})}
     return issues;
   }
+  // Sale metadata is a claim, never evidence on its own. Validate the entire
+  // shipment/realization/expense component before allowing either side in P&L.
+  function warehouseSaleAudit(data={}){
+    const moves=data.warehouse?.moves||[],expenses=data.expenses||[],realizations=data.realizations||[],deals=data.deals||[];
+    const own=(x,k)=>Object.prototype.hasOwnProperty.call(x,k),id=x=>String(x??''),text=x=>typeof x==='string'&&x.trim()!=='';
+    const moveClaim=x=>own(x,'saleRealizationId')||own(x,'stockPurpose')&&!['project',undefined].includes(x.stockPurpose);
+    const realizationClaim=x=>['warehouseSale','warehouseDocumentId','warehouseMoveIds'].some(k=>own(x,k));
+    const saleMoves=new Set(moves.filter(moveClaim)),saleExpenses=new Set(expenses.filter(moveClaim)),saleRealizations=new Set(realizations.filter(realizationClaim));
+    const moveIds=r=>Array.isArray(r.warehouseMoveIds)?r.warehouseMoveIds:[];
+    const connected=(m,r)=>id(m.saleRealizationId)&&id(m.saleRealizationId)===id(r._id)||moveIds(r).some(x=>id(x)===id(m.id));
+    const linked=(e,m)=>id(e.warehouseMoveId)&&id(e.warehouseMoveId)===id(m.id);
+    let changed=true;
+    while(changed){
+      const size=saleMoves.size+saleExpenses.size+saleRealizations.size;
+      for(const m of moves)if([...saleRealizations].some(r=>connected(m,r))||[...saleExpenses].some(e=>linked(e,m)))saleMoves.add(m);
+      for(const r of realizations)if([...saleMoves].some(m=>connected(m,r))||[...saleExpenses].some(e=>id(e.saleRealizationId)&&id(e.saleRealizationId)===id(r._id)))saleRealizations.add(r);
+      for(const e of expenses)if([...saleMoves].some(m=>linked(e,m))||[...saleRealizations].some(r=>id(e.saleRealizationId)&&id(e.saleRealizationId)===id(r._id)))saleExpenses.add(e);
+      changed=size!==saleMoves.size+saleExpenses.size+saleRealizations.size;
+    }
+    const issues=[],reported=new Set(),badMoves=new Set(),badExpenses=new Set(),badRealizations=new Set();
+    const fail=(source,code,set)=>{
+      set.add(source);
+      reported.add(source);
+      const deal=deals.find(d=>id(d._id)===id(source.dealId)),projectKey=source.projectKey||(deal?dealKey(deal):'');
+      issues.push({code:'warehouse-sale-'+code,source:source.projectKey?source:{...source,projectKey},projectKey,moveId:source.warehouseMoveId||source.id||'',realizationId:source.saleRealizationId||source._id||''});
+    };
+    const date=x=>String(x||'').slice(0,10);
+    const validDate=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(x)&&Number.isFinite(Date.parse(x))&&Number.isFinite(Date.parse(date(x)+'T00:00:00Z'))&&new Date(date(x)+'T00:00:00Z').toISOString().slice(0,10)===date(x);
+    for(const r of saleRealizations){
+      const list=moveIds(r),matches=deals.filter(d=>dealKey(d)===r.projectKey),deal=matches[0];
+      let valid=r.warehouseSale===true&&text(r._id)&&text(r.warehouseDocumentId)&&validDate(r.date)&&list.length>0&&list.every(text)&&new Set(list).size===list.length&&realizations.filter(x=>x._id===r._id).length===1&&matches.length===1&&text(deal?._id)&&deals.filter(d=>d._id===deal._id).length===1&&r.org===deal.org;
+      try{
+        const revenue=documentPnlAmount(r),contract=documentPnlAmount({...deal,amountGross:deal?.contractTotal??deal?.revenue});
+        const earned=realizations.filter(x=>x.projectKey===r.projectKey&&date(x.date)<=date(r.date)).reduce((n,x)=>n+documentPnlAmount(x),0n);
+        valid=valid&&revenue>0n&&contract>0n&&earned<=contract;
+      }catch(_){valid=false}
+      const claimed=moves.filter(m=>id(m.saleRealizationId)===id(r._id));
+      if(claimed.length!==list.length||claimed.some(m=>!list.includes(m.id)))valid=false;
+      for(const key of list){
+        const mm=moves.filter(m=>m.id===key);
+        if(mm.length!==1||!connected(mm[0],r)||mm[0].saleRealizationId!==r._id||mm[0].documentId!==r.warehouseDocumentId||mm[0].org!==r.org||mm[0].dealId!==deal?._id||date(mm[0].date)!==date(r.date)||realizations.filter(x=>moveIds(x).includes(key)).length!==1)valid=false;
+      }
+      if(!valid)fail(r,'invalid-realization-link',badRealizations);
+    }
+    for(const m of saleMoves){
+      const rs=realizations.filter(r=>r._id===m.saleRealizationId),es=expenses.filter(e=>linked(e,m)),deal=deals.find(d=>d._id===m.dealId);
+      let valid=m.kind==='consume'&&m.stockPurpose==='sale'&&text(m.id)&&text(m.saleRealizationId)&&text(m.documentId)&&validDate(m.date)&&Number.isFinite(Number(m.qty))&&Number(m.qty)>0&&text(m.itemId)&&text(m.from)&&!m.to&&moves.filter(x=>x.id===m.id).length===1&&rs.length===1&&es.length===1&&!!deal&&deal.org===m.org;
+      try{
+        const value=warehouseMovementValuation(data.warehouse,m,data.fifo),parts=data.fifo?.byMove?.[m.id]?.parts||[];
+        valid=valid&&value.status==='calculated'&&Math.abs(parts.reduce((n,p)=>n+Number(p.qty),0)-Number(m.qty))<1e-8&&parts.every(p=>Number(p.qty)>0&&moves.filter(s=>s.id===p.source&&s.org===m.org&&s.itemId===m.itemId&&date(s.date)<=date(m.date)).length===1);
+        valid=valid&&es[0]?.warehouseGrossAmount!==undefined&&warehouseCostAudit(es,[m],data.fifo,data.warehouse).length===0;
+      }catch(_){valid=false}
+      if(!valid)fail(m,'invalid-shipment-link',badMoves);
+    }
+    for(const e of saleExpenses){
+      const ms=moves.filter(m=>id(m.id)===id(e.warehouseMoveId)),m=ms[0],deal=deals.find(d=>d._id===m?.dealId);
+      const valid=e.stockPurpose==='sale'&&text(e.saleRealizationId)&&text(e.warehouseMoveId)&&ms.length===1&&e.saleRealizationId===m.saleRealizationId&&e.org===m.org&&validDate(e.date)&&date(e.date)===date(m.date)&&!!deal&&e.projectKey===dealKey(deal)&&expenses.filter(x=>id(x.warehouseMoveId)===id(e.warehouseMoveId)).length===1;
+      if(!valid)fail(e,'invalid-expense-link',badExpenses);
+    }
+    // A broken node quarantines its complete connected sale, including all
+    // lines of a multi-item document. No orphan revenue or partial expense.
+    changed=true;
+    while(changed){
+      const size=badMoves.size+badExpenses.size+badRealizations.size;
+      for(const r of saleRealizations)if([...badMoves].some(m=>connected(m,r))||[...badExpenses].some(e=>e.saleRealizationId===r._id))badRealizations.add(r);
+      for(const m of saleMoves)if([...badRealizations].some(r=>connected(m,r))||[...badExpenses].some(e=>linked(e,m)))badMoves.add(m);
+      for(const e of saleExpenses)if([...badMoves].some(m=>linked(e,m))||[...badRealizations].some(r=>e.saleRealizationId===r._id))badExpenses.add(e);
+      changed=size!==badMoves.size+badExpenses.size+badRealizations.size;
+    }
+    for(const set of [badMoves,badExpenses,badRealizations])for(const source of set)if(!reported.has(source))fail(source,'quarantined-link',set);
+    return {issues,validRealizations:[...saleRealizations].filter(x=>!badRealizations.has(x)),invalidRealizations:[...badRealizations],validExpenses:[...saleExpenses].filter(x=>!badExpenses.has(x)),invalidExpenses:[...badExpenses],saleMoves:[...saleMoves]};
+  }
+  function managementRealizations(data){const audit=warehouseSaleAudit(data);return (data.realizations||[]).filter(x=>!audit.invalidRealizations.includes(x))}
   // Explicit per-document VAT, calculated entirely in integer kopecks.
   function documentVat(gross,vatRate,vatDeductible=false){
     const rate=vatRate==null||String(vatRate).trim()===''?NaN:Number(vatRate);
@@ -598,7 +675,7 @@
     if(contractNet<=0n)return {status:'requires-review',issues:['invalid-project-contract'],contractNet};
     const until=(item,p)=>!p||String(item.date||item.dt||'').slice(0,p.length===10?10:7)<=p;
     const before=(item,p)=>String(item.date||item.dt||'').slice(0,p.length===10?10:7)<p;
-    const realizations=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
+    const realizations=managementRealizations(data).filter(x=>x.projectKey===projectKey);
     const ledger=expenseLedgerAt(data,period),priorLedger=period?expenseLedgerAt(data,period,false):null;
     const projectRows=ledger.rows.filter(x=>x.projectKey===projectKey&&x.category==='direct');
     const totalOf=(xs)=>xs.reduce((a,x)=>a+x.amount,0n);
@@ -613,8 +690,13 @@
     if(revenue>contractNet)issues.push('realization-exceeds-contract');
     if(revenue>=contractNet&&wipCheckPending(data,deal,projectKey,period))issues.push('project-closeout-unverified');
     if(revenue<0n)issues.push('negative-cumulative-realization');
-    const recognizedCost=recognized(revenue,accruedCost);
-    const previouslyRecognizedCost=period?recognized(priorRevenue,priorCost):0n;
+    const saleCost=totalOf(projectRows.filter(x=>x.stockPurpose==='sale'));
+    const priorSaleCost=priorLedger?totalOf(priorLedger.rows.filter(x=>x.projectKey===projectKey&&x.category==='direct'&&x.stockPurpose==='sale')):0n;
+    // Goods sold are fully expensed against their own dated realization. The
+    // proportional contract method continues to apply only to ordinary WIP.
+    const recognizedCost=saleCost+recognized(revenue,accruedCost-saleCost);
+    const previouslyRecognizedCost=period?priorSaleCost+recognized(priorRevenue,priorCost-priorSaleCost):0n;
+    if(saleCost!==0n&&accruedCost-saleCost!==0n&&revenue<contractNet)issues.push('mixed-sale-service-wip-basis-unassigned');
     const currentCost=recognizedCost-previouslyRecognizedCost;
     const wip=accruedCost-recognizedCost;
     const nonDirectRows=ledger.rows.filter(x=>x.projectKey===projectKey&&x.category!=='direct'&&until(x,period));
@@ -637,7 +719,7 @@
     return {status:issues.length?'requires-review':'calculated',issues:[...new Set(issues)],contractNet,revenue,accruedCost,recognizedCost,previouslyRecognizedCost,currentCost,wip,fullyRealized:revenue===contractNet,closedCostReconciled:revenue===contractNet&&wip===0n&&recognizedCost===accruedCost,directContribution,nonDirectCost,otherIncome,operatingProfit:directContribution-nonDirectCost+otherIncome};
   }
   function projectSnapshot(data,deal,projectKey){
-    const realization=(data.realizations||[]).filter(x=>x.projectKey===projectKey);
+    const realization=managementRealizations(data).filter(x=>x.projectKey===projectKey);
     const netOf=x=>documentPnlAmount(x);
     const revenue=realization.reduce((a,x)=>a+netOf(x),0n);
     const expenses=(data.expenses||[]).filter(x=>x.projectKey===projectKey);
@@ -646,7 +728,8 @@
     const ledger=expenseLedger(data),projectRows=ledger.rows.filter(x=>x.projectKey===projectKey);
     const cost=projectRows.filter(x=>x.category!=='belowIncome').reduce((a,x)=>a+x.amount,0n);
     const otherIncome=projectRows.filter(x=>x.category==='belowIncome').reduce((a,x)=>a+x.amount,0n);
-    const issues=ledger.issues.filter(x=>(x.source.projectKey===projectKey||(x.source.shares||[]).some(p=>p.projectKey===projectKey))).map(x=>x.code);
+    const issues=ledger.issues.filter(x=>(x.source?.projectKey===projectKey||(x.source?.shares||[]).some(p=>p.projectKey===projectKey))).map(x=>x.code);
+    if(projectRows.some(x=>x.stockPurpose==='sale')&&projectRows.some(x=>x.category==='direct'&&x.stockPurpose!=='sale')&&projectWipSnapshot(data,deal,projectKey).issues.includes('mixed-sale-service-wip-basis-unassigned'))issues.push('mixed-sale-service-wip-basis-unassigned');
     if(expenses.some(x=>x.valuationStatus==='requires-review'))issues.push('expense-valuation');
     if(labor.conflicts.length)issues.push('linked-work-overlap');
     if(labor.possibleOverlaps.length)issues.push('possible-work-overlap');
@@ -711,10 +794,11 @@
     const ok=x=>(!org||x.org===org)&&(!period||String(x.date||x.dt||'').slice(0,7)===period);
     const ledger=monthlyExpenseLedger(data,period),rows=ledger.rows.filter(ok);
     const total=predicate=>rows.filter(predicate).reduce((a,x)=>a+x.amount,0n);
-    const revenue=(data.realizations||[]).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
+    const revenue=managementRealizations(data).filter(ok).reduce((a,x)=>a+documentPnlAmount(x),0n);
     const bridge=data.wipAccounting&&period?wipPeriodBridge(data,period,org):null;
+    const reportIssues=[...ledger.issues.filter(x=>ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source)),...(bridge?.issues||[])];
     const result=pnl({revenue:[rubles(revenue)],direct:[...rows.filter(x=>x.category==='direct').map(x=>rubles(x.amount)),...(bridge?[rubles(-bridge.deferredChange)]:[])],administrative:rows.filter(x=>x.category==='administrative').map(x=>rubles(x.amount)),commercial:rows.filter(x=>x.category==='commercial').map(x=>rubles(x.amount)),production:rows.filter(x=>x.category==='production').map(x=>rubles(x.amount)),belowIncome:rows.filter(x=>x.category==='belowIncome').map(x=>rubles(x.amount)),belowExpenses:rows.filter(x=>x.category==='belowExpenses').map(x=>rubles(x.amount))});
-    return {...result,incomeTax:total(x=>x.kind==='management-tax'),issues:[...ledger.issues.filter(x=>ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source)),...(bridge?.issues||[])],wipBridge:bridge,components:{revenue,
+    return {...result,status:reportIssues.length?'requires-review':'calculated',confirmedResult:reportIssues.length?null:result.result,incomeTax:total(x=>x.kind==='management-tax'),issues:reportIssues,wipBridge:bridge,components:{revenue,
       projectExpenses:total(x=>x.kind==='project-expense'),
       productionLaborAndWorks:total(x=>x.kind==='work-act'||x.kind==='payroll'&&x.category==='direct'),
       assignedExpenses:total(x=>x.kind==='general-expense'&&x.category==='direct'),
@@ -742,7 +826,7 @@
     const ok=x=>(!org||x.org===org)&&inRange(x);
     const ledger=expenseLedgerRange(data,from,to);
     const rows=ledger.rows.filter(ok);
-    const revenue=(data.realizations||[]).filter(ok).reduce((v,x)=>v+documentPnlAmount(x),0n);
+    const revenue=managementRealizations(data).filter(ok).reduce((v,x)=>v+documentPnlAmount(x),0n);
     const categories={direct:0n,production:0n,administrative:0n,commercial:0n,belowIncome:0n,belowExpenses:0n};
     for(const row of rows)if(Object.prototype.hasOwnProperty.call(categories,row.category))categories[row.category]+=row.amount;
     // The dashboard must recognize the same period WIP bridge as the P&L.
@@ -767,7 +851,8 @@
     const cash=(data.cash||[]).filter(ok);
     const income=cash.filter(x=>x.type==='in').reduce((v,x)=>v+cents(x.amount||0),0n);
     const outgoing=cash.filter(x=>x.type==='out').reduce((v,x)=>v+cents(x.amount||0),0n);
-    return {bounds,revenue,grossProfit,ebitda,result,incomeTax:byKind['management-tax']||0n,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:(data.realizations||[]).filter(ok),issues:[...ledger.issues.filter(x=>x.source&&(ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source))),...wipIssues],rows};
+    const reportIssues=[...ledger.issues.filter(x=>x.source&&(ok(x.source)||rows.some(row=>row.calculated&&row.source===x.source))),...wipIssues];
+    return {bounds,revenue,grossProfit,ebitda,result,status:reportIssues.length?'requires-review':'calculated',confirmedResult:reportIssues.length?null:result,incomeTax:byKind['management-tax']||0n,deferredChange,wipBridges,categories,byKind,cash:{income,outgoing,net:income-outgoing,rows:cash},revenueDocuments:managementRealizations(data).filter(ok),issues:reportIssues,rows};
   }
   function ownerDebtSnapshot(data,org=''){
     const projects=new Map(),issues=[];
@@ -1175,5 +1260,5 @@
     }
     return {status:issues.length?'requires-review':'calculated',issues,earned,used,adjustments,balance:earned-used+adjustments,events};
   }
-  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletOpeningValues,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,validateUsnVatPolicies,usnVatThreshold,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseReceiptValuation,warehouseMovementValuation,warehouseCostAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
+  return Object.freeze({cents,rubles,sum,allocate,difference,pnl,payroll,crewPayrollAccruals,payrollReconciliation,payrollByOrganization,ownerPeriodBounds,ownerPeriodSnapshot,ownerDebtSnapshot,ownerWarehouseSnapshot,cashFlow,walletOpeningValues,walletSnapshot,walletConsolidation,bankReconciliation,paymentExceptionRegister,vatControlRegister,validateUsnVatPolicies,usnVatThreshold,quarterTaxSnapshot,leaveSnapshot,walletBalance,reportRow,projectResult,preliminaryPeriod,projectExpenseTotal,projectPayroll,projectSnapshot,warehouseReceiptValuation,warehouseMovementValuation,warehouseCostAudit,warehouseSaleAudit,netAmount,documentVat,documentPnlAmount,dealKey,workAmount,laborType,payrollParts,managementTaxAmount,expenseLedger,directionSnapshot,directionReconciliation,projectWipSnapshot,wipPeriodBridge});
 });

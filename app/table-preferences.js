@@ -104,8 +104,19 @@
   form.addEventListener('input',event=>event.target.setCustomValidity?.(''));const actions=document.createElement('div');actions.className='tp-actions';const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Отмена';cancel.onclick=()=>filterDialog.close();const applyButton=document.createElement('button');applyButton.type='submit';applyButton.textContent='Применить фильтр';actions.append(cancel,applyButton);form.append(actions);form.onsubmit=event=>{event.preventDefault();const column=state.columns.find(x=>x.id===select.value),type=kind(table,column),value=fields.querySelector('[name=value]')?.value.trim()||'',from=fields.querySelector('[name=from]')?.value||'',to=fields.querySelector('[name=to]')?.value||'';fields.querySelector('[name=to]')?.setCustomValidity('');if(from&&to&&(type==='date'?from>to:Number(from)>Number(to))){const end=fields.querySelector('[name=to]');end.setCustomValidity('Конец диапазона должен быть не раньше начала');end.reportValidity();return}const current=criteria(state);if(value||from||to)current.set(column.id,{kind:type,value,from,to});else current.delete(column.id);filters.set(state.key,current);applyFilters(table,state);filterDialog.close()};filterDialog.append(title,form);filterDialog.showModal();
  }
  filterDialog.addEventListener('close',()=>{filterOpener?.isConnected&&filterOpener.focus();filterActive=null});
+ function resetShape(table,state){
+  state.toolbar?.remove();states.delete(table);
+  if(active?.table===table){active=null;dialog.close()}if(filterActive?.table===table){filterActive=null;filterDialog.close()}
+  table.classList.remove('tp-table');table.style.removeProperty('--tp-columns');table.style.removeProperty('--tp-min-width');table.removeAttribute('aria-colcount');table.removeAttribute('role');
+  table.querySelectorAll('.tp-resizer').forEach(handle=>handle.remove());
+  for(const row of table.rows){row.classList.remove('tp-filtered-out');row.removeAttribute('role');for(const cell of row.cells){cell.classList.remove('tp-span','tp-hidden','tp-filter-column');cell.style.removeProperty('order');delete cell.dataset.tpLabel;cell.removeAttribute('aria-colindex');cell.removeAttribute('role')}}
+ }
  function enhance(){frame=0;for(const table of document.querySelectorAll('main table,#ab-profile-window table')){
-  let state=states.get(table);if(!state){state=describe(table);if(!state){compactSelection(table);continue}states.set(table,state);
+  const shape=describe(table);let state=states.get(table);
+  // Native registers reuse table nodes while changing columns (for example payroll).
+  // A stored layout belongs to its complete header schema, never to the DOM node alone.
+  if(state&&(!shape||state.key!==shape.key)){resetShape(table,state);state=null}
+  if(!state){state=shape;if(!state){compactSelection(table);continue}states.set(table,state);
    let viewport=table.parentElement;if(!viewport.matches('.scroll,.whtable,.ab-scroll,.tp-viewport')){const wrap=document.createElement('div');wrap.className='tp-viewport';table.before(wrap);wrap.append(table);viewport=wrap}viewport.classList.add('tp-viewport');
    viewport.previousElementSibling?.matches('.tp-toolbar')&&viewport.previousElementSibling.remove();
    const toolbar=document.createElement('div');toolbar.className='tp-toolbar';const button=document.createElement('button');button.type='button';button.className='tp-settings';button.textContent='⋯';button.setAttribute('aria-label','Настройка таблицы');button.setAttribute('aria-haspopup','dialog');button.onclick=()=>{opener=button;active={table,state};renderDialog();dialog.showModal()};const filterButton=document.createElement('button');filterButton.type='button';filterButton.className='tp-filters';filterButton.innerHTML=funnel+'<span>Фильтры столбцов</span>';filterButton.setAttribute('aria-haspopup','dialog');filterButton.onclick=()=>openFilter(table,state,null,filterButton);const status=document.createElement('div');status.className='tp-filter-status';status.setAttribute('role','status');status.hidden=true;toolbar.append(status,filterButton,button);viewport.before(toolbar);state.toolbar=toolbar;state.filterStatus=status;

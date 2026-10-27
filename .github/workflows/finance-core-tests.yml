@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, cash, navigation, experience]
+        shard: [1, 2, 3, cash, navigation, experience, stock]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:

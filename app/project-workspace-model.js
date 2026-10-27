@@ -186,6 +186,57 @@
   return {rows,unbudgeted:rows.filter(r=>r.unbudgeted),actualCost:actualIssues.length||invalidActualSources.length?null:actualCost,knownActualCost:actualCost,invalidActualSources,remaining,knownRemaining,unknownCount:unknown.length,cost,income,profit:income===null||cost===null?null:income-cost,issues,originalEstimateSource:Array.isArray(plan?.initialEstimateItems)?'Сохранённая исходная смета':'Текущий план · историческая исходная смета не сохранена'};
  }
 
+ // Procurement reads receipts, original FIFO fragments, supplier allocations and
+ // the existing expense ledger. No receipt or payment creates a plan or expense.
+ function procurementSnapshot(data,deal,warehouse={},fifo){
+  const key=core.dealKey(deal),moves=warehouse.moves||[],sameDeal=row=>String(row.dealId||'')===String(deal._id)&&row.org===deal.org,identity=row=>String(row?._id||row?.id||''),issues=[],rows=[],documents=[],consumptions=[];
+  const issue=(code,source,message)=>issues.push({code,source,message});
+  const uniqueMove=source=>Boolean(identity(source))&&moves.filter(m=>identity(m)===identity(source)).length===1;
+  const receipts=moves.filter(m=>m.kind==='receipt'&&sameDeal(m)),purchasedItems=new Set(receipts.map(r=>String(r.itemId))),badStockItems=new Set(),owned=new Map();
+  const receiptGross=source=>{const parts=[source.qty,source.price].map(value=>{const raw=String(value).trim().replace(',','.');if(!/^\d+(?:\.\d+)?$/.test(raw))throw Error('Количество или цена поступления требуют сверки');const [whole,fraction='']=raw.split('.');return {n:BigInt(whole+fraction),scale:10n**BigInt(fraction.length)}}),den=parts[0].scale*parts[1].scale;return (parts[0].n*parts[1].n*100n+den/2n)/den};
+  const sum=(list,field)=>list.reduce((total,row)=>total+(row[field]??0n),0n),complete=(list,field)=>list.some(row=>row[field]===null)?null:sum(list,field);
+  for(const source of receipts){
+   const item=(warehouse.items||[]).filter(i=>String(i.id)===String(source.itemId)&&(!i.org||i.org===deal.org)),row={source,documentKey:payables.receiptKey(source),name:item.length===1?item[0].name:'Номенклатура требует сверки',unit:item.length===1?item[0].unit||'':'',purchasedQty:quantity(source.qty),purchaseGross:null,stockQty:0,stockGross:0n,knownStockGross:0n,locations:[]};
+   if(!uniqueMove(source)||item.length!==1||!(row.purchasedQty>0)||!(quantity(source.price)>0)||source.deleted||source._deleted){issue('receipt-source-review',source,'Источник поступления отсутствует, повторяется или требует сверки');badStockItems.add(String(source.itemId))}
+   else try{row.purchaseGross=source.amountGross!=null&&source.amountGross!==''?core.cents(source.amountGross):receiptGross(source);if(row.purchaseGross<0n)throw Error('Сумма поступления отрицательная');owned.set(identity(source),row)}catch(error){issue('receipt-amount-review',source,error.message);badStockItems.add(String(source.itemId))}
+   rows.push(row);
+  }
+  if(receipts.length&&!fifo?.bins){for(const item of purchasedItems)badStockItems.add(item);issue('procurement-fifo-unavailable',null,'Остаток не определён: расчёт FIFO недоступен')}
+  if(fifo?.bins)for(const [bin,lots] of fifo.bins){
+   const at=String(bin).lastIndexOf('::'),placeId=String(bin).slice(0,at),itemId=String(bin).slice(at+2),places=(warehouse.places||[]).filter(p=>String(p.id)===placeId);
+   for(const lot of lots){
+    const q=quantity(lot.qty);if(q===0)continue;
+    const sources=moves.filter(m=>identity(m)===String(lot.source||'')),row=owned.get(String(lot.source||'')),relevant=row||purchasedItems.has(itemId)&&places.some(p=>p.org===deal.org);
+    if(!relevant)continue;
+    if(sources.length!==1||!['receipt','opening'].includes(sources[0].kind)||sources[0].deleted||sources[0]._deleted){badStockItems.add(String(row?.source.itemId||itemId));issue('procurement-lot-source-review',row?.source||null,'Исходная партия остатка удалена или неоднозначна');continue}
+    if(!row)continue;
+    if(q===null||places.length!==1||places[0].org!==deal.org||String(row.source.itemId)!==itemId||lot.estimated||lot.valueCents==null||!/^\d+$/.test(String(lot.valueCents))){badStockItems.add(String(row.source.itemId));issue('procurement-lot-review',row.source,'Количество, место или точная стоимость партии требуют сверки');continue}
+    const value=BigInt(lot.valueCents);row.stockQty=Number((row.stockQty+q).toFixed(9));row.knownStockGross+=value;row.locations.push({placeId,place:places[0],name:places[0].name||placeId,qty:q,valueCents:value,source:row.source});
+   }
+  }
+  for(const warning of fifo?.warnings||[])if(purchasedItems.has(String(warning.itemId))&&moves.some(m=>identity(m)===String(warning.id)&&m.org===deal.org)){badStockItems.add(String(warning.itemId));issue('procurement-fifo-review',moves.find(m=>identity(m)===String(warning.id)),warning.reason||'FIFO требует сверки')}
+  for(const row of rows)if(row.stockQty>(row.purchasedQty??0)+1e-8||row.purchaseGross!==null&&row.knownStockGross>row.purchaseGross){badStockItems.add(String(row.source.itemId));row.knownStockGross=0n;row.locations=[];issue('procurement-lot-quantity-review',row.source,'Количество или стоимость остатка исходной партии превышает поступление')}
+  for(const row of rows){row.stockGross=badStockItems.has(String(row.source.itemId))?null:row.knownStockGross;if(row.stockGross===null)row.stockQty=null}
+  for(const document of payables.snapshot(data,warehouse).documents.filter(d=>d.collection==='receipt'&&d.sources.some(s=>receipts.includes(s)))){
+   const assigned=document.sources.every(s=>sameDeal(s)&&uniqueMove(s)&&!s.deleted&&!s._deleted),paidGross=assigned&&document.status!=='review'?document.paid:null;
+   if(!assigned)issue('receipt-payment-project-ambiguous',document.sources[0],'Оплата общей накладной не распределена между проектами');
+   else if(document.status==='review')issue('receipt-payment-review',document.sources[0],document.issues.join('; '));
+   documents.push({document,source:document.sources.find(s=>receipts.includes(s)),documentKey:document.key,paidGross});
+  }
+  let ledger;try{ledger=core.expenseLedger({...data,warehouse,fifo}).rows}catch(error){ledger=[];issue('procurement-expense-ledger-review',null,error.message)}
+  const consumed=moves.filter(m=>m.kind==='consume'&&sameDeal(m)),expenses=(data.expenses||[]).filter(e=>e.warehouseMoveId&&e.projectKey===key&&e.org===deal.org);
+  for(const move of consumed){
+   const linked=(data.expenses||[]).filter(e=>String(e.warehouseMoveId)===identity(move)),entries=ledger.filter(e=>e.source===linked[0]&&e.projectKey===key&&e.org===deal.org),source=linked[0],audit=core.warehouseCostAudit(linked,[move],fifo,warehouse),valuation=core.warehouseMovementValuation(warehouse,move,fifo);
+   const parts=fifo?.byMove?.[move.id]?.parts||[],validParts=parts.length&&parts.every(part=>moves.filter(r=>identity(r)===String(part.source)&&['receipt','opening'].includes(r.kind)&&r.org===deal.org&&r.itemId===move.itemId&&!r.deleted&&!r._deleted).length===1);
+   const valid=uniqueMove(move)&&!move.deleted&&!move._deleted&&validParts&&valuation.status==='calculated'&&valuation.expenseAmount===entries[0]?.amount&&linked.length===1&&identity(source)&&(data.expenses||[]).filter(e=>identity(e)===identity(source)).length===1&&entries.length===1&&!audit.length&&!source.deleted&&!source._deleted;
+   if(!valid)issue('procurement-consumption-review',source||move,'Фактическое списание требует сверки движения, FIFO и начисленного расхода');
+   consumptions.push({move,source,amount:valid?entries[0].amount:null,purpose:move.stockPurpose==='sale'?'sale':'installation',qty:quantity(move.qty),itemId:move.itemId,receipts:(fifo?.byMove?.[move.id]?.parts||[]).map(p=>moves.find(m=>identity(m)===String(p.source))).filter(Boolean)});
+  }
+  for(const source of expenses)if(!consumed.some(m=>identity(m)===String(source.warehouseMoveId))){issue('procurement-expense-source-review',source,'Для начисленного расхода не найдено списание этого проекта');consumptions.push({source,move:null,amount:null,purpose:'installation',qty:null,itemId:null,receipts:[]})}
+  const knownPurchaseGross=sum(rows,'purchaseGross'),knownPaidGross=sum(documents,'paidGross'),knownStockGross=sum(rows,'knownStockGross'),knownConsumedNet=sum(consumptions,'amount');
+  return {rows,documents,consumptions,purchaseGross:complete(rows,'purchaseGross'),knownPurchaseGross,paidGross:complete(documents,'paidGross'),knownPaidGross,stockGross:complete(rows,'stockGross'),knownStockGross,consumedNet:issues.some(i=>i.code==='procurement-expense-ledger-review')?null:complete(consumptions,'amount'),knownConsumedNet,issues,reviewCount:issues.length};
+ }
+
  function snapshot(data,deal,warehouse={},fifo){
   const key=core.dealKey(deal),input={...data,warehouse,fifo},project=core.projectSnapshot(input,deal,key),wip=core.projectWipSnapshot(input,deal,key),issues=[...project.issues,...wip.issues],plan=plannedBudget(data,deal,warehouse,fifo),baseline=budget(deal);
   const cashRows=[];
@@ -235,7 +286,7 @@
   const valid=supplierDocuments.filter(d=>d.status!=='review');
   if(supplierDocuments.some(d=>d.status==='review'))issues.push('supplier-document-review');
   const supplierReviewCount=supplierDocuments.filter(d=>d.status==='review').length,supplierKnownRemaining=valid.reduce((n,d)=>n+(d.remaining||0n),0n),supplierRemaining=supplierReviewCount?null:supplierKnownRemaining,contractGross=core.cents(deal.contractTotal??deal.revenue??0),contractNet=wip.contractNet;
-  return {key,deal,contractGross,contractNet,revenue:project.revenue,cost:project.cost,recognizedCost:wip.recognizedCost==null?null:wip.recognizedCost+(wip.nonDirectCost||0n),wip:wip.wip??null,profit:project.issues.length||wip.status!=='calculated'?null:wip.operatingProfit,settlement,remainingPayment:netReceived===null?null:contractGross-netReceived,remainingRevenue:contractNet===null?null:contractNet-project.revenue,cash:{income,outcome,balance:income-outcome,netReceived,refunded,rows:cashRows},budget:plan,forecast:forecast(data,deal,warehouse,fifo,project.cost,{...baseline,rows:baseline.rows.map(row=>({...row,actual:plan.rows.find(x=>x.id===row.id)?.actual??0n}))},project.issues),realizations:(data.realizations||[]).filter(x=>x.projectKey===key),ledger,supplierDocuments,supplierRemaining,supplierKnownRemaining,supplierReviewCount,issues:[...new Set(issues)]};
+  return {procurement:procurementSnapshot(data,deal,warehouse,fifo),key,deal,contractGross,contractNet,revenue:project.revenue,cost:project.cost,recognizedCost:wip.recognizedCost==null?null:wip.recognizedCost+(wip.nonDirectCost||0n),wip:wip.wip??null,profit:project.issues.length||wip.status!=='calculated'?null:wip.operatingProfit,settlement,remainingPayment:netReceived===null?null:contractGross-netReceived,remainingRevenue:contractNet===null?null:contractNet-project.revenue,cash:{income,outcome,balance:income-outcome,netReceived,refunded,rows:cashRows},budget:plan,forecast:forecast(data,deal,warehouse,fifo,project.cost,{...baseline,rows:baseline.rows.map(row=>({...row,actual:plan.rows.find(x=>x.id===row.id)?.actual??0n}))},project.issues),realizations:(data.realizations||[]).filter(x=>x.projectKey===key),ledger,supplierDocuments,supplierRemaining,supplierKnownRemaining,supplierReviewCount,issues:[...new Set(issues)]};
  }
- return Object.freeze({categories,budget,plannedBudget,snapshot,forecast,workActualAmount,projectTitle,initialEstimate,stageStatuses,normalizeStages,stages,splitStages});
+ return Object.freeze({categories,budget,plannedBudget,procurementSnapshot,snapshot,forecast,workActualAmount,projectTitle,initialEstimate,stageStatuses,normalizeStages,stages,splitStages});
 });
