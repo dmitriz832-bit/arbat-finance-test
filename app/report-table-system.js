@@ -49,9 +49,9 @@
    const layout=saved.find(item=>item.index===column.index),hidden=layout?layout.hidden:column.cell.hidden||column.cell.classList.contains('tp-hidden');
    if(hidden)continue;
    const article=column.index===info.article;
-   let width=layout?.sized?layout.width:selection(column.cell)?42:article?280:Math.max(150,layout?.width||0,minimums.get(column.index)||0);
+   let width=selection(column.cell)?44:layout?.sized?layout.width:article?280:Math.max(150,layout?.width||0,minimums.get(column.index)||0);
    if(article&&mobile.matches)width=Math.min(width,Math.max(138,Math.min(180,viewport.clientWidth*.48)));
-   visible.push({index:column.index,order:layout?.order??(Number(column.cell.style.order)||column.index),width,sized:!!layout?.sized});
+   visible.push({index:column.index,order:layout?.order??(Number(column.cell.style.order)||column.index),width,sized:selection(column.cell)||!!layout?.sized});
   }
   visible.sort((a,b)=>a.order-b.order);
   // The project-expense summary is a full-width register. Share spare room among

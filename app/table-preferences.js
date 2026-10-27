@@ -17,14 +17,31 @@
   return {columns,key:host.id+':'+Math.max(0,ordinal)+':'+columns.map(c=>c.id).join('|')};
  }
  function config(state){const saved=layouts[state.key]||{},ids=state.columns.map(c=>c.id),order=[...new Set([...(Array.isArray(saved.order)?saved.order:[]).filter(id=>ids.includes(id)),...ids])],hidden=new Set((Array.isArray(saved.hidden)?saved.hidden:[]).filter(id=>ids.includes(id)));if(hidden.size===ids.length)hidden.delete(order[0]);return {order,hidden}}
+ const selectionWidth=44;
+ const selectionCell=cell=>!!cell?.querySelector('input[type=checkbox]')&&!text(cell);
+ // Selection is identified by content, never by source or visual column position.
+ function compactSelection(table){
+  const headers=[...(table.tHead?.rows[0]?.cells||[])],selected=new Set(headers.filter(cell=>cell.colSpan===1&&selectionCell(cell)).map(cell=>cell.cellIndex));
+  for(const row of table.rows)for(const cell of row.cells){
+   const isSelection=cell.colSpan===1&&selected.has(cell.cellIndex)&&(selectionCell(cell)||!text(cell));cell.classList.toggle('tp-selection',isSelection);
+   if(isSelection)for(const input of cell.querySelectorAll('input[type=checkbox]'))if(!input.closest('.tp-selection-hit')){const label=document.createElement('label');label.className='tp-selection-hit';input.before(label);label.append(input)}
+  }
+  table.classList.toggle('tp-has-selection',!!selected.size);
+  const cols=[...(table.querySelector(':scope > colgroup')?.children||[])];
+  cols.forEach((col,index)=>{col.classList.toggle('tp-selection-col',selected.has(index));if(selected.has(index))col.style.width=selectionWidth+'px'});
+  // The native resizer's stored total can still include the former large selector.
+  // Keep every substantive col width; only remove that obsolete selection space.
+  if(selected.size&&cols.length&&cols.every(col=>parseFloat(col.style.width)>0))table.style.setProperty('--arbat-table-width',cols.reduce((sum,col)=>sum+parseFloat(col.style.width),0)+'px');
+  return selected;
+ }
  const canvas=document.createElement('canvas'),context=canvas.getContext('2d');
  function width(table,column){const money=/сумм|стоим|цен|остаток|долг|оплач|прибыл|выруч|затрат|начисл|ндс|оборот|сальдо|баланс|марж/i.test(column.label),base=/дата|период/i.test(column.label)?125:money?170:155;
   if(!money)return base;
   context.font='600 14px Arial';return Math.ceil(Math.max(base,...[...table.rows].slice(0,150).map(row=>context.measureText(row.cells[column.index]?.textContent.trim()||'').width+40)));
  }
  function apply(table,state){
-  const {order,hidden}=config(state),visible=order.filter(id=>!hidden.has(id)),byId=new Map(state.columns.map(c=>[c.id,c])),widths=visible.map(id=>Math.max(width(table,byId.get(id)),Number(layouts[state.key]?.widths?.[id])||0));
-  table.style.setProperty('--tp-columns',widths.map((w,i)=>layouts[state.key]?.widths?.[visible[i]]?`${w}px`:`minmax(${w}px,1fr)`).join(' '));table.style.setProperty('--tp-min-width',widths.reduce((a,b)=>a+b,0)+'px');
+  const selected=compactSelection(table),{order,hidden}=config(state),visible=order.filter(id=>!hidden.has(id)),byId=new Map(state.columns.map(c=>[c.id,c])),isSelection=id=>selected.has(byId.get(id).index),widths=visible.map(id=>isSelection(id)?selectionWidth:Math.max(width(table,byId.get(id)),Number(layouts[state.key]?.widths?.[id])||0));
+  table.style.setProperty('--tp-columns',widths.map((w,i)=>isSelection(visible[i])||layouts[state.key]?.widths?.[visible[i]]?`${w}px`:`minmax(${w}px,1fr)`).join(' '));table.style.setProperty('--tp-min-width',widths.reduce((a,b)=>a+b,0)+'px');
   table.classList.add('tp-table');table.setAttribute('role','table');
   for(const row of table.rows){row.setAttribute('role','row');for(const cell of row.cells){
    if(cell.colSpan>1){cell.classList.add('tp-span');continue}
@@ -33,12 +50,12 @@
    cell.setAttribute('role',cell.tagName==='TH'?'columnheader':'cell');if(isHidden)cell.removeAttribute('aria-colindex');else cell.setAttribute('aria-colindex',String(visible.indexOf(column.id)+1));
   }}
   table.setAttribute('aria-colcount',String(visible.length));
-  for(const column of state.columns){const th=table.tHead.rows[0].cells[column.index];if(th.querySelector('.tp-resizer'))continue;const handle=document.createElement('span');handle.className='tp-resizer';handle.title='Потяните для изменения ширины; двойное нажатие — сбросить';th.append(handle);
+  for(const column of state.columns){const th=table.tHead.rows[0].cells[column.index];if(selected.has(column.index)){th.querySelector('.tp-resizer')?.remove();continue}if(th.querySelector('.tp-resizer'))continue;const handle=document.createElement('span');handle.className='tp-resizer';handle.title='Потяните для изменения ширины; двойное нажатие — сбросить';th.append(handle);
    handle.onclick=event=>event.stopPropagation();handle.ondblclick=event=>{event.stopPropagation();if(layouts[state.key]?.widths)delete layouts[state.key].widths[column.id];save();apply(table,state)};
    handle.onpointerdown=event=>{event.preventDefault();event.stopPropagation();handle.setPointerCapture(event.pointerId);const start=event.clientX,initial=th.getBoundingClientRect().width;const move=e=>{const current=config(state);layouts[state.key]={...layouts[state.key],order:current.order,hidden:[...current.hidden],widths:{...layouts[state.key]?.widths,[column.id]:Math.max(width(table,column),initial+e.clientX-start)}};apply(table,state)};const end=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',end);handle.removeEventListener('pointercancel',end);save()};handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end)};
   }
   // Presentation helpers consume the real layout without reordering row.cells.
-  table.dispatchEvent(new CustomEvent('arbat:table-layout',{bubbles:true,detail:{columns:state.columns.map(column=>({index:column.index,label:column.label,order:order.indexOf(column.id),hidden:hidden.has(column.id),width:widths[visible.indexOf(column.id)]||0,sized:!!layouts[state.key]?.widths?.[column.id]}))}}));
+  table.dispatchEvent(new CustomEvent('arbat:table-layout',{bubbles:true,detail:{columns:state.columns.map(column=>({index:column.index,label:column.label,order:order.indexOf(column.id),hidden:hidden.has(column.id),width:widths[visible.indexOf(column.id)]||0,sized:selected.has(column.index)||!!layouts[state.key]?.widths?.[column.id]}))}}));
  }
  const dialog=document.createElement('dialog');dialog.className='tp-dialog';dialog.setAttribute('aria-labelledby','tp-title');document.body.append(dialog);let active=null,opener=null;
  function renderDialog(focusId,action){
@@ -88,7 +105,7 @@
  }
  filterDialog.addEventListener('close',()=>{filterOpener?.isConnected&&filterOpener.focus();filterActive=null});
  function enhance(){frame=0;for(const table of document.querySelectorAll('main table,#ab-profile-window table')){
-  let state=states.get(table);if(!state){state=describe(table);if(!state)continue;states.set(table,state);
+  let state=states.get(table);if(!state){state=describe(table);if(!state){compactSelection(table);continue}states.set(table,state);
    let viewport=table.parentElement;if(!viewport.matches('.scroll,.whtable,.ab-scroll,.tp-viewport')){const wrap=document.createElement('div');wrap.className='tp-viewport';table.before(wrap);wrap.append(table);viewport=wrap}viewport.classList.add('tp-viewport');
    viewport.previousElementSibling?.matches('.tp-toolbar')&&viewport.previousElementSibling.remove();
    const toolbar=document.createElement('div');toolbar.className='tp-toolbar';const button=document.createElement('button');button.type='button';button.className='tp-settings';button.textContent='⋯';button.setAttribute('aria-label','Настройка таблицы');button.setAttribute('aria-haspopup','dialog');button.onclick=()=>{opener=button;active={table,state};renderDialog();dialog.showModal()};const filterButton=document.createElement('button');filterButton.type='button';filterButton.className='tp-filters';filterButton.innerHTML=funnel+'<span>Фильтры столбцов</span>';filterButton.setAttribute('aria-haspopup','dialog');filterButton.onclick=()=>openFilter(table,state,null,filterButton);const status=document.createElement('div');status.className='tp-filter-status';status.setAttribute('role','status');status.hidden=true;toolbar.append(status,filterButton,button);viewport.before(toolbar);state.toolbar=toolbar;state.filterStatus=status;

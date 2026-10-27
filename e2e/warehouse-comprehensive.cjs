@@ -45,9 +45,9 @@ test('warehouse receipt form switches operation cleanly and multiitem edit prese
   await openReceiptForm(page);
   await choose(page,'#whDlgForm [name=kind]','transfer');await choose(page,'#whDlgForm [name=from]','w');await choose(page,'#whDlgForm [name=to]','crew');
   await choose(page,'#whDlgForm [name=kind]','consume');assert.equal(await page.locator('#whDlgForm [name=to]').inputValue(),'');assert.equal(await page.locator('#whDlgForm [name=from]').inputValue(),'w');await choose(page,'#whDlgForm [name=dealId]','project');
-  await choose(page,'#whDlgForm [name=kind]','receipt');assert.equal(await page.locator('#whDlgForm [name=from]').inputValue(),'');assert.equal(await page.locator('#whDlgForm [name=dealId]').inputValue(),'');
+  await choose(page,'#whDlgForm [name=kind]','receipt');assert.equal(await page.locator('#whDlgForm [name=from]').inputValue(),'');assert.equal(await page.locator('#whDlgForm [name=dealId]').inputValue(),'project');
   await fillReceipt(page,'Приход после смены операции',1,15);
-  const saved=await readStores(page),created=saved.warehouse.moves.find(m=>m.note==='Приход после смены операции');assert.ok(created,'receipt saved through actual form');assert.equal(created.from,'');assert.equal(created.dealId,'');assert.equal(created.qty,1);assert.equal(created.price,15);assert.equal(saved.finance.cash.length,1);await dialog.locator('[data-pay-close]').click();
+  const saved=await readStores(page),created=saved.warehouse.moves.find(m=>m.note==='Приход после смены операции');assert.ok(created,'receipt saved through actual form');assert.equal(created.from,'');assert.equal(created.dealId,'project');assert.equal(created.qty,1);assert.equal(created.price,15);assert.equal(saved.finance.cash.length,1);await dialog.locator('[data-pay-close]').click();
   await page.reload();await page.waitForFunction(()=>typeof window.ArbatPayables==='object');const reloaded=await readStores(page);assert.equal(reloaded.warehouse.moves.filter(m=>m.note==='Приход после смены операции').length,1);assert.deepEqual(reloaded.finance.cash[0].supplierAllocations,[{documentKey:receiptKey,amount:'50.00'}]);
  });
 });

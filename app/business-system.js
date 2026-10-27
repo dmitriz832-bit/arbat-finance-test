@@ -231,9 +231,99 @@
     const isEmployeePayment=form.elements.type?.value==='out'&&String(form.elements.partyRef?.value||'').startsWith('person:');
     for(const name of ['payrollPurpose','payrollAllocatedAmount','payrollDistribution']){const field=form.elements[name];if(!field)continue;const label=field.closest('label');if(label)label.style.display=isEmployeePayment?'flex':'none';field.required=name==='payrollPurpose'&&isEmployeePayment;if(!isEmployeePayment)field.value=''}
   }
+  // A payout settles the employee/company balance through the native DDS form.
+  // Accrual documents and their employer contributions remain unchanged.
+  const payrollContexts=new WeakMap(),payrollActor=()=>JSON.stringify(window.abIdentity||null),canPayPayroll=()=>['admin','accountant'].includes(window.abIdentity?.role);
+  const payrollState=org=>window.ArbatFinanceCore.payrollByOrganization({accruals:db.labor||[],payments:db.cash||[],settlements:db.crewSettlements||[],workActs:db.workActs||[]},org);
+  const payrollRevision=()=>JSON.stringify([db.labor,db.cash,db.crewSettlements,db.workActs,db.people,db.wallets,db.articles]);
+  function payrollPaymentEligibility(org,personId,state=payrollState(org),data=db){
+    const cash=data.cash||[],linked=source=>source?.cashId?cash.find(p=>String(p._id||p.id||'')===String(source.cashId)):null;
+    const applicable=(source,owner)=>{const payment=linked(source);return String(payment?.org??source?.org??owner??'')===String(org)&&source?.payrollPayment!==false&&payment?.payrollPayment!==false;};
+    const unresolved=(source,reason)=>({allowed:false,reason,source:linked(source)||source});
+    // A remaining cash share has no confirmed recipient. It can settle any
+    // employee of this company, so paying a computed balance first is unsafe.
+    for(const part of state.unallocatedPayments||[])if(part.amount!==0n&&applicable(part.source,part.org))return unresolved(part.source,'Сверьте выплаты: в организации есть нераспределённая зарплатная выплата. Уточните получателей и суммы в исходном платеже.');
+    const cashIssues=new Set(['payroll-invalid-allocation','payroll-overallocated-payment','payroll-unallocated-payment']);
+    for(const issue of state.issues||[]){
+      if(issue.code==='crew-payroll-linked-labor-overlap'||!applicable(issue.source,issue.org))continue;
+      const source=issue.source||{},affected=issue.personId?[issue.personId]:[source.personId,issue.accrual?.personId,...(Array.isArray(source.payrollAllocations)?source.payrollAllocations.map(p=>p?.personId):[]),...(source.memberIds||[])].filter(Boolean);
+      if(!cashIssues.has(issue.code)&&affected.length&&!affected.map(String).includes(String(personId)))continue;
+      const detail=issue.code==='payroll-invalid-payment'?'проверьте сумму предыдущей зарплатной выплаты.':cashIssues.has(issue.code)?'проверьте распределение предыдущей зарплатной выплаты.':issue.code==='payroll-invalid-settlement'?'проверьте привязку существующей выплаты к сотруднику.':'исправьте замечания в начислениях и расчётах сотрудника.';
+      return unresolved(issue.source,'Сверьте начисления и выплаты: '+detail);
+    }
+    return {allowed:true,reason:'',source:null};
+  }
+  window.arbatPayrollPaymentEligibility=payrollPaymentEligibility;
+  function payrollPaymentButton(person,eligibility){
+    const button=document.createElement('button');button.type='button';button.textContent=eligibility.allowed?'Выплатить':'Сверить выплаты';button.dataset[eligibility.allowed?'payrollPay':'payrollReview']=JSON.stringify([person.org,person.personId]);if(eligibility.reason)button.title=eligibility.reason;return button;
+  }
+  function renderPayrollPaymentActions(){
+    const table=document.querySelector('#payrollReconciliationTable table');
+    table?.querySelectorAll('[data-payroll-payment-column]').forEach(cell=>cell.remove());
+    if(table&&canPayPayroll()){
+      const head=document.createElement('th');head.textContent='Выплата';head.dataset.payrollPaymentColumn='';table.querySelector('thead tr')?.append(head);
+      const state=payrollState(document.getElementById('orgFilter')?.value||''),people=state.people;
+      table.querySelectorAll('tbody tr').forEach((row,index)=>{const person=people[index];if(!person)return;const cell=row.insertCell();cell.dataset.payrollPaymentColumn='';if(person.payable>0n){const eligibility=payrollPaymentEligibility(person.org,person.personId,state);cell.append(payrollPaymentButton(person,eligibility));if(!eligibility.allowed){const reason=document.createElement('small');reason.textContent=eligibility.reason;cell.append(reason);}}else cell.textContent='—';});
+    }
+    const actions=document.querySelector('#labor > .ui-page-toolbar .ui-toolbar-actions');
+    if(actions&&!actions.querySelector('[data-payroll-balances]')){const button=document.createElement('button');button.type='button';button.dataset.payrollBalances='';button.textContent='Выплатить зарплату';button.onclick=()=>window.arbatNavigate?.('labor:summary');actions.append(button);}
+    const balances=actions?.querySelector('[data-payroll-balances]');if(balances)balances.hidden=!canPayPayroll();
+  }
+  window.addEventListener('arbat:identity',renderPayrollPaymentActions);
+  window.arbatOpenPayrollPayment=function(org,personId,trigger){
+    const form=document.getElementById('cashForm');if(!form)return;
+    if(!canPayPayroll())return alert('Недостаточно прав для выплаты зарплаты.');
+    if(document.body.classList.contains('ui-sheet-open'))return alert('Сначала сохраните или закройте открытый документ.');
+    const state=payrollState(org),eligibility=payrollPaymentEligibility(org,personId,state);if(!eligibility.allowed)return alert(eligibility.reason);
+    const person=(db.people||[]).find(p=>String(p.id)===String(personId)),balance=state.people.find(p=>p.org===org&&p.personId===String(personId));
+    if(!person||!org||!balance||balance.payable<=0n)return alert('Долг к выплате отсутствует. Проверьте свежие взаиморасчёты.');
+    form.reset();if(typeof editTarget!=='undefined'&&editTarget?.key==='cash')editTarget=null;if(typeof resetEdit==='function')resetEdit(form);
+    form.querySelector('[data-payroll-payment-context]')?.remove();
+    const context={org,personId:String(personId),actor:payrollActor(),revision:payrollRevision()};
+    window.dispatchEvent(new CustomEvent('arbat:open-document',{detail:{formId:'cashForm',trigger,values:{org,type:'out',partyRef:'person:'+personId,payrollPurpose:'salary',amount:window.ArbatFinanceCore.rubles(balance.payable),payrollAllocatedAmount:'',payrollDistribution:'',walletId:'',articleId:'',projectKey:'',note:'Зарплата / аванс · '+person.name+' · '+org}}}));
+    queueMicrotask(()=>{
+      const session=window.arbatDocumentSession?.(form);if(!session)return;
+      context.session=session;payrollContexts.set(form,context);
+      const note=document.createElement('p');note.className='muted ui-field-wide';note.dataset.payrollPaymentContext='';note.textContent='Выплата зарплаты · '+person.name+' · '+org+'. Остаток к выплате: '+amount(window.ArbatFinanceCore.rubles(balance.payable))+'. Можно выплатить часть суммы. Укажите дату фактической выплаты, счёт и статью ДДС. После сохранения платёж уменьшит долг; повторное начисление расхода не создаётся.';form.prepend(note);
+      const date=form.elements.date;if(date&&!date.value)date.value=typeof isoToday==='function'?isoToday():new Date().toISOString().slice(0,10);
+      const title=document.getElementById('ui-sheet-title');if(title)title.textContent='Выплата зарплаты';
+    });
+  };
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('[data-payroll-pay],[data-payroll-review]');if(!button)return;
+    try{
+      const [org,personId]=JSON.parse(button.dataset.payrollPay||button.dataset.payrollReview);if(button.hasAttribute('data-payroll-pay'))return window.arbatOpenPayrollPayment(org,personId,button);
+      const eligibility=payrollPaymentEligibility(org,personId),source=eligibility.source,collection=['cash','labor','workActs'].find(key=>(db[key]||[]).includes(source));
+      if(collection){window.arbatNavigate?.(collection==='workActs'?'work':collection);if(collection==='workActs')window.openWorkEdit?.('act',source.id||source._id);else window.openRecord?.(collection,source._id||source.id);}
+      else {window.arbatNavigate?.('cash');alert(eligibility.reason||'Замечания изменились. Проверьте свежие взаиморасчёты.');}
+    }catch(error){alert(error.message)}
+  });
+  const payrollCashForm=document.getElementById('cashForm'),nativePayrollCashSubmit=payrollCashForm?.onsubmit;
+  const payrollSheet=document.querySelector('.ui-sheet-overlay');
+  if(payrollSheet&&payrollCashForm)new MutationObserver(()=>{
+    if(!payrollSheet.hidden||!payrollContexts.has(payrollCashForm)||window.arbatDocumentSession?.(payrollCashForm))return;
+    payrollContexts.delete(payrollCashForm);payrollCashForm.querySelector('[data-payroll-payment-context]')?.remove();payrollCashForm.reset();payrollCashForm.elements.type.dispatchEvent(new Event('change',{bubbles:true}));
+  }).observe(payrollSheet,{attributes:true,attributeFilter:['hidden']});
+  if(nativePayrollCashSubmit)payrollCashForm.onsubmit=function(event){
+    const context=payrollContexts.get(this);
+    if(!context||context.session!==window.arbatDocumentSession?.(this)){payrollContexts.delete(this);this.querySelector('[data-payroll-payment-context]')?.remove();return nativePayrollCashSubmit.call(this,event);}
+    try{
+      if(!canPayPayroll()||context.actor!==payrollActor())throw Error('Пользователь или права изменились. Откройте выплату снова.');
+      const state=payrollState(context.org),eligibility=payrollPaymentEligibility(context.org,context.personId,state);if(!eligibility.allowed)throw Error(eligibility.reason);
+      if(context.revision!==payrollRevision())throw Error('Начисления, выплаты или справочники изменились. Откройте выплату снова, чтобы проверить остаток.');
+      if(typeof window.arbatEnsureOpenPeriods!=='function')throw Error('Проверка закрытых периодов недоступна. Обновите страницу.');
+      const fields=this.elements,core=window.ArbatFinanceCore,balance=state.people.find(p=>p.org===context.org&&p.personId===context.personId),payment=core.cents(fields.amount.value);
+      if(fields.type.value!=='out'||fields.org.value!==context.org||fields.partyRef.value!=='person:'+context.personId||fields.payrollPurpose.value!=='salary')throw Error('Для другого сотрудника, организации или назначения откройте отдельную выплату.');
+      if(!balance||payment<=0n||payment>balance.payable)throw Error('Сумма выплаты должна быть положительной и не превышать остаток долга сотруднику.');
+      if(fields.payrollDistribution.value.trim()||fields.payrollAllocatedAmount.value.trim()&&core.cents(fields.payrollAllocatedAmount.value)!==payment)throw Error('В этой выплате вся сумма относится к выбранному сотруднику. Для нескольких сотрудников используйте отдельную операцию ДДС.');
+      const previous=fields.payrollAllocatedAmount.value,count=db.cash.length;fields.payrollAllocatedAmount.value=core.rubles(payment);
+      try{const result=nativePayrollCashSubmit.call(this,event);if(db.cash.length>count){payrollContexts.delete(this);this.querySelector('[data-payroll-payment-context]')?.remove();}return result;}finally{fields.payrollAllocatedAmount.value=previous;}
+    }catch(error){event.preventDefault();alert(error.message);}
+  };
   const originalReportData=window.reportData;if(typeof originalReportData==='function')window.reportData=function(){const result=originalReportData.apply(this,arguments);if(result?.kind!=='cash')result.hints='Начисления и страховые взносы работодателя рассчитаны единым финансовым модулем. НДФЛ является удержанием и не увеличивает расходы. Связанные с актами начисления не повторяют стоимость работ. Результат управленческий и не заменяет бухгалтерский расчёт.';return result};
-  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceWalletEditor();syncPayrollPaymentFields();enhanceTables();return result};
+  const originalRender=window.render;if(typeof originalRender==='function')window.render=function(){ensureBusinessData();const result=withPayrollContext(()=>originalRender.apply(this,arguments));enhancePriceBook();renderEnhancedLabor();enhanceWalletEditor();syncPayrollPaymentFields();renderPayrollPaymentActions();enhanceTables();return result};
   document.getElementById('cashForm')?.addEventListener('change',event=>{if(event.target?.name==='partyRef'||event.target?.name==='type')syncPayrollPaymentFields()});
   renderEnhancedLabor();
   syncPayrollPaymentFields();
+  renderPayrollPaymentActions();
 })();
