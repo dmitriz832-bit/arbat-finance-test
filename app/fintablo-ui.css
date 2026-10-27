@@ -104,3 +104,10 @@ html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) #expenses>.card{
 .ft-page-filter-status[hidden]{display:none!important}.ft-page-filter-status span{font-size:13px;overflow-wrap:anywhere;max-width:100%;padding:3px 7px;background:var(--ft-surface);border:1px solid var(--ft-border);border-radius:4px}
 html.ft-ui body.ft-app.ab-ready.ui-modern .ft-page-filter-status button{font-size:13px!important;min-height:32px;padding:3px 10px!important}
 @media(max-width:700px){.ft-page-filter-status strong{flex-basis:100%}.ft-page-filter-status{gap:6px;padding:9px}}
+/* Desktop criteria remain explicit without adding a full control panel above journals. */
+@media(min-width:1101px){
+ .ft-page-filter-status{gap:6px;margin-bottom:4px;padding:0 8px}
+ .ft-page-filter-status strong{font-size:12px}
+ .ft-page-filter-status span{font-size:12px;line-height:18px;padding:1px 6px}
+ html.ft-ui body.ft-app.ab-ready.ui-modern .ft-page-filter-status button{min-height:28px;padding:3px 8px!important;line-height:20px!important;font-size:12px!important}
+}

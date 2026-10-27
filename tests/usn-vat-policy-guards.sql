@@ -6,7 +6,7 @@ create function auth.uid() returns uuid language sql as $$select nullif(current_
 create table public.staff_access(user_id uuid,enabled boolean,role text);
 create table public.finance_periods(period text,status text);
 create table public.finance_state(payload jsonb);
-\ir ../supabase/migrations/20261027055055_usn_vat_policy_guard.sql
+\ir ../supabase/migrations/20261027061323_usn_vat_policy_guard.sql
 insert into public.finance_state values ('{}');
 insert into public.finance_periods values ('2028-03','closed');
 do $$ declare base jsonb='{"_id":"policy1","orgId":"air-climat","org":"АИР-КЛИМАТ","effectiveDate":"2026-10-01","threshold":"20000000.01","reason":"Проверка","createdBy":"tester","createdAt":"2026-10-27T00:00:00Z"}'; bad jsonb;begin

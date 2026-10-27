@@ -188,7 +188,7 @@
     if(form.dataset.openingSaving)return;form.dataset.openingSaving='1';
     try{
       const actor=window.abIdentity;if(!actor||!['admin','accountant'].includes(actor.role))throw Error('Недостаточно прав для изменения начального остатка');
-      const baseline=JSON.stringify(db),identity=JSON.stringify(actor),editor=JSON.stringify([...new FormData(form)]),raw=Object.fromEntries(new FormData(form)),existing=(db.wallets||[]).find(w=>w.id===existingId);
+      const baseline=JSON.stringify(db),identity=JSON.stringify(actor),editor=JSON.stringify([...new FormData(form)]),editorSession=window.arbatDocumentSession?.(form),raw=Object.fromEntries(new FormData(form)),existing=(db.wallets||[]).find(w=>w.id===existingId);
       if(existingId&&!existing)throw Error('Кошелёк уже удалён. Откройте актуальную запись');
       const core=window.ArbatFinanceCore,values=core.walletOpeningValues(raw,existing,db.cash||[]);let openingChanged=!existing||existing.org!==values.org||existing.openingBalanceDate!==values.openingBalanceDate;try{openingChanged=openingChanged||core.cents(existing?.openingBalance??'0')!==core.cents(values.openingBalance)}catch{openingChanged=true}
       if(openingChanged){
@@ -198,8 +198,8 @@
       }
       if(typeof window.arbatEnsureOpenPeriods!=='function')throw Error('Проверка закрытых периодов недоступна. Обновите страницу.');
       await window.arbatEnsureOpenPeriods([existing?.bankStatementDate,values.bankStatementDate].filter(Boolean));
-      if(JSON.stringify(window.abIdentity)!==identity||JSON.stringify(db)!==baseline||editor!==JSON.stringify([...new FormData(form)])||!form.isConnected)throw Error('Данные, права или форма изменились во время проверки. Проверьте ввод и сохраните снова.');
-      if(existing)Object.assign(existing,values);else db.wallets.push({id:'custom-'+crypto.randomUUID(),...values});done();save();
+      if(JSON.stringify(window.abIdentity)!==identity||JSON.stringify(db)!==baseline||editor!==JSON.stringify([...new FormData(form)])||!form.isConnected||editorSession&&window.arbatDocumentSession?.(form)!==editorSession)throw Error('Данные, права или форма изменились во время проверки. Проверьте ввод и сохраните снова.');
+      if(existing)Object.assign(existing,values);else db.wallets.push({id:'custom-'+crypto.randomUUID(),...values});done();save();window.dispatchEvent(new CustomEvent('arbat:document-saved',{detail:{form}}));
     }catch(error){alert(error.message)}finally{delete form.dataset.openingSaving}
   };
   for(const formId of ['walletForm','walletEditForm']){const f=document.getElementById(formId),field=f?.elements.openingBalanceDate;if(field){field.required=true;const label=field.closest('label');if(label){const text=[...label.childNodes].find(n=>n.nodeType===3);if(text)text.textContent='Начальный остаток на конец дня ';}}}
