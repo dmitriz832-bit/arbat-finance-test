@@ -28,9 +28,7 @@ body.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,.tp-viewport)
 /* Compact icon settings, visible filter state, and an entry point on card layouts. */
 html.ft-ui body.ft-app.ab-ready.ui-modern .tp-settings{display:inline-flex!important;align-items:center;justify-content:center;width:38px;min-width:38px;min-height:38px!important;padding:0!important;font-size:26px!important;line-height:1!important}
 html.ft-ui body.ft-app.ab-ready.ui-modern .tp-filters{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:5px 10px!important}
-.tp-filters svg,.tp-col-filter svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
-html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter{display:inline-flex!important;align-items:center;justify-content:center;width:28px;min-width:28px;min-height:28px!important;margin:0 8px 0 5px;padding:4px!important;line-height:1!important;vertical-align:middle;background:transparent!important;border-color:transparent!important}
-html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter[aria-pressed=true]{background:var(--ft-primary-soft)!important;color:var(--ft-primary-hover)!important;border-color:var(--ft-primary)!important}
+.tp-filters svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round}
 .tp-filter-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1 1 100%;padding:10px 12px;box-sizing:border-box;border:1px solid var(--ft-primary-border);border-radius:5px;background:var(--ft-primary-pale);overflow-wrap:anywhere;min-width:0}
 .tp-filter-status[hidden]{display:none!important}.tp-filter-status strong{flex:1 1 100%;font-size:13px}.tp-filter-status small{flex:1 1 100%;font-size:12px;color:var(--ft-muted)}
 html.ft-ui body.ft-app.ab-ready.ui-modern .tp-filter-status button{max-width:100%;white-space:normal;overflow-wrap:anywhere;padding:3px 9px!important;min-height:32px;font-size:13px!important}
@@ -45,9 +43,6 @@ body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th).ux-report-selected:not(.tp-hidden){display:block!important}
 body.ab-ready.ui-modern:not(.ab-profile-only) #reportTable.tp-viewport>table.tp-table>:is(thead,tbody,tfoot)>tr>:is(td,th)::before{content:none!important}
 }
-/* A header label and its funnel share one centered line/row of content. */
-html.ft-ui body.ft-app.ab-ready.ui-modern:not(.ab-profile-only) :is(#tp-layout-scope,#rt-layout-scope,.tp-viewport,.rt-viewport,#reportTable)>table.tp-table>thead>tr>th:not(.tp-hidden){display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important}
-html.ft-ui body.ft-app.ab-ready.ui-modern .tp-col-filter{flex:none;margin:0 5px 0 0!important}
 @media(min-width:1101px){
  html.ft-ui body.ft-app.ab-ready.ui-modern #cash .tp-toolbar .tp-settings{width:34px;min-width:34px;min-height:34px!important}
  html.ft-ui body.ft-app.ab-ready.ui-modern #cash .tp-toolbar .tp-filters{min-height:34px!important;padding:3px 9px!important;line-height:24px!important}
