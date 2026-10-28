@@ -7,7 +7,7 @@
  const id=row=>String(row?._id||row?.id||''),actor=()=>JSON.stringify(root.abIdentity||null),number=value=>Number(String(value).trim().replace(',','.'));
  const money=value=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:2}).format(value),quantity=value=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:6}).format(value);
  const option=(value,label)=>'<option value="'+esc(value)+'">'+esc(label)+'</option>',vatOptions=[0,5,7,10,20,22].map(rate=>option(rate,rate?rate+'%':'Без НДС')).join('');
- let dialog,busy=false,draft=null,returnFocus=null,scheduled=false;
+ let dialog,busy=false,draft=null,returnFocus=null,scheduled=false;const renderedChoices=new WeakMap();
  function initialize(){
   if(dialog)return;
   dialog=document.createElement('dialog');dialog.id='arbatStockOperationDialog';dialog.className='stock-operation-dialog';dialog.setAttribute('aria-labelledby','stockOperationTitle');dialog.setAttribute('aria-describedby','stockOperationHelp');document.body.append(dialog);
@@ -51,10 +51,16 @@
  function preview(){
   if(!draft||!dialog.querySelector('form'))return;
   const form=dialog.querySelector('form'),rate=Number(form.elements.vatRate?.value||0);let total=0;
+  const context={org:form.elements.org.value,dealId:form.elements.dealId.value,placeId:form.elements.placeId.value,date:form.elements.date.value},key=JSON.stringify(context);
+  if(draft.choicesKey!==key){draft.choices=root.ArbatStockOperations.availability({finance:draft.finance,warehouse:draft.warehouse},context,{fifo:root.arbatFifo});draft.choicesKey=key}
+  const choices=draft.choices||[],receipt=draft.kind==='receipt-consume',ordered=[...choices].sort((a,b)=>Number(b.projectPurchase)-Number(a.projectPurchase)||a.name.localeCompare(b.name,'ru'));
+  let help=form.querySelector('[data-stock-choice-help]');if(!help){help=document.createElement('p');help.className='stock-operation-help';help.dataset.stockChoiceHelp='';form.querySelector('[data-stock-lines]').before(help)}
+  help.textContent=receipt?'Выберите товары из каталога: этим документом они будут оприходованы и списаны.':!context.placeId?'Выберите склад, чтобы увидеть товары с остатком.':!ordered.some(i=>i.available>1e-8)?'На выбранном складе и на указанную дату нет доступных для проекта товаров. Проверьте склад, дату и резервы.':'Показаны товары с доступным остатком на выбранном складе и на дату документа. Закупленные для этого проекта — в начале списка.';
   for(const line of form.querySelectorAll('[data-stock-line]')){
-   const itemId=line.querySelector('[name=itemId]').value,item=(draft.warehouse.items||[]).find(i=>String(i.id)===itemId),qty=number(line.querySelector('[name=qty]').value),price=number(line.querySelector('[name=salePrice],[name=price]')?.value||0);if(Number.isFinite(qty)&&Number.isFinite(price))total+=qty*price;
-   const available=(draft.warehouse.moves||[]).filter(m=>String(m.itemId)===itemId&&String(m.date||'').slice(0,10)<=form.elements.date.value).reduce((sum,m)=>sum+(String(m.to||'')===form.elements.placeId.value?Number(m.qty)||0:0)-(String(m.from||'')===form.elements.placeId.value?Number(m.qty)||0:0),0);
-   line.querySelector('[data-stock-availability]').textContent=item?'На складе на дату: '+quantity(available)+' '+(item.unit||'ед.')+'.':'Выберите номенклатуру из каталога.';
+   const select=line.querySelector('[name=itemId]'),itemId=select.value,item=choices.find(i=>String(i.id)===itemId),qty=number(line.querySelector('[name=qty]').value),price=number(line.querySelector('[name=salePrice],[name=price]')?.value||0);if(Number.isFinite(qty)&&Number.isFinite(price))total+=qty*price;
+   const html=option('','Выберите товар')+ordered.filter(i=>receipt||i.available>1e-8||String(i.id)===itemId).map(i=>option(i.id,i.name+' · '+(receipt?(i.unit||'ед.'):quantity(i.available)+' '+(i.unit||'ед.')+' доступно'+(i.projectPurchase?' · закуплено для проекта':'')))).join('');
+   if(renderedChoices.get(select)!==html){select.innerHTML=html;select.value=itemId;renderedChoices.set(select,html)}
+   line.querySelector('[data-stock-availability]').textContent=item?'На складе на дату: '+quantity(item.qty)+' '+(item.unit||'ед.')+'. Доступно для проекта: '+quantity(item.available)+' '+(item.unit||'ед.')+'.'+(!receipt&&item.available<=1e-8?' Выбранный товар недоступен: проверьте склад и дату или выберите позицию с остатком.':''):'Выберите товар из списка остатков.';
   }
   const summary=form.querySelector('[data-stock-total]');summary.textContent=draft.kind==='consume'?'Себестоимость будет рассчитана по партиям FIFO при сохранении.':(draft.kind==='sale'?'Выручка по документу: ':'Закупка по документу: ')+money(total)+(rate?' · В том числе НДС '+rate+'%: '+money(total-total/(1+rate/100)):' · Без НДС');
   if(form.elements.vatDocument)form.elements.vatDocument.required=rate>0;

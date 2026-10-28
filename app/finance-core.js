@@ -290,6 +290,8 @@
       return {status:'calculated',grossAmount:gross,expenseAmount:expense,expenseValuationStatus:legacy?'legacy-gross':'verified',parts};
     }catch(error){return {status:'requires-review',grossAmount:null,expenseAmount:null,expenseValuationStatus:'requires-review',parts:[],reason:error.message};}
   }
+  // JSONB preserves values and array order, but may reorder object properties.
+  const warehouseEvidenceJson=value=>JSON.stringify(value,(_key,part)=>part&&typeof part==='object'&&!Array.isArray(part)?Object.fromEntries(Object.keys(part).sort().map(key=>[key,part[key]])):part);
   function warehouseCostAudit(expenses,moves,fifo,warehouse){
     const issues=[];
     const linked=(expenses||[]).filter(x=>x.warehouseMoveId);
@@ -302,7 +304,7 @@
       if(!valued||valued.invalid||valued.amount==null){issues.push({moveId:move.id,reason:'unverified-fifo'});continue}
       if(rows[0].warehouseGrossAmount!==undefined){
         const valuation=warehouseMovementValuation(warehouse||{moves},move,fifo);
-        try{const row=rows[0],missing=x=>x===null||x===undefined||String(x).trim()==='';if(valuation.status!=='calculated'||missing(row.amount)||missing(row.warehouseGrossAmount)||cents(row.warehouseGrossAmount)!==valuation.grossAmount||cents(row.amount)!==valuation.expenseAmount||documentPnlAmount(row,true)!==valuation.expenseAmount||Number(row.vatRate)!==0||cents(row.vatAmount)!==0n||row.vatDeductible!==false||cents(row.amountGross)!==valuation.expenseAmount||cents(row.amountNet)!==valuation.expenseAmount||JSON.stringify(row.warehouseValuationParts)!==JSON.stringify(valuation.parts))throw Error('mismatch')}
+        try{const row=rows[0],missing=x=>x===null||x===undefined||String(x).trim()==='';if(valuation.status!=='calculated'||missing(row.amount)||missing(row.warehouseGrossAmount)||cents(row.warehouseGrossAmount)!==valuation.grossAmount||cents(row.amount)!==valuation.expenseAmount||documentPnlAmount(row,true)!==valuation.expenseAmount||Number(row.vatRate)!==0||cents(row.vatAmount)!==0n||row.vatDeductible!==false||cents(row.amountGross)!==valuation.expenseAmount||cents(row.amountNet)!==valuation.expenseAmount||warehouseEvidenceJson(row.warehouseValuationParts)!==warehouseEvidenceJson(valuation.parts))throw Error('mismatch')}
         catch{issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
       }else if(cents(rows[0].amount||0)!==cents(valued.amount)){issues.push({moveId:move.id,reason:'fifo-cost-mismatch'})}
     }
