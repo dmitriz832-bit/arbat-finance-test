@@ -3,6 +3,19 @@ const html=fs.readFileSync(require.resolve('../app/index.html'),'utf8'),start=ht
 const org='АИР-КЛИМАТ',actor={id:'owner',role:'admin'},prepare=(s,c)=>require('../app/stock-operations-model').prepare(s,c,{fifo,actor,now:'2026-10-27T12:00:00Z'});
 function state(){return {finance:{deals:[{_id:'p',name:'Любая сделка',org,order1c:'P',contractTotal:1000,vatRate:0,customerId:'buyer'}],expenses:[],realizations:[],cash:[],counterparties:[{id:'vendor',name:'Поставщик'}]},warehouse:{items:[{id:'i',name:'Материал',unit:'м'}],places:[{id:'s',org,type:'warehouse'}],moves:[{id:'r',kind:'receipt',date:'2026-10-01',org,itemId:'i',to:'s',qty:3,price:10.01,vatRate:0,vatDeductible:false}],plans:[],projectIssues:[]}}}
 const command=kind=>({kind,requestId:'request',org,dealId:'p',placeId:'s',date:'2026-10-27',document:'Документ',vatRate:0,vatDeductible:false,supplierId:'vendor',lines:[{itemId:'i',qty:0.5,price:12.34,salePrice:20}]});
+test('stock choices distinguish imported stock from similar empty catalog cards and use the selected date and place',()=>{
+ const s=state();s.warehouse.items.push({id:'empty',name:'Материал похожий',unit:'м'});s.warehouse.moves[0].dealId='p';
+ const choices=require('../app/stock-operations-model').availability(s,command('consume'),{fifo});
+ assert.equal(choices.find(i=>i.id==='i').available,3);assert.equal(choices.find(i=>i.id==='i').projectPurchase,true);assert.equal(choices.find(i=>i.id==='empty').available,0);
+ assert.equal(require('../app/stock-operations-model').availability(s,{...command('consume'),date:'2026-09-30'},{fifo}).find(i=>i.id==='i').available,0);
+ assert.equal(require('../app/stock-operations-model').availability(s,{...command('consume'),placeId:'other'},{fifo}).find(i=>i.id==='i').available,0);
+});
+test('stock choice availability agrees with posting protection for another project reservation',()=>{
+ const s=state();s.finance.deals.push({_id:'other',name:'Другой проект',org});s.warehouse.plans=[{dealId:'other',org,lines:[{itemId:'i',qty:2}]}];
+ const choices=require('../app/stock-operations-model').availability(s,command('consume'),{fifo});assert.equal(choices.find(i=>i.id==='i').available,1);
+ const c=command('consume');c.lines[0].qty=1;assert.doesNotThrow(()=>prepare(s,c));c.lines[0].qty=1.01;assert.throws(()=>prepare(s,c),/остат/);
+ assert.equal(require('../app/stock-operations-model').availability(s,{...c,dealId:'other'},{fifo}).find(i=>i.id==='i').available,3);
+});
 test('sale without a crew creates one linked realization and exact FIFO cost, never cash',()=>{const s=state(),before=JSON.stringify(s),r=prepare(s,command('sale'));assert.equal(JSON.stringify(s),before);assert.equal(r.finance.realizations.length,1);assert.equal(r.finance.realizations[0].amountGross,'10.00');assert.equal(r.finance.expenses[0].amount,'5.01');assert.equal(r.finance.expenses[0].saleRealizationId,r.finance.realizations[0]._id);assert.equal(r.finance.cash.length,0);assert.equal(core.projectWipSnapshot({...r.finance,warehouse:r.warehouse,fifo:fifo(r.warehouse)},r.finance.deals[0],core.dealKey(r.finance.deals[0])).recognizedCost,501n);});
 test('direct project consumption needs no crew or realization and remains WIP',()=>{const r=prepare(state(),command('consume'));assert.equal(r.finance.expenses[0].amount,'5.01');assert.equal(r.finance.realizations.length,0);assert.equal(core.projectWipSnapshot({...r.finance,warehouse:r.warehouse,fifo:fifo(r.warehouse)},r.finance.deals[0],core.dealKey(r.finance.deals[0])).wip,501n);});
 test('combined purchase and consumption conserves exact purchase value without consuming older lots',()=>{const r=prepare(state(),command('receipt-consume')),moves=r.warehouse.moves.filter(m=>m.stockOperationId==='request');assert.equal(moves.length,2);assert.equal(moves[1].receiptConsumptionId,moves[0].id);assert.equal(r.finance.expenses[0].amount,'6.17');assert.equal(fifo(r.warehouse).lots('s','i').reduce((n,l)=>n+BigInt(l.valueCents),0n),3003n);});

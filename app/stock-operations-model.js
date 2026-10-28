@@ -6,6 +6,16 @@
  function qty(value){const s=(typeof value==='number'&&value>0&&value<0.00001?value.toFixed(6):String(value??'')).trim().replace(',','.');if(!/^\d+(?:\.\d{1,6})?$/.test(s)||!Number.isFinite(Number(s))||Number(s)<=0||Number(s)>Number.MAX_SAFE_INTEGER/1e6)throw Error('Проверьте положительное количество (до 6 знаков)');return Number(s)}
  function price(value){const s=String(value??'').trim().replace(',','.');if(!/^\d+(?:\.\d{1,2})?$/.test(s)||core.cents(s)<=0n)throw Error('Укажите положительную цену с точностью до копейки');return core.rubles(core.cents(s))}
  function lineAmount(q,p){const s=q<0.00001?q.toFixed(6):String(q),[a,b='']=s.split('.'),den=10n**BigInt(b.length),n=BigInt(a+b)*core.cents(p);const v=(n+den/2n)/den;if(v<=0n||v>BigInt(Number.MAX_SAFE_INTEGER))throw Error('Сумма строки вне допустимой точности');return v}
+ function availability(state,context,options={}){
+  const {finance,warehouse}=state,c=context,historical={...warehouse,moves:(warehouse.moves||[]).filter(m=>day(m.date)<=c.date),plans:(warehouse.plans||[]).filter(p=>!p.date||day(p.date)<=c.date)},view=warehouseModel.snapshot(historical,finance,options.fifo(historical));
+  return (warehouse.items||[]).filter(i=>!i.org||i.org===c.org).map(item=>{
+   const itemId=id(item),row=view.rows.find(r=>r.placeId===String(c.placeId)&&r.itemId===itemId),used=new Map();let own=0;
+   for(const project of view.projects.filter(p=>p.org===c.org&&p.itemId===itemId)){let left=project.reserved;
+    for(const place of (historical.places||[]).filter(p=>p.type==='warehouse'&&p.org===c.org)){const r=view.rows.find(r=>r.placeId===String(place.id)&&r.itemId===itemId),taken=Math.min(left,Math.max(0,(r?.qty||0)-(used.get(place.id)||0)));used.set(place.id,(used.get(place.id)||0)+taken);left-=taken;if(project.dealId===String(c.dealId)&&place.id===c.placeId)own+=taken;}
+   }
+   return {...item,qty:row?.qty||0,available:Math.max(0,(row?.free||0)+own),projectPurchase:historical.moves.some(m=>m.kind==='receipt'&&m.org===c.org&&String(m.dealId)===String(c.dealId)&&m.itemId===itemId&&m.to===c.placeId)};
+  });
+ }
  function prepare(state,command,options={}){
   const actor=options.actor;if(!actor||!['admin','accountant'].includes(actor.role))throw Error('Недостаточно прав для складской операции');
   if(typeof options.fifo!=='function')throw Error('Расчёт FIFO ещё не загружен');
@@ -38,14 +48,10 @@
   if(!Array.isArray(c.lines)||!c.lines.length)throw Error('Добавьте хотя бы один материал');
   const lines=c.lines.map((line,index)=>{const items=(warehouse.items||[]).filter(i=>id(i)===String(line.itemId));if(items.length!==1||items[0].org&&items[0].org!==c.org)throw Error('Номенклатура отсутствует или относится к другой организации');return {itemId:String(line.itemId),qty:qty(line.qty),price:kind==='receipt-consume'?price(line.price):null,salePrice:kind==='sale'?price(line.salePrice):null,index}});
   if(kind!=='receipt-consume'){
-   const historical={...warehouse,moves:(warehouse.moves||[]).filter(m=>day(m.date)<=c.date),plans:(warehouse.plans||[]).filter(p=>!p.date||day(p.date)<=c.date)},view=warehouseModel.snapshot(historical,finance,options.fifo(historical)),requested=new Map();
+   const choices=availability(state,c,options),requested=new Map();
    for(const l of lines)requested.set(l.itemId,(requested.get(l.itemId)||0)+l.qty);
    for(const [itemId,requestedQty] of requested){
-    const row=view.rows.find(r=>r.placeId===String(c.placeId)&&r.itemId===itemId),used=new Map();let own=0;
-    for(const project of view.projects.filter(p=>p.org===c.org&&p.itemId===itemId)){let left=project.reserved;
-     for(const place of historical.places.filter(p=>p.type==='warehouse'&&p.org===c.org)){const r=view.rows.find(r=>r.placeId===String(place.id)&&r.itemId===itemId),taken=Math.min(left,Math.max(0,(r?.qty||0)-(used.get(place.id)||0)));used.set(place.id,(used.get(place.id)||0)+taken);left-=taken;if(project.dealId===String(c.dealId)&&place.id===c.placeId)own+=taken;}
-    }
-    if(requestedQty>(row?.free||0)+own+1e-8)throw Error('Недостаточно свободного остатка: проверьте резерв других проектов и открытые выдачи');
+    if(requestedQty>(choices.find(i=>id(i)===itemId)?.available||0)+1e-8)throw Error('Недостаточно свободного остатка: проверьте резерв других проектов и открытые выдачи');
    }
   }
   const now=options.now||new Date().toISOString(),author={id:actor.user_id||actor.id||'',name:actor.full_name||actor.name||'',email:actor.email||''};
@@ -74,5 +80,5 @@
   }
   return {finance,warehouse,documentId,realizationId};
  }
- return Object.freeze({prepare});
+ return Object.freeze({prepare,availability});
 });
